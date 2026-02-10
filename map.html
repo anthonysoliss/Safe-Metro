@@ -20,7 +20,8 @@
         .app-container { display: grid; grid-template-columns: 380px 1fr; height: 100vh; transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .app-container.sidebar-hidden { grid-template-columns: 0 1fr; }
         .sidebar { background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; will-change: transform; }
-        .app-container.sidebar-hidden .sidebar { visibility: hidden; }
+        .app-container.sidebar-hidden .sidebar { visibility: hidden; pointer-events: none; }
+        .app-container:not(.sidebar-hidden) .sidebar { visibility: visible; pointer-events: auto; }
         .header { padding: 24px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, var(--bg-card) 0%, #1a2332 100%); position: relative; }
         .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         .hide-sidebar-btn { position: absolute; top: 16px; right: 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: all 0.2s; }
@@ -227,15 +228,15 @@
             <div class="line-filter">
                 <div class="filter-label">Filter by Line</div>
                 <div class="line-buttons">
-                    <button class="line-btn all active" data-line="all">All</button>
-                    <button class="line-btn a" data-line="A">A</button>
-                    <button class="line-btn b" data-line="B">B</button>
-                    <button class="line-btn c" data-line="C">C</button>
-                    <button class="line-btn d" data-line="D">D</button>
-                    <button class="line-btn e" data-line="E">E</button>
-                    <button class="line-btn k" data-line="K">K</button>
-                    <button class="line-btn g" data-line="G">G</button>
-                    <button class="line-btn j" data-line="J">J</button>
+                    <button type="button" class="line-btn all active" data-line="all">All</button>
+                    <button type="button" class="line-btn a" data-line="A">A</button>
+                    <button type="button" class="line-btn b" data-line="B">B</button>
+                    <button type="button" class="line-btn c" data-line="C">C</button>
+                    <button type="button" class="line-btn d" data-line="D">D</button>
+                    <button type="button" class="line-btn e" data-line="E">E</button>
+                    <button type="button" class="line-btn k" data-line="K">K</button>
+                    <button type="button" class="line-btn g" data-line="G">G</button>
+                    <button type="button" class="line-btn j" data-line="J">J</button>
                 </div>
             </div>
             <div class="search-container">
@@ -520,7 +521,7 @@
         ];
 
         // Data storage
-        let ratings = JSON.parse(localStorage.getItem('metroRatings')) || {};
+        let ratingsData = JSON.parse(localStorage.getItem('metroRatings')) || {};
         let photos = JSON.parse(localStorage.getItem('metroPhotos')) || {};
         let currentStation = null;
         let currentDetailStation = null;
@@ -557,7 +558,7 @@
         }
 
         function getStationRating(stationId) {
-            const r = ratings[stationId];
+            const r = ratingsData[stationId];
             if (!r || r.length === 0) return { avg: 0, count: 0 };
             const sum = r.reduce((acc, x) => acc + x.overall, 0);
             return { avg: (sum / r.length).toFixed(1), count: r.length };
@@ -568,7 +569,7 @@
         }
 
         function getCategoryAvg(stationId, category) {
-            const r = ratings[stationId];
+            const r = ratingsData[stationId];
             if (!r || r.length === 0) return 0;
             const vals = r.filter(x => x[category]).map(x => x[category]);
             if (vals.length === 0) return 0;
@@ -643,7 +644,7 @@
         }
 
         function updateDetailModal(stationId) {
-            const stationRatings = ratings[stationId] || [];
+            const stationRatings = ratingsData[stationId] || [];
             const stationPhotos = photos[stationId] || [];
             const rating = getStationRating(stationId);
             
@@ -670,7 +671,7 @@
         }
 
         function renderReviews(stationId) {
-            const stationRatings = ratings[stationId] || [];
+            const stationRatings = ratingsData[stationId] || [];
             let filtered = stationRatings;
             
             if (currentReviewFilter !== 'all') {
@@ -746,7 +747,7 @@
 
         function updateStats() {
             let ratingCount = 0;
-            Object.values(ratings).forEach(arr => ratingCount += arr.length);
+            Object.values(ratingsData).forEach(arr => ratingCount += arr.length);
             document.getElementById('totalRatings').textContent = ratingCount;
             
             let photoCount = 0;
@@ -813,15 +814,37 @@
             document.getElementById('lightbox').classList.remove('active');
         }
 
-        // Event Listeners
-        document.querySelectorAll('.line-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.line-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                currentFilter = this.dataset.line;
-                renderStationList();
+        // Event Listeners - Line filter buttons
+        function attachLineFilterListeners() {
+            // Remove any existing listeners first
+            const lineButtons = document.querySelectorAll('.line-btn');
+            lineButtons.forEach(btn => {
+                // Clone to remove old listeners
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                // Add new listener
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const selectedLine = this.dataset.line;
+                    if (!selectedLine) return;
+                    
+                    // Update active state
+                    document.querySelectorAll('.line-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update filter
+                    currentFilter = selectedLine;
+                    
+                    // Re-render
+                    renderStationList();
+                });
             });
-        });
+        }
+        
+        // Call immediately since script is at end of body
+        attachLineFilterListeners();
 
         document.getElementById('searchInput').addEventListener('input', renderStationList);
         
@@ -873,15 +896,15 @@
             const cleanliness = document.querySelectorAll('[data-category="cleanliness"] .star-btn.active').length || null;
             const accessibility = document.querySelectorAll('[data-category="accessibility"] .star-btn.active').length || null;
             
-            const ratings = [safety, cleanliness, accessibility].filter(r => r !== null);
+            const scores = [safety, cleanliness, accessibility].filter(r => r !== null);
             
-            if (ratings.length === 0) {
+            if (scores.length === 0) {
                 document.getElementById('overallValueDisplay').textContent = '--';
                 document.querySelectorAll('#overallStarsDisplay .star').forEach(s => s.classList.remove('filled'));
                 return;
             }
             
-            const overall = Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length);
+            const overall = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
             document.getElementById('overallValueDisplay').textContent = overall.toFixed(1);
             
             // Update star display
@@ -928,8 +951,8 @@
             }
             
             // Calculate overall rating as average of the three categories
-            const ratings = [safety, cleanliness, accessibility].filter(r => r !== null);
-            const overall = Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length);
+            const categoryScores = [safety, cleanliness, accessibility].filter(r => r !== null);
+            const overall = Math.round(categoryScores.reduce((a, b) => a + b, 0) / categoryScores.length);
             
             const data = {
                 overall,
@@ -940,9 +963,9 @@
                 timestamp: new Date().toISOString()
             };
             
-            if (!ratings[currentStation.id]) ratings[currentStation.id] = [];
-            ratings[currentStation.id].push(data);
-            localStorage.setItem('metroRatings', JSON.stringify(ratings));
+            if (!ratingsData[currentStation.id]) ratingsData[currentStation.id] = [];
+            ratingsData[currentStation.id].push(data);
+            localStorage.setItem('metroRatings', JSON.stringify(ratingsData));
             
             if (pendingPhotos.length > 0) {
                 if (!photos[currentStation.id]) photos[currentStation.id] = [];
@@ -970,7 +993,10 @@
         
         document.getElementById('sidebarToggle').addEventListener('click', function() {
             document.querySelector('.app-container').classList.remove('sidebar-hidden');
-            setTimeout(() => map.invalidateSize(), 300);
+            setTimeout(() => {
+                map.invalidateSize();
+                attachLineFilterListeners(); // Reattach listeners when sidebar is shown
+            }, 300);
         });
 
         // Global functions
@@ -984,6 +1010,9 @@
         renderStationList();
         updateStats();
         document.getElementById('totalStations').textContent = stations.length;
+        
+        // Ensure line filter listeners are attached after everything loads
+        setTimeout(attachLineFilterListeners, 100);
     </script>
 </body>
 </html>
