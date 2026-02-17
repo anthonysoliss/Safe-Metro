@@ -1,1018 +1,936 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LA Metro Station Rater</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --a-line: #0051A2; --b-line: #E60012; --c-line: #00A84F;
-            --d-line: #6C1F87; --e-line: #FFB81C; --k-line: #E96BB0;
-            --g-line: #F7931D; --j-line: #A9A9A9;
-            --bg-dark: #0d1117; --bg-card: #161b22; --bg-hover: #21262d;
-            --text-primary: #f0f6fc; --text-secondary: #8b949e;
-            --border: #30363d; --accent: #58a6ff; --gold: #ffd700;
-        }
-        body { font-family: 'DM Sans', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; overflow: hidden; }
-        .app-container { display: grid; grid-template-columns: 380px 1fr; height: 100vh; transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .app-container.sidebar-hidden { grid-template-columns: 0 1fr; }
-        .sidebar { background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; will-change: transform; }
-        .app-container.sidebar-hidden .sidebar { visibility: hidden; pointer-events: none; }
-        .app-container:not(.sidebar-hidden) .sidebar { visibility: visible; pointer-events: auto; }
-        .header { padding: 24px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, var(--bg-card) 0%, #1a2332 100%); position: relative; }
-        .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-        .hide-sidebar-btn { position: absolute; top: 16px; right: 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: all 0.2s; }
-        .hide-sidebar-btn:hover { background: var(--bg-hover); border-color: var(--accent); color: var(--text-primary); }
-        .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--a-line), var(--d-line)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 18px; }
-        .logo h1 { font-size: 24px; font-weight: 700; background: linear-gradient(90deg, var(--text-primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .subtitle { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
-        .stats-bar { display: flex; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--border); background: rgba(88, 166, 255, 0.05); }
-        .stat { flex: 1; text-align: center; padding: 12px; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border); }
-        .stat-value { font-family: 'Space Mono', monospace; font-size: 24px; font-weight: 700; color: var(--accent); }
-        .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-        .line-filter { padding: 16px 24px; border-bottom: 1px solid var(--border); }
-        .filter-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .line-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-        .line-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 14px; color: white; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .line-btn.a { background: var(--a-line); } .line-btn.b { background: var(--b-line); } .line-btn.c { background: var(--c-line); }
-        .line-btn.d { background: var(--d-line); } .line-btn.e { background: var(--e-line); color: #333; } .line-btn.k { background: var(--k-line); }
-        .line-btn.g { background: var(--g-line); } .line-btn.j { background: var(--j-line); }
-        .line-btn.all { background: linear-gradient(135deg, var(--a-line), var(--d-line)); width: auto; padding: 0 16px; border-radius: 20px; }
-        .line-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .line-btn.active { border-color: var(--text-primary); box-shadow: 0 0 0 3px rgba(255,255,255,0.2); }
-        .search-container { padding: 16px 24px; border-bottom: 1px solid var(--border); }
-        .search-input { width: 100%; padding: 12px 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-size: 14px; transition: border-color 0.2s; }
-        .search-input:focus { outline: none; border-color: var(--accent); }
-        .search-input::placeholder { color: var(--text-secondary); }
-        .station-list { flex: 1; overflow-y: auto; padding: 16px; }
-        .station-list::-webkit-scrollbar { width: 8px; }
-        .station-list::-webkit-scrollbar-track { background: var(--bg-dark); }
-        .station-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        .station-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
-        .station-card:hover { border-color: var(--accent); transform: translateX(4px); }
-        .station-card.selected { border-color: var(--accent); background: rgba(88, 166, 255, 0.1); }
-        .station-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-        .station-name { font-weight: 600; font-size: 15px; line-height: 1.3; }
-        .station-lines { display: flex; gap: 4px; flex-shrink: 0; margin-left: 8px; flex-wrap: wrap; }
-        .line-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 11px; color: white; }
-        .line-badge.a { background: var(--a-line); } .line-badge.b { background: var(--b-line); } .line-badge.c { background: var(--c-line); }
-        .line-badge.d { background: var(--d-line); } .line-badge.e { background: var(--e-line); color: #333; } .line-badge.k { background: var(--k-line); }
-        .line-badge.g { background: var(--g-line); } .line-badge.j { background: var(--j-line); }
-        .station-rating { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-        .station-meta { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-        .photo-count { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 4px; }
-        .stars { display: flex; gap: 2px; }
-        .star { color: var(--border); font-size: 16px; }
-        .star.filled { color: var(--gold); }
-        .rating-count { font-size: 12px; color: var(--text-secondary); }
-        .map-container { position: relative; }
-        #map { height: 100vh; width: 100%; }
-        .sidebar-toggle { position: absolute; top: 16px; left: 16px; z-index: 1001; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: none; }
-        .sidebar-toggle:hover { background: var(--bg-hover); border-color: var(--accent); }
-        .app-container.sidebar-hidden .sidebar-toggle { display: block; }
-        .custom-marker { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 11px; color: white; cursor: pointer; transition: transform 0.2s; }
-        .custom-marker:hover { transform: scale(1.2); z-index: 1000 !important; }
-        .custom-marker.a { background: var(--a-line); } .custom-marker.b { background: var(--b-line); } .custom-marker.c { background: var(--c-line); }
-        .custom-marker.d { background: var(--d-line); } .custom-marker.e { background: var(--e-line); color: #333; } .custom-marker.k { background: var(--k-line); }
-        .custom-marker.g { background: var(--g-line); } .custom-marker.j { background: var(--j-line); }
-        .custom-marker.transfer { background: linear-gradient(135deg, var(--a-line), var(--b-line)); width: 32px; height: 32px; }
-        
-        /* Modal Base Styles */
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.3s; }
-        .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 520px; width: 90%; transform: translateY(20px); transition: transform 0.3s; max-height: 90vh; overflow-y: auto; }
-        .modal-overlay.active .modal { transform: translateY(0); }
-        .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-        .modal-title { font-size: 24px; font-weight: 700; }
-        .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; padding: 4px; line-height: 1; }
-        .modal-close:hover { color: var(--text-primary); }
-        
-        /* Station Detail Modal */
-        .detail-modal { max-width: 700px; }
-        .detail-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        .detail-tab { background: none; border: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; padding: 8px 16px; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
-        .detail-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
-        .detail-tab.active { background: var(--accent); color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        
-        /* Photos Tab */
-        .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .photo-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; position: relative; }
-        .photo-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
-        .photo-item:hover img { transform: scale(1.05); }
-        .no-content { text-align: center; padding: 40px; color: var(--text-secondary); }
-        .no-content-icon { font-size: 48px; margin-bottom: 12px; }
-        
-        /* Reviews Tab */
-        .reviews-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-        .reviews-count { font-size: 14px; color: var(--text-secondary); }
-        .reviews-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-        .filter-btn { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; padding: 6px 12px; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
-        .filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-        .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-        .reviews-list { max-height: 400px; overflow-y: auto; }
-        .reviews-list::-webkit-scrollbar { width: 6px; }
-        .reviews-list::-webkit-scrollbar-track { background: var(--bg-dark); }
-        .reviews-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-        .review-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .review-rating { display: flex; align-items: center; gap: 8px; }
-        .review-date { font-size: 12px; color: var(--text-secondary); }
-        .review-categories { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
-        .review-category { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
-        .review-category .stars { font-size: 12px; }
-        .review-comment { font-size: 14px; line-height: 1.5; color: var(--text-primary); }
-        .review-photos { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-        .review-photo { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; cursor: pointer; }
-        .review-photo img { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* Overview Tab */
-        .overview-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
-        .overview-stat { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
-        .overview-stat-value { font-size: 32px; font-weight: 700; color: var(--accent); font-family: 'Space Mono', monospace; }
-        .overview-stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-        .category-breakdown { margin-top: 20px; }
-        .category-breakdown-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-        .category-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .category-bar-label { width: 100px; font-size: 13px; }
-        .category-bar-track { flex: 1; height: 8px; background: var(--bg-dark); border-radius: 4px; overflow: hidden; }
-        .category-bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.3s; }
-        .category-bar-value { width: 40px; font-size: 13px; text-align: right; color: var(--text-secondary); }
-        
-        .rating-section { margin-bottom: 24px; }
-        .rating-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
-        .rating-note { font-size: 12px; color: var(--text-secondary); margin-top: 8px; font-style: italic; }
-        .overall-rating-display { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
-        .overall-stars { display: flex; gap: 4px; }
-        .overall-stars .star { font-size: 24px; color: var(--border); transition: color 0.2s; }
-        .overall-stars .star.filled { color: var(--gold); }
-        .overall-value { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; color: var(--accent); }
-        .star-rating { display: flex; gap: 8px; }
-        .star-rating .star-btn { background: none; border: none; font-size: 32px; color: var(--border); cursor: pointer; transition: all 0.2s; padding: 4px; }
-        .star-rating .star-btn:hover, .star-rating .star-btn.active { color: var(--gold); transform: scale(1.1); }
-        .category-ratings { display: grid; gap: 16px; margin-bottom: 24px; }
-        .category-row { display: flex; align-items: center; justify-content: space-between; }
-        .category-name { font-size: 14px; }
-        .category-stars { display: flex; gap: 4px; }
-        .category-stars .star-btn { background: none; border: none; font-size: 20px; color: var(--border); cursor: pointer; transition: all 0.2s; }
-        .category-stars .star-btn:hover, .category-stars .star-btn.active { color: var(--gold); }
-        .comment-section { margin-bottom: 24px; }
-        .comment-textarea { width: 100%; min-height: 80px; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-size: 14px; resize: vertical; }
-        .comment-textarea:focus { outline: none; border-color: var(--accent); }
-        
-        /* Photo Upload Styles */
-        .photo-section { margin-bottom: 24px; }
-        .photo-upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg-dark); }
-        .photo-upload-area:hover { border-color: var(--accent); background: rgba(88, 166, 255, 0.05); }
-        .photo-upload-area.dragover { border-color: var(--accent); background: rgba(88, 166, 255, 0.1); }
-        .upload-icon { font-size: 32px; margin-bottom: 8px; }
-        .upload-text { color: var(--text-secondary); font-size: 14px; }
-        .upload-text span { color: var(--accent); }
-        .photo-input { display: none; }
-        .photo-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        .preview-item { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; }
-        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
-        .preview-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; background: rgba(0,0,0,0.7); border: none; border-radius: 50%; color: white; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .preview-remove:hover { background: var(--b-line); }
-        
-        /* Lightbox */
-        .lightbox { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 3000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.3s; }
-        .lightbox.active { opacity: 1; visibility: visible; }
-        .lightbox-content { max-width: 90vw; max-height: 90vh; position: relative; }
-        .lightbox-content img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
-        .lightbox-close { position: absolute; top: -40px; right: 0; background: none; border: none; color: white; font-size: 32px; cursor: pointer; }
-        .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 16px; cursor: pointer; border-radius: 8px; }
-        .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
-        .lightbox-prev { left: -60px; }
-        .lightbox-next { right: -60px; }
-        .lightbox-info { text-align: center; margin-top: 12px; color: var(--text-secondary); font-size: 14px; }
-        
-        .submit-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--a-line), var(--d-line)); border: none; border-radius: 8px; color: white; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(88, 166, 255, 0.3); }
-        .btn-secondary { background: var(--bg-dark); border: 1px solid var(--border); margin-top: 12px; }
-        .btn-secondary:hover { border-color: var(--accent); transform: none; box-shadow: none; }
-        
-        .map-legend { position: absolute; bottom: 30px; right: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; z-index: 1000; font-size: 11px; max-width: 260px; }
-        .legend-title { font-weight: 700; margin-bottom: 12px; color: var(--text-primary); font-size: 13px; }
-        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .legend-color { width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; flex-shrink: 0; }
-        .legend-text { color: var(--text-secondary); }
-        @media (max-width: 768px) {
-            .app-container { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-            .map-legend { max-width: 180px; font-size: 9px; padding: 10px; bottom: 10px; right: 10px; }
-            .photos-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Metro Safe LA</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --surface: rgba(18, 18, 28, 0.92);
+    --surface-light: rgba(30, 30, 45, 0.85);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+    --chat-bg: rgba(12, 12, 20, 0.88);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #map {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  .leaflet-tile-pane { filter: saturate(0.3) brightness(0.55) contrast(1.2); }
+  .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+
+  /* ── Station Pill ── */
+  .station-pill {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 1001;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideDown 0.5s ease both;
+    user-select: none;
+  }
+  .station-pill:hover { background: var(--surface-light); }
+  .station-pill.active { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .station-pill .dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: pulse-dot 2s ease infinite;
+  }
+  .station-pill span {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .station-pill .chevron { transition: transform 0.3s ease; }
+  .station-pill.active .chevron { transform: rotate(180deg); }
+
+  /* ── Station Panel ── */
+  .station-panel {
+    position: fixed;
+    top: 62px; left: 16px;
+    z-index: 1001;
+    width: 320px;
+    max-height: calc(100vh - 180px);
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+  .station-panel.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .panel-header { padding: 16px 16px 0; position: relative; }
+  .panel-search {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 36px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .panel-search:focus { border-color: rgba(245,197,24,0.4); }
+  .panel-search::placeholder { color: var(--text-muted); }
+  .search-icon {
+    position: absolute;
+    top: 26px; left: 28px;
+    width: 16px; height: 16px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+
+  /* ── Line Filter Chips ── */
+  .line-filters {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .line-filters::-webkit-scrollbar { display: none; }
+
+  .line-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    user-select: none;
+    text-transform: uppercase;
+  }
+  .line-chip .chip-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .line-chip:hover { background: rgba(255,255,255,0.1); }
+  .line-chip.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+  }
+  .line-chip.all-chip.active {
+    border-color: var(--accent);
+    background: rgba(245,197,24,0.12);
+    color: var(--accent);
+  }
+
+  /* ── Station List ── */
+  .station-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .station-list::-webkit-scrollbar { width: 4px; }
+  .station-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  .station-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .station-item:hover { background: rgba(255,255,255,0.06); }
+  .station-item:active { background: rgba(255,255,255,0.1); transform: scale(0.99); }
+
+  .station-color-bar {
+    width: 4px;
+    height: 32px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .station-info { flex: 1; min-width: 0; }
+  .station-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .station-line-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .station-line-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .station-arrow {
+    width: 16px; height: 16px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .station-item:hover .station-arrow { opacity: 1; }
+
+  .station-count {
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .no-results {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── Coordinates ── */
+  .coords-display {
+    position: fixed;
+    top: 16px;
+    left: calc(50% - 100px);
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: slideDown 0.5s ease 0.1s both;
+    white-space: nowrap;
+  }
+  .coords-display .coord-icon { 
+    width: 14px; 
+    height: 14px; 
+    fill: none; 
+    stroke: var(--accent); 
+    stroke-width: 2; 
+    flex-shrink: 0; 
+  }
+  .coords-display .coord-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+  }
+  .coords-display .coord-text strong { color: var(--text-primary); font-weight: 500; }
+
+  /* ── Profile ── */
+  .profile-btn {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 1000;
+    width: 44px; height: 44px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideDown 0.5s ease 0.2s both;
+  }
+  .profile-btn:hover { background: var(--surface-light); border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .profile-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; }
+  .profile-btn:hover svg { stroke: var(--accent); }
+
+  /* ── Compass ── */
+  .compass {
+    position: fixed;
+    bottom: 140px; right: 16px;
+    z-index: 1000;
+    width: 52px; height: 52px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    animation: slideUp 0.5s ease 0.3s both;
+  }
+  .compass:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .compass-needle { width: 28px; height: 28px; transition: transform 0.5s ease; }
+  .compass-needle svg { width: 100%; height: 100%; }
+
+  /* ── Locate ── */
+  .locate-btn {
+    position: fixed;
+    bottom: 200px; right: 16px;
+    z-index: 1000;
+    width: 52px; height: 52px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    animation: slideUp 0.5s ease 0.25s both;
+  }
+  .locate-btn:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .locate-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 2; }
+  .locate-btn:hover svg { stroke: var(--accent); }
+  .locate-btn.active svg { stroke: var(--accent); }
+
+  /* ── Chat Bar ── */
+  .chat-bar-container {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 0 12px 20px;
+    animation: slideUp 0.5s ease 0.35s both;
+  }
+  .chat-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--chat-bg);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 6px 8px 6px 6px;
+    transition: all 0.25s ease;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .chat-bar:focus-within {
+    border-color: rgba(245,197,24,0.35);
+    box-shadow: 0 0 30px rgba(245,197,24,0.08), 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .info-btn {
+    width: 40px; height: 40px; min-width: 40px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .info-btn:hover { background: rgba(245,197,24,0.15); border-color: var(--accent); }
+  .info-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--text-muted); stroke-width: 2; }
+  .info-btn:hover svg { stroke: var(--accent); }
+
+  .chat-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 400;
+    padding: 10px 4px;
+    caret-color: var(--accent);
+  }
+  .chat-input::placeholder { color: var(--text-muted); }
+
+  .send-btn {
+    width: 40px; height: 40px; min-width: 40px;
+    background: var(--accent); border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s ease; opacity: 0.4;
+  }
+  .send-btn.active { opacity: 1; }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
+  .send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--bg-dark); stroke-width: 2.5; }
+
+  /* ── Chat Overlay ── */
+  .chat-overlay {
+    position: fixed;
+    bottom: 90px; left: 12px; right: 12px;
+    z-index: 999;
+    max-width: 600px; margin: 0 auto;
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 8px 0;
+    scrollbar-width: none;
+    pointer-events: none;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s ease;
+  }
+  .chat-overlay.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .chat-overlay::-webkit-scrollbar { display: none; }
+
+  .chat-msg {
+    padding: 12px 16px; border-radius: 18px;
+    font-size: 14px; line-height: 1.5; max-width: 85%;
+    animation: msgIn 0.3s ease both;
+  }
+  .chat-msg.user {
+    background: var(--accent); color: var(--bg-dark);
+    align-self: flex-end; border-bottom-right-radius: 6px; font-weight: 500;
+  }
+  .chat-msg.ai {
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    align-self: flex-start; border-bottom-left-radius: 6px;
+  }
+  .chat-msg.ai .ai-label {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+  .typing-indicator span {
+    width: 6px; height: 6px; background: var(--text-muted);
+    border-radius: 50%; animation: typingBounce 1.2s ease infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+  /* ── Map Markers ── */
+  .metro-marker { display: flex; align-items: center; justify-content: center; }
+  .metro-marker-inner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,0.6);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+  .metro-marker:hover .metro-marker-inner { transform: scale(1.3); }
+
+  .user-marker {
+    width: 18px; height: 18px;
+    background: #4A90FF; border: 3px solid #fff; border-radius: 50%;
+    box-shadow: 0 0 16px rgba(74,144,255,0.5), 0 0 40px rgba(74,144,255,0.2);
+    animation: userPulse 2s ease infinite;
+  }
+  .user-marker-ring {
+    position: absolute; top: -10px; left: -10px;
+    width: 38px; height: 38px;
+    border: 2px solid rgba(74,144,255,0.3);
+    border-radius: 50%;
+    animation: ringPulse 2s ease infinite;
+  }
+
+  /* Leaflet popup */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  }
+  .leaflet-popup-content {
+    color: var(--text-primary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    margin: 12px 16px !important;
+  }
+  .leaflet-popup-content .popup-title { font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+  .leaflet-popup-content .popup-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+  .leaflet-popup-content .popup-badge {
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+  }
+  .leaflet-popup-tip { background: var(--surface) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+  .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 18px !important; }
+
+  /* Panel backdrop */
+  .panel-backdrop {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .panel-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes userPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(74,144,255,0.5), 0 0 40px rgba(74,144,255,0.2); }
+    50% { box-shadow: 0 0 24px rgba(74,144,255,0.7), 0 0 60px rgba(74,144,255,0.3); }
+  }
+  @keyframes ringPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.2); opacity: 0; } }
+  @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  @media (max-width: 480px) {
+    .coords-display { top: 66px; padding: 8px 12px; }
+    .coords-display .coord-text { font-size: 11px; }
+    .station-pill { top: 12px; left: 12px; }
+    .profile-btn { top: 12px; right: 12px; }
+    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); }
+  }
+</style>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="header">
-                <div class="logo">
-                    <div class="logo-icon">LA</div>
-                    <h1>Metro Rater</h1>
-                </div>
-                <p class="subtitle">Rate LA Metro stations (Sep 2025 Map)</p>
-                <button class="hide-sidebar-btn" id="hideSidebarBtn" title="Hide sidebar">← Hide</button>
-            </div>
-            <div class="stats-bar">
-                <div class="stat"><div class="stat-value" id="totalStations">0</div><div class="stat-label">Stations</div></div>
-                <div class="stat"><div class="stat-value" id="totalRatings">0</div><div class="stat-label">Ratings</div></div>
-                <div class="stat"><div class="stat-value" id="totalPhotos">0</div><div class="stat-label">Photos</div></div>
-            </div>
-            <div class="line-filter">
-                <div class="filter-label">Filter by Line</div>
-                <div class="line-buttons">
-                    <button type="button" class="line-btn all active" data-line="all">All</button>
-                    <button type="button" class="line-btn a" data-line="A">A</button>
-                    <button type="button" class="line-btn b" data-line="B">B</button>
-                    <button type="button" class="line-btn c" data-line="C">C</button>
-                    <button type="button" class="line-btn d" data-line="D">D</button>
-                    <button type="button" class="line-btn e" data-line="E">E</button>
-                    <button type="button" class="line-btn k" data-line="K">K</button>
-                    <button type="button" class="line-btn g" data-line="G">G</button>
-                    <button type="button" class="line-btn j" data-line="J">J</button>
-                </div>
-            </div>
-            <div class="search-container">
-                <input type="text" class="search-input" id="searchInput" placeholder="Search stations...">
-            </div>
-            <div class="station-list" id="stationList"></div>
-        </aside>
-        <main class="map-container">
-            <button class="sidebar-toggle" id="sidebarToggle" title="Show sidebar">Show</button>
-            <div id="map"></div>
-            <div class="map-legend">
-                <div class="legend-title">Metro Lines (Sep 2025)</div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--a-line);"></div><span class="legend-text">A Line - Pomona to Long Beach</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--b-line);"></div><span class="legend-text">B Line - North Hollywood to Union Stn</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--c-line);"></div><span class="legend-text">C Line - LAX to Norwalk</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--d-line);"></div><span class="legend-text">D Line - Wilshire/Western to Union Stn</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--e-line);"></div><span class="legend-text">E Line - Santa Monica to East LA</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--k-line);"></div><span class="legend-text">K Line - Expo/Crenshaw to Redondo Beach</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--g-line);"></div><span class="legend-text">G Line (Busway) - Chatsworth to NoHo</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: var(--j-line);"></div><span class="legend-text">J Line (Busway) - El Monte to San Pedro</span></div>
-            </div>
-        </main>
+
+<div id="map"></div>
+
+<!-- Station Pill -->
+<div class="station-pill" id="stationPill">
+  <div class="dot"></div>
+  <span>Stations</span>
+  <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+
+<!-- Station Panel -->
+<div class="panel-backdrop" id="panelBackdrop"></div>
+<div class="station-panel" id="stationPanel">
+  <div class="panel-header">
+    <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+    <input class="panel-search" id="stationSearch" type="text" placeholder="Search stations..." autocomplete="off" />
+  </div>
+  <div class="line-filters" id="lineFilters"></div>
+  <div class="station-count" id="stationCount"></div>
+  <div class="station-list" id="stationList"></div>
+</div>
+
+<!-- Coordinates -->
+<div class="coords-display">
+  <svg class="coord-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+  <div class="coord-text" id="coordsText"><strong>Locating...</strong></div>
+</div>
+
+<!-- Profile -->
+<div class="profile-btn" id="profileBtn">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+</div>
+
+<!-- Locate -->
+<div class="locate-btn" id="locateBtn">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+</div>
+
+<!-- Compass -->
+<div class="compass" id="compass">
+  <div class="compass-needle" id="compassNeedle">
+    <svg viewBox="0 0 40 40">
+      <polygon points="20,4 24,22 20,19 16,22" fill="#ff3b30" opacity="0.9"/>
+      <polygon points="20,36 16,22 20,25 24,22" fill="rgba(255,255,255,0.5)"/>
+      <circle cx="20" cy="20" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    </svg>
+  </div>
+</div>
+
+<!-- Chat -->
+<div class="chat-overlay" id="chatOverlay"></div>
+<div class="chat-bar-container">
+  <div class="chat-bar">
+    <div class="info-btn" id="infoBtn" title="Station Info">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
     </div>
-    
-    <!-- Station Detail Modal -->
-    <div class="modal-overlay" id="detailModal">
-        <div class="modal detail-modal">
-            <div class="modal-header">
-                <h2 class="modal-title" id="detailStationName">Station</h2>
-                <button class="modal-close" id="detailModalClose">&times;</button>
-            </div>
-            <div class="detail-tabs">
-                <button class="detail-tab active" data-tab="overview">Overview</button>
-                <button class="detail-tab" data-tab="reviews">Reviews</button>
-                <button class="detail-tab" data-tab="photos">Photos</button>
-            </div>
-            
-            <!-- Overview Tab -->
-            <div class="tab-content active" id="tab-overview">
-                <div class="overview-stats">
-                    <div class="overview-stat">
-                        <div class="overview-stat-value" id="overviewRating">--</div>
-                        <div class="overview-stat-label">Average Rating</div>
-                    </div>
-                    <div class="overview-stat">
-                        <div class="overview-stat-value" id="overviewCount">0</div>
-                        <div class="overview-stat-label">Total Reviews</div>
-                    </div>
-                </div>
-                <div class="category-breakdown">
-                    <div class="category-breakdown-title">Category Breakdown</div>
-                    <div class="category-bar">
-                        <span class="category-bar-label">🛡️ Safety</span>
-                        <div class="category-bar-track"><div class="category-bar-fill" id="barSafety"></div></div>
-                        <span class="category-bar-value" id="valSafety">--</span>
-                    </div>
-                    <div class="category-bar">
-                        <span class="category-bar-label">🧹 Cleanliness</span>
-                        <div class="category-bar-track"><div class="category-bar-fill" id="barCleanliness"></div></div>
-                        <span class="category-bar-value" id="valCleanliness">--</span>
-                    </div>
-                    <div class="category-bar">
-                        <span class="category-bar-label">♿ Accessibility</span>
-                        <div class="category-bar-track"><div class="category-bar-fill" id="barAccessibility"></div></div>
-                        <span class="category-bar-value" id="valAccessibility">--</span>
-                    </div>
-                </div>
-                <button class="submit-btn" style="margin-top: 24px;" onclick="openRatingModal(currentDetailStation.id)">Write a Review</button>
-            </div>
-            
-            <!-- Reviews Tab -->
-            <div class="tab-content" id="tab-reviews">
-                <div class="reviews-header">
-                    <span class="reviews-count" id="reviewsCount">0 reviews</span>
-                    <div class="reviews-filters">
-                        <button class="filter-btn active" data-filter="all">All</button>
-                        <button class="filter-btn" data-filter="5">5 ★</button>
-                        <button class="filter-btn" data-filter="4">4 ★</button>
-                        <button class="filter-btn" data-filter="3">3 ★</button>
-                        <button class="filter-btn" data-filter="2">2 ★</button>
-                        <button class="filter-btn" data-filter="1">1 ★</button>
-                    </div>
-                </div>
-                <div class="reviews-list" id="reviewsList"></div>
-                <button class="submit-btn" style="margin-top: 16px;" onclick="openRatingModal(currentDetailStation.id)">Write a Review</button>
-            </div>
-            
-            <!-- Photos Tab -->
-            <div class="tab-content" id="tab-photos">
-                <div class="photos-grid" id="photosGrid"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Rating Modal -->
-    <div class="modal-overlay" id="ratingModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modalStationName">Station</h2>
-                <button class="modal-close" id="modalClose">&times;</button>
-            </div>
-            <div class="rating-section">
-                <div class="rating-label">Overall Rating</div>
-                <div class="overall-rating-display" id="overallRatingDisplay">
-                    <div class="overall-stars" id="overallStarsDisplay">
-                        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
-                    </div>
-                    <span class="overall-value" id="overallValueDisplay">--</span>
-                </div>
-                <div class="rating-note">Calculated from your category ratings below</div>
-            </div>
-            <div class="category-ratings">
-                <div class="category-row"><span class="category-name">🛡️ Safety</span><div class="category-stars" data-category="safety"><button class="star-btn" data-rating="1">★</button><button class="star-btn" data-rating="2">★</button><button class="star-btn" data-rating="3">★</button><button class="star-btn" data-rating="4">★</button><button class="star-btn" data-rating="5">★</button></div></div>
-                <div class="category-row"><span class="category-name">🧹 Cleanliness</span><div class="category-stars" data-category="cleanliness"><button class="star-btn" data-rating="1">★</button><button class="star-btn" data-rating="2">★</button><button class="star-btn" data-rating="3">★</button><button class="star-btn" data-rating="4">★</button><button class="star-btn" data-rating="5">★</button></div></div>
-                <div class="category-row"><span class="category-name">♿ Accessibility</span><div class="category-stars" data-category="accessibility"><button class="star-btn" data-rating="1">★</button><button class="star-btn" data-rating="2">★</button><button class="star-btn" data-rating="3">★</button><button class="star-btn" data-rating="4">★</button><button class="star-btn" data-rating="5">★</button></div></div>
-            </div>
-            <div class="photo-section">
-                <div class="rating-label">Add Photos (Optional)</div>
-                <div class="photo-upload-area" id="photoUploadArea">
-                    <div class="upload-icon">📷</div>
-                    <div class="upload-text">Drag & drop photos or <span>browse</span></div>
-                </div>
-                <input type="file" class="photo-input" id="photoInput" multiple accept="image/*">
-                <div class="photo-preview" id="photoPreview"></div>
-            </div>
-            <div class="comment-section">
-                <div class="rating-label">Add a Comment (Optional)</div>
-                <textarea class="comment-textarea" id="commentInput" placeholder="Share your experience..."></textarea>
-            </div>
-            <button class="submit-btn" id="submitRating">Submit Review</button>
-        </div>
-    </div>
-    
-    <!-- Lightbox -->
-    <div class="lightbox" id="lightbox">
-        <div class="lightbox-content">
-            <button class="lightbox-close" id="lightboxClose">&times;</button>
-            <button class="lightbox-nav lightbox-prev" id="lightboxPrev">❮</button>
-            <img src="" alt="Station photo" id="lightboxImg">
-            <button class="lightbox-nav lightbox-next" id="lightboxNext">❯</button>
-            <div class="lightbox-info" id="lightboxInfo"></div>
-        </div>
-    </div>
+    <input class="chat-input" id="chatInput" type="text" placeholder="Ask about station safety..." autocomplete="off" />
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // LA Metro Station Data - September 2025 Official Map
-        const stations = [
-            { id: 1, name: "Pomona North", lines: ["A"], lat: 34.0697, lng: -117.7567 },
-            { id: 2, name: "La Verne/Fairplex", lines: ["A"], lat: 34.0892, lng: -117.7781 },
-            { id: 3, name: "San Dimas", lines: ["A"], lat: 34.1067, lng: -117.8064 },
-            { id: 4, name: "Glendora", lines: ["A"], lat: 34.1264, lng: -117.8464 },
-            { id: 5, name: "APU/Citrus College", lines: ["A"], lat: 34.1365, lng: -117.8897 },
-            { id: 6, name: "Azusa Downtown", lines: ["A"], lat: 34.1336, lng: -117.9075 },
-            { id: 7, name: "Irwindale", lines: ["A"], lat: 34.1067, lng: -117.9352 },
-            { id: 8, name: "Duarte/City of Hope", lines: ["A"], lat: 34.1594, lng: -117.9489 },
-            { id: 9, name: "Monrovia", lines: ["A"], lat: 34.1481, lng: -117.9989 },
-            { id: 10, name: "Arcadia", lines: ["A"], lat: 34.1319, lng: -118.0353 },
-            { id: 11, name: "Sierra Madre Villa", lines: ["A"], lat: 34.1478, lng: -118.0813 },
-            { id: 12, name: "Allen", lines: ["A"], lat: 34.1433, lng: -118.1133 },
-            { id: 13, name: "Lake", lines: ["A"], lat: 34.1419, lng: -118.1311 },
-            { id: 14, name: "Memorial Park", lines: ["A"], lat: 34.1486, lng: -118.1461 },
-            { id: 15, name: "Del Mar", lines: ["A"], lat: 34.1419, lng: -118.1497 },
-            { id: 16, name: "Fillmore", lines: ["A"], lat: 34.1364, lng: -118.1583 },
-            { id: 17, name: "South Pasadena", lines: ["A"], lat: 34.1156, lng: -118.1569 },
-            { id: 18, name: "Highland Park", lines: ["A"], lat: 34.1111, lng: -118.1925 },
-            { id: 19, name: "Southwest Museum", lines: ["A"], lat: 34.0994, lng: -118.2089 },
-            { id: 20, name: "Heritage Sq", lines: ["A"], lat: 34.0894, lng: -118.2139 },
-            { id: 21, name: "Lincoln/Cypress", lines: ["A"], lat: 34.0686, lng: -118.2200 },
-            { id: 22, name: "Chinatown", lines: ["A"], lat: 34.0636, lng: -118.2358 },
-            { id: 23, name: "Union Station", lines: ["A", "B", "D", "J"], lat: 34.0561, lng: -118.2369 },
-            { id: 24, name: "Historic Broadway", lines: ["A", "E"], lat: 34.0500, lng: -118.2389 },
-            { id: 25, name: "Grand Av Arts/Bunker Hill", lines: ["A", "E"], lat: 34.0533, lng: -118.2497 },
-            { id: 26, name: "7th St/Metro Ctr", lines: ["A", "B", "D", "E"], lat: 34.0489, lng: -118.2589 },
-            { id: 27, name: "Pico", lines: ["A", "E"], lat: 34.0408, lng: -118.2661 },
-            { id: 28, name: "LATTC/Ortho Institute", lines: ["A"], lat: 34.0289, lng: -118.2694 },
-            { id: 29, name: "Jefferson/USC", lines: ["A"], lat: 34.0222, lng: -118.2781 },
-            { id: 30, name: "Expo Park/USC", lines: ["A", "E"], lat: 34.0178, lng: -118.2853 },
-            { id: 31, name: "37th St/USC", lines: ["A"], lat: 34.0078, lng: -118.2858 },
-            { id: 32, name: "Vernon", lines: ["A"], lat: 33.9958, lng: -118.2911 },
-            { id: 33, name: "Washington", lines: ["A"], lat: 33.9858, lng: -118.2911 },
-            { id: 34, name: "Slauson", lines: ["A"], lat: 33.9728, lng: -118.2911 },
-            { id: 35, name: "Florence", lines: ["A"], lat: 33.9558, lng: -118.2908 },
-            { id: 36, name: "Firestone", lines: ["A"], lat: 33.9388, lng: -118.2878 },
-            { id: 37, name: "103rd St/Watts Towers", lines: ["A"], lat: 33.9422, lng: -118.2772 },
-            { id: 38, name: "Willowbrook/Rosa Parks", lines: ["A", "C"], lat: 33.9281, lng: -118.2378 },
-            { id: 39, name: "Compton", lines: ["A"], lat: 33.8972, lng: -118.2228 },
-            { id: 40, name: "Artesia", lines: ["A"], lat: 33.8756, lng: -118.2289 },
-            { id: 41, name: "Del Amo", lines: ["A"], lat: 33.8489, lng: -118.2092 },
-            { id: 42, name: "Wardlow", lines: ["A"], lat: 33.8319, lng: -118.1953 },
-            { id: 43, name: "Willow St", lines: ["A"], lat: 33.8078, lng: -118.1889 },
-            { id: 44, name: "Pacific Coast Hwy", lines: ["A"], lat: 33.7894, lng: -118.1886 },
-            { id: 45, name: "Anaheim St", lines: ["A"], lat: 33.7817, lng: -118.1886 },
-            { id: 46, name: "5th St", lines: ["A"], lat: 33.7733, lng: -118.1886 },
-            { id: 47, name: "1st St", lines: ["A"], lat: 33.7711, lng: -118.1886 },
-            { id: 48, name: "Downtown Long Beach", lines: ["A", "J"], lat: 33.7683, lng: -118.1894 },
-            { id: 49, name: "Pacific Av", lines: ["A"], lat: 33.7633, lng: -118.1894 },
-            { id: 50, name: "North Hollywood", lines: ["B", "G"], lat: 34.1686, lng: -118.3769 },
-            { id: 51, name: "Universal City/Studio City", lines: ["B"], lat: 34.1383, lng: -118.3614 },
-            { id: 52, name: "Hollywood/Highland", lines: ["B"], lat: 34.1017, lng: -118.3386 },
-            { id: 53, name: "Hollywood/Vine", lines: ["B"], lat: 34.1017, lng: -118.3256 },
-            { id: 54, name: "Hollywood/Western", lines: ["B"], lat: 34.1017, lng: -118.3089 },
-            { id: 55, name: "Vermont/Sunset", lines: ["B"], lat: 34.0978, lng: -118.2917 },
-            { id: 56, name: "Vermont/Santa Monica", lines: ["B"], lat: 34.0906, lng: -118.2917 },
-            { id: 57, name: "Vermont/Beverly", lines: ["B"], lat: 34.0756, lng: -118.2917 },
-            { id: 58, name: "Wilshire/Vermont", lines: ["B", "D"], lat: 34.0628, lng: -118.2917 },
-            { id: 59, name: "Westlake/MacArthur Park", lines: ["B", "D"], lat: 34.0556, lng: -118.2758 },
-            { id: 60, name: "Pershing Square", lines: ["B", "D"], lat: 34.0494, lng: -118.2525 },
-            { id: 61, name: "Civic Ctr/Grand Park", lines: ["B", "D"], lat: 34.0547, lng: -118.2461 },
-            { id: 62, name: "Redondo Beach", lines: ["C", "K"], lat: 33.8942, lng: -118.3819 },
-            { id: 63, name: "Douglas", lines: ["C"], lat: 33.9069, lng: -118.3797 },
-            { id: 64, name: "El Segundo", lines: ["C"], lat: 33.9167, lng: -118.3811 },
-            { id: 65, name: "Mariposa", lines: ["C"], lat: 33.9319, lng: -118.3886 },
-            { id: 66, name: "Aviation/Imperial", lines: ["C"], lat: 33.9378, lng: -118.3911 },
-            { id: 67, name: "Aviation/Century", lines: ["C", "K"], lat: 33.9428, lng: -118.3847 },
-            { id: 68, name: "LAX/Metro Transit Center", lines: ["C", "K"], lat: 33.9458, lng: -118.3964 },
-            { id: 69, name: "Hawthorne/Lennox", lines: ["C"], lat: 33.9306, lng: -118.3492 },
-            { id: 70, name: "Crenshaw", lines: ["C"], lat: 33.9228, lng: -118.3281 },
-            { id: 71, name: "Vermont/Athens", lines: ["C"], lat: 33.9286, lng: -118.2917 },
-            { id: 72, name: "Harbor Fwy", lines: ["C"], lat: 33.9286, lng: -118.2811 },
-            { id: 73, name: "Avalon", lines: ["C"], lat: 33.9286, lng: -118.2653 },
-            { id: 74, name: "Long Beach Bl", lines: ["C"], lat: 33.9286, lng: -118.2117 },
-            { id: 75, name: "Lakewood Bl", lines: ["C"], lat: 33.9286, lng: -118.1356 },
-            { id: 76, name: "Norwalk", lines: ["C"], lat: 33.9139, lng: -118.1069 },
-            { id: 77, name: "Wilshire/Western", lines: ["D"], lat: 34.0619, lng: -118.3089 },
-            { id: 78, name: "Wilshire/Normandie", lines: ["D"], lat: 34.0619, lng: -118.3008 },
-            { id: 79, name: "Downtown Santa Monica", lines: ["E"], lat: 34.0117, lng: -118.4925 },
-            { id: 80, name: "17th St/SMC", lines: ["E"], lat: 34.0136, lng: -118.4786 },
-            { id: 81, name: "26th St/Bergamot", lines: ["E"], lat: 34.0253, lng: -118.4692 },
-            { id: 82, name: "Expo/Bundy", lines: ["E"], lat: 34.0328, lng: -118.4528 },
-            { id: 83, name: "Expo/Sepulveda", lines: ["E"], lat: 34.0364, lng: -118.4339 },
-            { id: 84, name: "Westwood/Rancho Park", lines: ["E"], lat: 34.0364, lng: -118.4250 },
-            { id: 85, name: "Palms", lines: ["E"], lat: 34.0289, lng: -118.4136 },
-            { id: 86, name: "Culver City", lines: ["E"], lat: 34.0281, lng: -118.3886 },
-            { id: 87, name: "La Cienega/Jefferson", lines: ["E"], lat: 34.0242, lng: -118.3717 },
-            { id: 88, name: "Expo/La Brea", lines: ["E"], lat: 34.0183, lng: -118.3483 },
-            { id: 89, name: "Farmdale", lines: ["E"], lat: 34.0150, lng: -118.3331 },
-            { id: 90, name: "Expo/Crenshaw", lines: ["E", "K"], lat: 34.0117, lng: -118.3172 },
-            { id: 91, name: "Expo/Western", lines: ["E"], lat: 34.0178, lng: -118.3089 },
-            { id: 92, name: "Expo/Vermont", lines: ["E"], lat: 34.0183, lng: -118.2917 },
-            { id: 93, name: "Little Tokyo/Arts Dist", lines: ["A", "E"], lat: 34.0500, lng: -118.2375 },
-            { id: 94, name: "Pico/Aliso", lines: ["E"], lat: 34.0467, lng: -118.2322 },
-            { id: 95, name: "Mariachi Plaza", lines: ["E"], lat: 34.0467, lng: -118.2192 },
-            { id: 96, name: "Soto", lines: ["E"], lat: 34.0439, lng: -118.2100 },
-            { id: 97, name: "Indiana", lines: ["E"], lat: 34.0342, lng: -118.1922 },
-            { id: 98, name: "Maravilla", lines: ["E"], lat: 34.0331, lng: -118.1700 },
-            { id: 99, name: "East LA Civic Ctr", lines: ["E"], lat: 34.0331, lng: -118.1611 },
-            { id: 100, name: "Atlantic", lines: ["E"], lat: 34.0331, lng: -118.1544 },
-            { id: 101, name: "Martin Luther King Jr", lines: ["K"], lat: 33.9908, lng: -118.3319 },
-            { id: 102, name: "Leimert Park", lines: ["K"], lat: 33.9836, lng: -118.3361 },
-            { id: 103, name: "Hyde Park", lines: ["K"], lat: 33.9686, lng: -118.3406 },
-            { id: 104, name: "Fairview Heights", lines: ["K"], lat: 33.9581, lng: -118.3458 },
-            { id: 105, name: "Downtown Inglewood", lines: ["K"], lat: 33.9556, lng: -118.3533 },
-            { id: 106, name: "Westchester/Veterans", lines: ["K"], lat: 33.9581, lng: -118.3769 },
-            { id: 107, name: "Chatsworth", lines: ["G"], lat: 34.2583, lng: -118.6017 },
-            { id: 108, name: "Nordhoff", lines: ["G"], lat: 34.2339, lng: -118.5628 },
-            { id: 109, name: "Roscoe", lines: ["G"], lat: 34.2194, lng: -118.5372 },
-            { id: 110, name: "Sherman Way", lines: ["G"], lat: 34.2039, lng: -118.4972 },
-            { id: 111, name: "Canoga", lines: ["G"], lat: 34.1989, lng: -118.5969 },
-            { id: 112, name: "De Soto", lines: ["G"], lat: 34.1881, lng: -118.5714 },
-            { id: 113, name: "Pierce College", lines: ["G"], lat: 34.1831, lng: -118.5539 },
-            { id: 114, name: "Tampa", lines: ["G"], lat: 34.1781, lng: -118.5364 },
-            { id: 115, name: "Reseda", lines: ["G"], lat: 34.1731, lng: -118.5361 },
-            { id: 116, name: "Balboa", lines: ["G"], lat: 34.1756, lng: -118.5017 },
-            { id: 117, name: "Woodley", lines: ["G"], lat: 34.1728, lng: -118.4689 },
-            { id: 118, name: "Sepulveda", lines: ["G"], lat: 34.1725, lng: -118.4497 },
-            { id: 119, name: "Van Nuys", lines: ["G"], lat: 34.1867, lng: -118.4497 },
-            { id: 120, name: "Woodman", lines: ["G"], lat: 34.1700, lng: -118.4311 },
-            { id: 121, name: "Valley College", lines: ["G"], lat: 34.1700, lng: -118.4136 },
-            { id: 122, name: "Laurel Canyon", lines: ["G"], lat: 34.1700, lng: -118.3928 },
-            { id: 123, name: "El Monte", lines: ["J"], lat: 34.0567, lng: -118.0286 },
-            { id: 124, name: "Cal State LA", lines: ["J"], lat: 34.0661, lng: -118.1675 },
-            { id: 125, name: "LA General Medical Ctr", lines: ["J"], lat: 34.0558, lng: -118.2089 },
-            { id: 126, name: "Grand/LATTC", lines: ["J"], lat: 34.0289, lng: -118.2694 },
-            { id: 127, name: "San Pedro St", lines: ["J"], lat: 34.0178, lng: -118.2692 },
-            { id: 128, name: "Slauson", lines: ["J"], lat: 33.9886, lng: -118.2667 },
-            { id: 129, name: "Manchester", lines: ["J"], lat: 33.9586, lng: -118.2667 },
-            { id: 130, name: "Rosecrans", lines: ["J"], lat: 33.9017, lng: -118.2644 },
-            { id: 131, name: "Harbor Gateway Transit Ctr", lines: ["J"], lat: 33.8711, lng: -118.2842 },
-            { id: 132, name: "Carson", lines: ["J"], lat: 33.8300, lng: -118.2689 },
-            { id: 133, name: "Pacific Coast Hwy", lines: ["J"], lat: 33.7894, lng: -118.2689 }
-        ];
+<script>
+// ── Metro Lines ──
+const metroLines = {
+  A: { name: 'A Line (Blue)',   color: '#0072bc', text: '#fff' },
+  B: { name: 'B Line (Red)',    color: '#e3242b', text: '#fff' },
+  C: { name: 'C Line (Green)',  color: '#58a738', text: '#fff' },
+  D: { name: 'D Line (Purple)', color: '#a05da5', text: '#fff' },
+  E: { name: 'E Line (Expo)',   color: '#fdb913', text: '#000' },
+  G: { name: 'G Line (Orange)', color: '#f58220', text: '#fff' },
+  J: { name: 'J Line (Silver)', color: '#b5a07e', text: '#fff' },
+  K: { name: 'K Line (Crenshaw)', color: '#e96bb0', text: '#fff' },
+  L: { name: 'L Line (Gold)',   color: '#c4a73f', text: '#fff' },
+};
 
-        // Data storage
-        let ratingsData = JSON.parse(localStorage.getItem('metroRatings')) || {};
-        let photos = JSON.parse(localStorage.getItem('metroPhotos')) || {};
-        let currentStation = null;
-        let currentDetailStation = null;
-        let currentFilter = 'all';
-        let currentReviewFilter = 'all';
-        let markers = {};
-        let pendingPhotos = [];
-        let lightboxPhotos = [];
-        let lightboxIndex = 0;
+// ── Stations ──
+const metroStations = [
+  // A Line (Blue)
+  { name: "7th St/Metro Center", lines: ["A","B","D","E"], lat: 34.0486, lng: -118.2588 },
+  { name: "Pico", lines: ["A","E"], lat: 34.0408, lng: -118.2660 },
+  { name: "Grand/LATTC", lines: ["A"], lat: 34.0335, lng: -118.2689 },
+  { name: "San Pedro Street", lines: ["A"], lat: 34.0290, lng: -118.2540 },
+  { name: "Washington", lines: ["A"], lat: 34.0181, lng: -118.2580 },
+  { name: "Slauson", lines: ["A"], lat: 33.9893, lng: -118.2671 },
+  { name: "Florence", lines: ["A"], lat: 33.9764, lng: -118.2680 },
+  { name: "Firestone", lines: ["A"], lat: 33.9677, lng: -118.2685 },
+  { name: "103rd St/Watts Towers", lines: ["A"], lat: 33.9429, lng: -118.2690 },
+  { name: "Willowbrook/Rosa Parks", lines: ["A","C"], lat: 33.9286, lng: -118.2380 },
+  { name: "Compton", lines: ["A"], lat: 33.8972, lng: -118.2231 },
+  { name: "Artesia", lines: ["A"], lat: 33.8758, lng: -118.2282 },
+  { name: "Del Amo", lines: ["A"], lat: 33.8489, lng: -118.2119 },
+  { name: "Wardlow", lines: ["A"], lat: 33.8388, lng: -118.2087 },
+  { name: "Willow Street", lines: ["A"], lat: 33.8082, lng: -118.1893 },
+  { name: "Pacific Coast Hwy", lines: ["A"], lat: 33.7902, lng: -118.1868 },
+  { name: "Anaheim Street", lines: ["A"], lat: 33.7819, lng: -118.1950 },
+  { name: "5th Street", lines: ["A"], lat: 33.7751, lng: -118.1886 },
+  { name: "Downtown Long Beach", lines: ["A"], lat: 33.7684, lng: -118.1896 },
+  // B Line (Red)
+  { name: "Union Station", lines: ["B","D","L"], lat: 34.0561, lng: -118.2365 },
+  { name: "Civic Center/Grand Park", lines: ["B","D"], lat: 34.0558, lng: -118.2461 },
+  { name: "Pershing Square", lines: ["B","D"], lat: 34.0494, lng: -118.2517 },
+  { name: "Westlake/MacArthur Park", lines: ["B","D"], lat: 34.0560, lng: -118.2745 },
+  { name: "Wilshire/Vermont", lines: ["B","D"], lat: 34.0628, lng: -118.2911 },
+  { name: "Vermont/Beverly", lines: ["B"], lat: 34.0762, lng: -118.2913 },
+  { name: "Vermont/Santa Monica", lines: ["B"], lat: 34.0909, lng: -118.2919 },
+  { name: "Vermont/Sunset", lines: ["B"], lat: 34.0976, lng: -118.2919 },
+  { name: "Hollywood/Western", lines: ["B"], lat: 34.1016, lng: -118.3069 },
+  { name: "Hollywood/Vine", lines: ["B"], lat: 34.1017, lng: -118.3260 },
+  { name: "Hollywood/Highland", lines: ["B"], lat: 34.1016, lng: -118.3385 },
+  { name: "Universal City/Studio City", lines: ["B"], lat: 34.1382, lng: -118.3621 },
+  { name: "North Hollywood", lines: ["B","G"], lat: 34.1684, lng: -118.3766 },
+  // C Line (Green)
+  { name: "Redondo Beach", lines: ["C"], lat: 33.8994, lng: -118.2778 },
+  { name: "Douglas", lines: ["C"], lat: 33.9073, lng: -118.2940 },
+  { name: "El Segundo", lines: ["C"], lat: 33.9164, lng: -118.3037 },
+  { name: "Mariposa", lines: ["C"], lat: 33.9189, lng: -118.3288 },
+  { name: "Aviation/LAX", lines: ["C","K"], lat: 33.9342, lng: -118.3789 },
+  { name: "Hawthorne/Lennox", lines: ["C"], lat: 33.9214, lng: -118.3520 },
+  { name: "Vermont/Athens", lines: ["C"], lat: 33.9292, lng: -118.2881 },
+  { name: "Harbor Freeway", lines: ["C"], lat: 33.9292, lng: -118.2575 },
+  { name: "Avalon", lines: ["C"], lat: 33.9294, lng: -118.2443 },
+  { name: "Long Beach Blvd", lines: ["C"], lat: 33.9099, lng: -118.2108 },
+  { name: "Lakewood Blvd", lines: ["C"], lat: 33.9099, lng: -118.1329 },
+  { name: "Norwalk", lines: ["C"], lat: 33.9144, lng: -118.1050 },
+  // D Line (Purple)
+  { name: "Wilshire/Normandie", lines: ["D"], lat: 34.0618, lng: -118.3012 },
+  { name: "Wilshire/Western", lines: ["D"], lat: 34.0626, lng: -118.3089 },
+  { name: "Wilshire/La Brea", lines: ["D"], lat: 34.0620, lng: -118.3443 },
+  { name: "Wilshire/Fairfax", lines: ["D"], lat: 34.0622, lng: -118.3612 },
+  { name: "Wilshire/La Cienega", lines: ["D"], lat: 34.0624, lng: -118.3784 },
+  { name: "Wilshire/Rodeo", lines: ["D"], lat: 34.0606, lng: -118.3975 },
+  { name: "Century City/Constellation", lines: ["D"], lat: 34.0555, lng: -118.4170 },
+  { name: "Westwood/VA Hospital", lines: ["D"], lat: 34.0478, lng: -118.4406 },
+  // E Line (Expo)
+  { name: "Jefferson/USC", lines: ["E"], lat: 34.0216, lng: -118.2789 },
+  { name: "Expo Park/USC", lines: ["E"], lat: 34.0180, lng: -118.2857 },
+  { name: "Expo/Vermont", lines: ["E"], lat: 34.0181, lng: -118.2914 },
+  { name: "Expo/Western", lines: ["E"], lat: 34.0184, lng: -118.3087 },
+  { name: "Farmdale", lines: ["E"], lat: 34.0166, lng: -118.3259 },
+  { name: "Expo/Crenshaw", lines: ["E","K"], lat: 34.0229, lng: -118.3382 },
+  { name: "Expo/La Brea", lines: ["E"], lat: 34.0233, lng: -118.3519 },
+  { name: "La Cienega/Jefferson", lines: ["E"], lat: 34.0250, lng: -118.3729 },
+  { name: "Culver City", lines: ["E"], lat: 34.0283, lng: -118.3863 },
+  { name: "Palms", lines: ["E"], lat: 34.0289, lng: -118.4047 },
+  { name: "Westwood/Rancho Park", lines: ["E"], lat: 34.0365, lng: -118.4225 },
+  { name: "Expo/Sepulveda", lines: ["E"], lat: 34.0340, lng: -118.4335 },
+  { name: "Expo/Bundy", lines: ["E"], lat: 34.0266, lng: -118.4525 },
+  { name: "26th St/Bergamot", lines: ["E"], lat: 34.0299, lng: -118.4665 },
+  { name: "17th St/SMC", lines: ["E"], lat: 34.0151, lng: -118.4792 },
+  { name: "Downtown Santa Monica", lines: ["E"], lat: 34.0115, lng: -118.4916 },
+  // K Line (Crenshaw/LAX)
+  { name: "Westchester/Veterans", lines: ["K"], lat: 33.9590, lng: -118.3782 },
+  { name: "Downtown Inglewood", lines: ["K"], lat: 33.9613, lng: -118.3531 },
+  { name: "Fairview Heights", lines: ["K"], lat: 33.9723, lng: -118.3443 },
+  { name: "Hyde Park", lines: ["K"], lat: 33.9918, lng: -118.3312 },
+  { name: "Leimert Park", lines: ["K"], lat: 34.0082, lng: -118.3325 },
+  { name: "Martin Luther King Jr", lines: ["K"], lat: 34.0110, lng: -118.3360 },
+  // L Line (Gold)
+  { name: "Chinatown", lines: ["L"], lat: 34.0637, lng: -118.2358 },
+  { name: "Lincoln/Cypress", lines: ["L"], lat: 34.0688, lng: -118.2258 },
+  { name: "Heritage Square/Arroyo", lines: ["L"], lat: 34.0813, lng: -118.2149 },
+  { name: "Southwest Museum", lines: ["L"], lat: 34.0942, lng: -118.2129 },
+  { name: "Highland Park", lines: ["L"], lat: 34.1111, lng: -118.1960 },
+  { name: "South Pasadena", lines: ["L"], lat: 34.1154, lng: -118.1576 },
+  { name: "Fillmore", lines: ["L"], lat: 34.1262, lng: -118.1488 },
+  { name: "Del Mar", lines: ["L"], lat: 34.1380, lng: -118.1484 },
+  { name: "Memorial Park", lines: ["L"], lat: 34.1436, lng: -118.1485 },
+  { name: "Lake", lines: ["L"], lat: 34.1519, lng: -118.1318 },
+  { name: "Allen", lines: ["L"], lat: 34.1519, lng: -118.1132 },
+  { name: "Sierra Madre Villa", lines: ["L"], lat: 34.1481, lng: -118.0811 },
+  { name: "Arcadia", lines: ["L"], lat: 34.1419, lng: -118.0530 },
+  { name: "Monrovia", lines: ["L"], lat: 34.1482, lng: -118.0019 },
+  { name: "Duarte/City of Hope", lines: ["L"], lat: 34.1546, lng: -117.9752 },
+  { name: "Irwindale", lines: ["L"], lat: 34.1267, lng: -117.9441 },
+  { name: "Azusa Downtown", lines: ["L"], lat: 34.1350, lng: -117.9091 },
+  { name: "APU/Citrus College", lines: ["L"], lat: 34.1378, lng: -117.8862 },
+  // G Line (Orange)
+  { name: "Chatsworth", lines: ["G"], lat: 34.2583, lng: -118.6010 },
+  { name: "Nordhoff", lines: ["G"], lat: 34.2342, lng: -118.5871 },
+  { name: "Roscoe", lines: ["G"], lat: 34.2194, lng: -118.5700 },
+  { name: "De Soto", lines: ["G"], lat: 34.2002, lng: -118.5595 },
+  { name: "Pierce College", lines: ["G"], lat: 34.1874, lng: -118.5501 },
+  { name: "Tampa", lines: ["G"], lat: 34.1732, lng: -118.5340 },
+  { name: "Reseda", lines: ["G"], lat: 34.1725, lng: -118.5117 },
+  { name: "Balboa", lines: ["G"], lat: 34.1732, lng: -118.4970 },
+  { name: "Woodley", lines: ["G"], lat: 34.1672, lng: -118.4690 },
+  { name: "Sepulveda", lines: ["G"], lat: 34.1610, lng: -118.4487 },
+  { name: "Van Nuys", lines: ["G"], lat: 34.1486, lng: -118.4494 },
+  { name: "Valley College", lines: ["G"], lat: 34.1646, lng: -118.4155 },
+  { name: "Laurel Canyon", lines: ["G"], lat: 34.1665, lng: -118.3920 },
+  { name: "Woodman", lines: ["G"], lat: 34.1668, lng: -118.3841 },
+];
 
-        // Initialize map
-        const map = L.map('map', { attributionControl: false }).setView([34.0522, -118.2437], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '',
-            subdomains: 'abcd', maxZoom: 19
-        }).addTo(map);
+// ── Map ──
+const defaultLat = 34.0522, defaultLng = -118.2437;
+let userLat = defaultLat, userLng = defaultLng;
+let userMarker = null, stationMarkers = [], activeFilter = 'all';
 
-        function createMarkerIcon(lines) {
-            const primaryLine = lines[0].toLowerCase();
-            const isTransfer = lines.length > 1;
-            return L.divIcon({
-                className: 'marker-container',
-                html: `<div class="custom-marker ${primaryLine} ${isTransfer ? 'transfer' : ''}">${lines.length > 1 ? '⬟' : lines[0]}</div>`,
-                iconSize: [isTransfer ? 32 : 28, isTransfer ? 32 : 28],
-                iconAnchor: [isTransfer ? 16 : 14, isTransfer ? 16 : 14]
-            });
-        }
+const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        function getStarsHTML(rating, size = 16) {
-            let html = '';
-            const filled = Math.floor(rating);
-            for (let i = 1; i <= 5; i++) html += `<span class="star ${i <= filled ? 'filled' : ''}" style="font-size:${size}px">★</span>`;
-            return html;
-        }
+function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
 
-        function getStationRating(stationId) {
-            const r = ratingsData[stationId];
-            if (!r || r.length === 0) return { avg: 0, count: 0 };
-            const sum = r.reduce((acc, x) => acc + x.overall, 0);
-            return { avg: (sum / r.length).toFixed(1), count: r.length };
-        }
+function createMarkers(filterLine = 'all') {
+  stationMarkers.forEach(m => map.removeLayer(m));
+  stationMarkers = [];
+  const filtered = filterLine === 'all' ? metroStations : metroStations.filter(s => s.lines.includes(filterLine));
+  filtered.forEach(station => {
+    const color = getStationColor(station);
+    const icon = L.divIcon({
+      className: 'metro-marker',
+      html: `<div class="metro-marker-inner" style="background:${color};box-shadow:0 0 10px ${color}55;"></div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    });
+    const badges = station.lines.map(l => {
+      const line = metroLines[l];
+      return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
+    }).join('');
+    const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
+    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>`);
+    marker.stationData = station;
+    stationMarkers.push(marker);
+  });
+}
+createMarkers();
 
-        function getStationPhotos(stationId) {
-            return photos[stationId] || [];
-        }
+// ── Filters ──
+function buildFilters() {
+  const c = document.getElementById('lineFilters');
+  let html = `<div class="line-chip all-chip active" data-line="all"><div class="chip-dot" style="background:var(--accent)"></div>All</div>`;
+  Object.entries(metroLines).forEach(([key, line]) => {
+    html += `<div class="line-chip" data-line="${key}"><div class="chip-dot" style="background:${line.color}"></div>${key}</div>`;
+  });
+  c.innerHTML = html;
 
-        function getCategoryAvg(stationId, category) {
-            const r = ratingsData[stationId];
-            if (!r || r.length === 0) return 0;
-            const vals = r.filter(x => x[category]).map(x => x[category]);
-            if (vals.length === 0) return 0;
-            return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
-        }
+  c.querySelectorAll('.line-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const line = chip.dataset.line;
+      activeFilter = line;
+      c.querySelectorAll('.line-chip').forEach(ch => { ch.classList.remove('active'); ch.style.borderColor = 'transparent'; ch.style.background = 'rgba(255,255,255,0.05)'; });
+      chip.classList.add('active');
+      if (line !== 'all') {
+        chip.style.borderColor = metroLines[line].color;
+        chip.style.background = metroLines[line].color + '18';
+      }
+      document.getElementById('stationSearch').value = '';
+      createMarkers(line);
+      renderStationList();
+      if (stationMarkers.length > 0) {
+        map.fitBounds(new L.featureGroup(stationMarkers).getBounds().pad(0.1), { animate: true, duration: 0.5 });
+      }
+    });
+  });
+}
+buildFilters();
 
-        function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
+// ── Station List ──
+function renderStationList(searchQuery = '') {
+  const listEl = document.getElementById('stationList');
+  const countEl = document.getElementById('stationCount');
+  const q = searchQuery.toLowerCase();
+  let filtered = activeFilter === 'all' ? [...metroStations] : metroStations.filter(s => s.lines.includes(activeFilter));
+  if (q) filtered = filtered.filter(s => s.name.toLowerCase().includes(q));
+  filtered.sort((a, b) => a.name.localeCompare(b.name));
+  countEl.textContent = `${filtered.length} station${filtered.length !== 1 ? 's' : ''}`;
 
-        function addMarkers() {
-            stations.forEach(station => {
-                const marker = L.marker([station.lat, station.lng], { icon: createMarkerIcon(station.lines) });
-                marker.on('click', () => openDetailModal(station.id));
-                marker.addTo(map);
-                markers[station.id] = marker;
-            });
-        }
+  if (!filtered.length) { listEl.innerHTML = '<div class="no-results">No stations found</div>'; return; }
 
-        function renderStationList() {
-            const list = document.getElementById('stationList');
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = stations.filter(s => {
-                const matchesFilter = currentFilter === 'all' || s.lines.includes(currentFilter);
-                const matchesSearch = s.name.toLowerCase().includes(searchTerm);
-                return matchesFilter && matchesSearch;
-            });
-            list.innerHTML = filtered.map(s => {
-                const rating = getStationRating(s.id);
-                const photoCount = getStationPhotos(s.id).length;
-                const linesHTML = s.lines.map(l => `<span class="line-badge ${l.toLowerCase()}">${l}</span>`).join('');
-                return `<div class="station-card" data-id="${s.id}" onclick="openDetailModal(${s.id})">
-                    <div class="station-header"><span class="station-name">${s.name}</span><div class="station-lines">${linesHTML}</div></div>
-                    <div class="station-meta">
-                        <div class="station-rating"><div class="stars">${getStarsHTML(rating.avg)}</div><span class="rating-count">${rating.count > 0 ? rating.avg : '--'}</span></div>
-                        ${photoCount > 0 ? `<div class="photo-count">📷 ${photoCount}</div>` : ''}
-                    </div>
-                </div>`;
-            }).join('');
-            stations.forEach(s => {
-                const show = (currentFilter === 'all' || s.lines.includes(currentFilter)) && s.name.toLowerCase().includes(searchTerm);
-                if (markers[s.id]) show ? markers[s.id].addTo(map) : map.removeLayer(markers[s.id]);
-            });
-            document.getElementById('totalStations').textContent = filtered.length;
-        }
+  listEl.innerHTML = filtered.map(station => {
+    const badges = station.lines.map(l => `<span class="station-line-badge" style="background:${metroLines[l].color}22;color:${metroLines[l].color}">${l}</span>`).join('');
+    return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}">
+      <div class="station-color-bar" style="background:${getStationColor(station)}"></div>
+      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div></div>
+      <svg class="station-arrow" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>`;
+  }).join('');
 
-        // Detail Modal Functions
-        function openDetailModal(id) {
-            const station = stations.find(s => s.id === id);
-            if (!station) return;
-            currentDetailStation = station;
-            
-            document.getElementById('detailStationName').textContent = station.name;
-            document.getElementById('detailModal').classList.add('active');
-            
-            // Reset to overview tab
-            document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelector('[data-tab="overview"]').classList.add('active');
-            document.getElementById('tab-overview').classList.add('active');
-            
-            updateDetailModal(id);
-            
-            // Center map on station
-            map.setView([station.lat, station.lng], 14);
-            
-            // Highlight in sidebar
-            document.querySelectorAll('.station-card').forEach(c => c.classList.remove('selected'));
-            const card = document.querySelector(`.station-card[data-id="${id}"]`);
-            if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-        }
+  listEl.querySelectorAll('.station-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const lat = +item.dataset.lat, lng = +item.dataset.lng;
+      map.setView([lat, lng], 16, { animate: true, duration: 0.6 });
+      stationMarkers.forEach(m => {
+        const p = m.getLatLng();
+        if (Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001) m.openPopup();
+      });
+      closePanel();
+    });
+  });
+}
+renderStationList();
 
-        function updateDetailModal(stationId) {
-            const stationRatings = ratingsData[stationId] || [];
-            const stationPhotos = photos[stationId] || [];
-            const rating = getStationRating(stationId);
-            
-            // Overview
-            document.getElementById('overviewRating').textContent = rating.count > 0 ? rating.avg : '--';
-            document.getElementById('overviewCount').textContent = stationRatings.length;
-            
-            const safetyAvg = getCategoryAvg(stationId, 'safety');
-            const cleanlinessAvg = getCategoryAvg(stationId, 'cleanliness');
-            const accessibilityAvg = getCategoryAvg(stationId, 'accessibility');
-            
-            document.getElementById('barSafety').style.width = `${(safetyAvg / 5) * 100}%`;
-            document.getElementById('valSafety').textContent = safetyAvg > 0 ? safetyAvg : '--';
-            document.getElementById('barCleanliness').style.width = `${(cleanlinessAvg / 5) * 100}%`;
-            document.getElementById('valCleanliness').textContent = cleanlinessAvg > 0 ? cleanlinessAvg : '--';
-            document.getElementById('barAccessibility').style.width = `${(accessibilityAvg / 5) * 100}%`;
-            document.getElementById('valAccessibility').textContent = accessibilityAvg > 0 ? accessibilityAvg : '--';
-            
-            // Reviews
-            renderReviews(stationId);
-            
-            // Photos
-            renderPhotosGrid(stationId);
-        }
+// ── Panel Toggle ──
+const stationPill = document.getElementById('stationPill');
+const stationPanel = document.getElementById('stationPanel');
+const panelBackdrop = document.getElementById('panelBackdrop');
+const stationSearch = document.getElementById('stationSearch');
 
-        function renderReviews(stationId) {
-            const stationRatings = ratingsData[stationId] || [];
-            let filtered = stationRatings;
-            
-            if (currentReviewFilter !== 'all') {
-                filtered = stationRatings.filter(r => r.overall === parseInt(currentReviewFilter));
-            }
-            
-            document.getElementById('reviewsCount').textContent = `${filtered.length} review${filtered.length !== 1 ? 's' : ''}`;
-            
-            if (filtered.length === 0) {
-                document.getElementById('reviewsList').innerHTML = `<div class="no-content"><div class="no-content-icon">📝</div><div>No reviews yet. Be the first to review!</div></div>`;
-                return;
-            }
-            
-            // Sort by date (newest first)
-            filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
-            const stationPhotos = photos[stationId] || [];
-            
-            document.getElementById('reviewsList').innerHTML = filtered.map((r, idx) => {
-                let categoriesHTML = '';
-                if (r.safety) categoriesHTML += `<div class="review-category">🛡️ ${getStarsHTML(r.safety, 12)}</div>`;
-                if (r.cleanliness) categoriesHTML += `<div class="review-category">🧹 ${getStarsHTML(r.cleanliness, 12)}</div>`;
-                if (r.accessibility) categoriesHTML += `<div class="review-category">♿ ${getStarsHTML(r.accessibility, 12)}</div>`;
-                
-                return `<div class="review-card">
-                    <div class="review-header">
-                        <div class="review-rating"><div class="stars">${getStarsHTML(r.overall)}</div></div>
-                        <div class="review-date">${formatDate(r.timestamp)}</div>
-                    </div>
-                    ${categoriesHTML ? `<div class="review-categories">${categoriesHTML}</div>` : ''}
-                    ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ''}
-                </div>`;
-            }).join('');
-        }
+function openPanel() { stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible'); stationSearch.focus(); }
+function closePanel() { stationPill.classList.remove('active'); stationPanel.classList.remove('open'); panelBackdrop.classList.remove('visible'); }
+stationPill.addEventListener('click', () => stationPanel.classList.contains('open') ? closePanel() : openPanel());
+panelBackdrop.addEventListener('click', closePanel);
+stationSearch.addEventListener('input', e => renderStationList(e.target.value));
 
-        function renderPhotosGrid(stationId) {
-            const stationPhotos = photos[stationId] || [];
-            
-            if (stationPhotos.length === 0) {
-                document.getElementById('photosGrid').innerHTML = `<div class="no-content" style="grid-column: 1/-1;"><div class="no-content-icon">📷</div><div>No photos yet. Add some!</div></div>`;
-                return;
-            }
-            
-            document.getElementById('photosGrid').innerHTML = stationPhotos.map((p, i) => 
-                `<div class="photo-item" onclick="openLightbox(${stationId}, ${i})"><img src="${p.data}" alt="Station photo"></div>`
-            ).join('');
-        }
+// ── User Location ──
+function updateCoords(lat, lng) {
+  document.getElementById('coordsText').innerHTML =
+    `<strong>${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}</strong> &nbsp; <strong>${Math.abs(lng).toFixed(4)}°${lng >= 0 ? 'E' : 'W'}</strong>`;
+}
+function setUserLocation(lat, lng) {
+  userLat = lat; userLng = lng;
+  updateCoords(lat, lng);
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;"><div class="user-marker-ring"></div><div class="user-marker"></div></div>`,
+      iconSize: [18, 18], iconAnchor: [9, 9],
+    }), zIndexOffset: 1000
+  }).addTo(map);
+  map.setView([lat, lng], 14, { animate: true, duration: 1 });
+  document.getElementById('locateBtn').classList.add('active');
+}
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(p => setUserLocation(p.coords.latitude, p.coords.longitude), () => updateCoords(defaultLat, defaultLng), { enableHighAccuracy: true, timeout: 8000 });
+} else { updateCoords(defaultLat, defaultLng); }
 
-        function closeDetailModal() {
-            document.getElementById('detailModal').classList.remove('active');
-            currentDetailStation = null;
-        }
+document.getElementById('locateBtn').addEventListener('click', () => {
+  navigator.geolocation?.getCurrentPosition(p => setUserLocation(p.coords.latitude, p.coords.longitude), () => alert('Could not get location'));
+});
 
-        // Rating Modal Functions
-        function openRatingModal(id) {
-            const station = stations.find(s => s.id === id);
-            if (!station) return;
-            currentStation = station;
-            pendingPhotos = [];
-            document.getElementById('modalStationName').textContent = station.name;
-            document.getElementById('ratingModal').classList.add('active');
-            document.querySelectorAll('#ratingModal .star-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('commentInput').value = '';
-            document.getElementById('photoPreview').innerHTML = '';
-            updateOverallRatingDisplay();
-        }
+// ── Compass ──
+const needleEl = document.getElementById('compassNeedle');
+if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', e => { if (e.alpha !== null) needleEl.style.transform = `rotate(${-e.alpha}deg)`; });
+document.getElementById('compass').addEventListener('click', () => { map.setView([userLat, userLng], map.getZoom(), { animate: true }); needleEl.style.transform = 'rotate(0deg)'; });
 
-        function closeRatingModal() {
-            document.getElementById('ratingModal').classList.remove('active');
-            currentStation = null;
-            pendingPhotos = [];
-        }
+// ── Chat ──
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const chatOverlay = document.getElementById('chatOverlay');
 
-        function updateStats() {
-            let ratingCount = 0;
-            Object.values(ratingsData).forEach(arr => ratingCount += arr.length);
-            document.getElementById('totalRatings').textContent = ratingCount;
-            
-            let photoCount = 0;
-            Object.values(photos).forEach(arr => photoCount += arr.length);
-            document.getElementById('totalPhotos').textContent = photoCount;
-        }
+chatInput.addEventListener('input', () => sendBtn.classList.toggle('active', chatInput.value.trim().length > 0));
 
-        // Photo handling
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
-                if (!file.type.startsWith('image/')) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const maxSize = 800;
-                        let w = img.width, h = img.height;
-                        if (w > h) { if (w > maxSize) { h *= maxSize / w; w = maxSize; } }
-                        else { if (h > maxSize) { w *= maxSize / h; h = maxSize; } }
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                        pendingPhotos.push({ data: compressed, timestamp: new Date().toISOString() });
-                        renderPhotoPreview();
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
+const aiR = {
+  safety: ["Based on recent reports, this area has moderate foot traffic. Stay aware of surroundings during late hours.","Current advisory: well-lit areas and cameras are active. Avoid isolated platforms off-peak.","Community patrols are active here. Report concerns through the app or to station personnel."],
+  station: ["The nearest station is ~0.3 mi away. Trains run every 10-12 min during peak.","This station has recent safety upgrades including improved lighting and extra cameras.","Peak hours: 7-9 AM, 5-7 PM. Off-peak travel is less crowded."],
+  general: ["I help you navigate Metro safely. Ask about station conditions, safety tips, or report an incident.","I monitor transit data and community reports across all LA Metro stations.","For emergencies call 911. Non-emergency Metro safety: 1-888-950-7233."]
+};
+function getAI(msg) {
+  const l = msg.toLowerCase();
+  if (/safe|danger|crime|report/.test(l)) return aiR.safety[Math.random()*3|0];
+  if (/station|train|line|metro/.test(l)) return aiR.station[Math.random()*3|0];
+  return aiR.general[Math.random()*3|0];
+}
+function addMsg(text, type) {
+  const m = document.createElement('div'); m.className = `chat-msg ${type}`;
+  m.innerHTML = type === 'ai' ? `<div class="ai-label">Metro Safe AI</div>${text}` : text;
+  if (type === 'user') m.textContent = text;
+  chatOverlay.appendChild(m); chatOverlay.classList.add('visible');
+  chatOverlay.scrollTop = chatOverlay.scrollHeight;
+}
+function showTyping() {
+  const t = document.createElement('div'); t.className = 'chat-msg ai'; t.id = 'typingMsg';
+  t.innerHTML = `<div class="ai-label">Metro Safe AI</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  chatOverlay.appendChild(t); chatOverlay.scrollTop = chatOverlay.scrollHeight;
+}
+function sendMessage() {
+  const text = chatInput.value.trim(); if (!text) return;
+  addMsg(text, 'user'); chatInput.value = ''; sendBtn.classList.remove('active');
+  showTyping();
+  setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg(getAI(text), 'ai'); }, 1200 + Math.random() * 800);
+}
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
-        function renderPhotoPreview() {
-            const preview = document.getElementById('photoPreview');
-            preview.innerHTML = pendingPhotos.map((p, i) => `
-                <div class="preview-item">
-                    <img src="${p.data}" alt="Preview">
-                    <button class="preview-remove" onclick="removePreviewPhoto(${i})">×</button>
-                </div>
-            `).join('');
-        }
+document.getElementById('infoBtn').addEventListener('click', () => {
+  chatOverlay.classList.add('visible'); showTyping();
+  setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
+});
 
-        function removePreviewPhoto(index) {
-            pendingPhotos.splice(index, 1);
-            renderPhotoPreview();
-        }
+document.getElementById('profileBtn').addEventListener('click', () => { chatOverlay.classList.add('visible'); addMsg("Profile settings coming soon. Stay safe out there!", 'ai'); });
 
-        // Lightbox
-        function openLightbox(stationId, index) {
-            lightboxPhotos = getStationPhotos(stationId);
-            lightboxIndex = index;
-            const station = stations.find(s => s.id === stationId);
-            updateLightbox(station);
-            document.getElementById('lightbox').classList.add('active');
-        }
-
-        function updateLightbox(station) {
-            const photo = lightboxPhotos[lightboxIndex];
-            document.getElementById('lightboxImg').src = photo.data;
-            document.getElementById('lightboxInfo').textContent = `${station ? station.name : ''} - Photo ${lightboxIndex + 1} of ${lightboxPhotos.length}`;
-        }
-
-        function closeLightbox() {
-            document.getElementById('lightbox').classList.remove('active');
-        }
-
-        // Event Listeners - Line filter buttons
-        function attachLineFilterListeners() {
-            // Remove any existing listeners first
-            const lineButtons = document.querySelectorAll('.line-btn');
-            lineButtons.forEach(btn => {
-                // Clone to remove old listeners
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                // Add new listener
-                newBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const selectedLine = this.dataset.line;
-                    if (!selectedLine) return;
-                    
-                    // Update active state
-                    document.querySelectorAll('.line-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Update filter
-                    currentFilter = selectedLine;
-                    
-                    // Re-render
-                    renderStationList();
-                });
-            });
-        }
-        
-        // Call immediately since script is at end of body
-        attachLineFilterListeners();
-
-        document.getElementById('searchInput').addEventListener('input', renderStationList);
-        
-        // Detail modal
-        document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
-        document.getElementById('detailModal').addEventListener('click', e => { if (e.target.id === 'detailModal') closeDetailModal(); });
-        
-        // Tabs
-        document.querySelectorAll('.detail-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                document.getElementById(`tab-${this.dataset.tab}`).classList.add('active');
-            });
-        });
-        
-        // Review filters
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                currentReviewFilter = this.dataset.filter;
-                if (currentDetailStation) renderReviews(currentDetailStation.id);
-            });
-        });
-        
-        // Rating modal
-        document.getElementById('modalClose').addEventListener('click', closeRatingModal);
-        document.getElementById('ratingModal').addEventListener('click', e => { if (e.target.id === 'ratingModal') closeRatingModal(); });
-
-        // Photo upload
-        const uploadArea = document.getElementById('photoUploadArea');
-        const photoInput = document.getElementById('photoInput');
-        
-        uploadArea.addEventListener('click', () => photoInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
-        photoInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-        // Update overall rating display
-        function updateOverallRatingDisplay() {
-            const safety = document.querySelectorAll('[data-category="safety"] .star-btn.active').length || null;
-            const cleanliness = document.querySelectorAll('[data-category="cleanliness"] .star-btn.active').length || null;
-            const accessibility = document.querySelectorAll('[data-category="accessibility"] .star-btn.active').length || null;
-            
-            const scores = [safety, cleanliness, accessibility].filter(r => r !== null);
-            
-            if (scores.length === 0) {
-                document.getElementById('overallValueDisplay').textContent = '--';
-                document.querySelectorAll('#overallStarsDisplay .star').forEach(s => s.classList.remove('filled'));
-                return;
-            }
-            
-            const overall = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-            document.getElementById('overallValueDisplay').textContent = overall.toFixed(1);
-            
-            // Update star display
-            document.querySelectorAll('#overallStarsDisplay .star').forEach((star, i) => {
-                star.classList.toggle('filled', i < overall);
-            });
-        }
-
-        // Star ratings
-        document.querySelectorAll('.category-stars').forEach(container => {
-            container.addEventListener('click', function(e) {
-                if (e.target.classList.contains('star-btn')) {
-                    const r = parseInt(e.target.dataset.rating);
-                    this.querySelectorAll('.star-btn').forEach((b, i) => b.classList.toggle('active', i < r));
-                    updateOverallRatingDisplay();
-                }
-            });
-        });
-
-        // Lightbox navigation
-        document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
-        document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target.id === 'lightbox') closeLightbox(); });
-        document.getElementById('lightboxPrev').addEventListener('click', () => {
-            lightboxIndex = (lightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
-            updateLightbox();
-        });
-        document.getElementById('lightboxNext').addEventListener('click', () => {
-            lightboxIndex = (lightboxIndex + 1) % lightboxPhotos.length;
-            updateLightbox();
-        });
-
-        // Submit rating
-        document.getElementById('submitRating').addEventListener('click', function() {
-            if (!currentStation) return;
-            
-            const safety = document.querySelectorAll('[data-category="safety"] .star-btn.active').length || null;
-            const cleanliness = document.querySelectorAll('[data-category="cleanliness"] .star-btn.active').length || null;
-            const accessibility = document.querySelectorAll('[data-category="accessibility"] .star-btn.active').length || null;
-            
-            // Check if at least one category is rated
-            if (!safety && !cleanliness && !accessibility) {
-                alert('Please rate at least one category (Safety, Cleanliness, or Accessibility)');
-                return;
-            }
-            
-            // Calculate overall rating as average of the three categories
-            const categoryScores = [safety, cleanliness, accessibility].filter(r => r !== null);
-            const overall = Math.round(categoryScores.reduce((a, b) => a + b, 0) / categoryScores.length);
-            
-            const data = {
-                overall,
-                safety,
-                cleanliness,
-                accessibility,
-                comment: document.getElementById('commentInput').value.trim(),
-                timestamp: new Date().toISOString()
-            };
-            
-            if (!ratingsData[currentStation.id]) ratingsData[currentStation.id] = [];
-            ratingsData[currentStation.id].push(data);
-            localStorage.setItem('metroRatings', JSON.stringify(ratingsData));
-            
-            if (pendingPhotos.length > 0) {
-                if (!photos[currentStation.id]) photos[currentStation.id] = [];
-                photos[currentStation.id].push(...pendingPhotos);
-                localStorage.setItem('metroPhotos', JSON.stringify(photos));
-            }
-            
-            renderStationList();
-            updateStats();
-            closeRatingModal();
-            
-            // Update detail modal if open
-            if (currentDetailStation && currentDetailStation.id === currentStation.id) {
-                updateDetailModal(currentStation.id);
-            }
-            
-            alert(`Thank you for reviewing ${currentStation.name}!`);
-        });
-
-        // Sidebar toggle
-        document.getElementById('hideSidebarBtn').addEventListener('click', function() {
-            document.querySelector('.app-container').classList.add('sidebar-hidden');
-            setTimeout(() => map.invalidateSize(), 300);
-        });
-        
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.querySelector('.app-container').classList.remove('sidebar-hidden');
-            setTimeout(() => {
-                map.invalidateSize();
-                attachLineFilterListeners(); // Reattach listeners when sidebar is shown
-            }, 300);
-        });
-
-        // Global functions
-        window.openRatingModal = openRatingModal;
-        window.openDetailModal = openDetailModal;
-        window.openLightbox = openLightbox;
-        window.removePreviewPhoto = removePreviewPhoto;
-
-        // Initialize
-        addMarkers();
-        renderStationList();
-        updateStats();
-        document.getElementById('totalStations').textContent = stations.length;
-        
-        // Ensure line filter listeners are attached after everything loads
-        setTimeout(attachLineFilterListeners, 100);
-    </script>
+map.on('click', () => {
+  if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
+});
+map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map.getCenter().lng); });
+</script>
 </body>
 </html>
