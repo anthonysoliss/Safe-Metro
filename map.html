@@ -592,11 +592,11 @@
   .ratings-view-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
   .ratings-view-modal-close { background: none; border: none; font-size: 28px; color: var(--text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .ratings-view-modal-close:hover { color: var(--text-primary); }
-  .ratings-view-filters { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: var(--surface-light); }
+  .ratings-view-filters { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: transparent; }
   .ratings-view-filter-group { display: flex; align-items: center; gap: 8px; }
-  .ratings-view-filter-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-  .ratings-view-filter-select { padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .ratings-view-filter-select:hover { border-color: var(--accent); }
+  .ratings-view-filter-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ratings-view-filter-select { padding: 8px 12px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .ratings-view-filter-select:hover { border-color: var(--accent); background: var(--bg-hover); }
   .ratings-view-filter-select:focus { outline: none; border-color: var(--accent); }
   .ratings-view-body { padding: 20px; overflow-y: auto; flex: 1; }
   .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s ease forwards; }
@@ -787,53 +787,10 @@
     </div>
     <div class="ratings-view-filters">
       <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Overall:</label>
-        <select class="ratings-view-filter-select" id="filterOverall">
-          <option value="all">All Ratings</option>
-          <option value="5">5 Stars</option>
-          <option value="4">4+ Stars</option>
-          <option value="3">3+ Stars</option>
-          <option value="2">2+ Stars</option>
-          <option value="1">1+ Stars</option>
-        </select>
-      </div>
-      <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Safety:</label>
-        <select class="ratings-view-filter-select" id="filterSafety">
-          <option value="all">All</option>
-          <option value="5">5 Stars</option>
-          <option value="4">4+ Stars</option>
-          <option value="3">3+ Stars</option>
-          <option value="2">2+ Stars</option>
-          <option value="1">1+ Stars</option>
-        </select>
-      </div>
-      <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Cleanliness:</label>
-        <select class="ratings-view-filter-select" id="filterCleanliness">
-          <option value="all">All</option>
-          <option value="5">5 Stars</option>
-          <option value="4">4+ Stars</option>
-          <option value="3">3+ Stars</option>
-          <option value="2">2+ Stars</option>
-          <option value="1">1+ Stars</option>
-        </select>
-      </div>
-      <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Staff:</label>
-        <select class="ratings-view-filter-select" id="filterStaff">
-          <option value="all">All</option>
-          <option value="yes">Present</option>
-          <option value="no">Not Present</option>
-        </select>
-      </div>
-      <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Sort:</label>
+        <label class="ratings-view-filter-label">Sort by:</label>
         <select class="ratings-view-filter-select" id="filterSort">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="highest">Highest Rating</option>
-          <option value="lowest">Lowest Rating</option>
+          <option value="newest">Newest to Oldest</option>
+          <option value="oldest">Oldest to Newest</option>
         </select>
       </div>
     </div>
@@ -1510,6 +1467,8 @@ if (ratingSubmit) {
 }
 
 // ── View All Ratings Modal ──
+let currentRatingsViewStation = null;
+
 window.openRatingsViewModal = function(stationName) {
   const ratingsViewModal = document.getElementById('ratingsViewModal');
   const ratingsViewModalTitle = document.getElementById('ratingsViewModalTitle');
@@ -1520,7 +1479,13 @@ window.openRatingsViewModal = function(stationName) {
     return;
   }
   
+  currentRatingsViewStation = stationName;
   ratingsViewModalTitle.textContent = `All Ratings - ${stationName}`;
+  
+  // Reset filter
+  const filterSortEl = document.getElementById('filterSort');
+  if (filterSortEl) filterSortEl.value = 'newest';
+  
   renderAllRatings(stationName, ratingsViewBody);
   
   // Trigger smooth animation
@@ -1543,7 +1508,7 @@ function closeRatingsViewModal() {
   }
 }
 
-function renderAllRatings(stationName, container) {
+function renderAllRatings(stationName, container, filters = {}) {
   const ratings = stationRatings[stationName] || [];
   
   // Clear container first
@@ -1554,8 +1519,14 @@ function renderAllRatings(stationName, container) {
     return;
   }
   
-  // Sort by timestamp (newest first)
-  const sortedRatings = [...ratings].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  // Sort ratings
+  let sortedRatings = [...ratings];
+  const sortBy = filters.sort || 'newest';
+  if (sortBy === 'newest') {
+    sortedRatings.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  } else if (sortBy === 'oldest') {
+    sortedRatings.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }
   
   // Create rating cards with staggered animation
   sortedRatings.forEach((rating, index) => {
@@ -1596,9 +1567,24 @@ function renderAllRatings(stationName, container) {
   });
 }
 
+// Filter change handler
+function applyRatingsFilters() {
+  if (!currentRatingsViewStation) return;
+  
+  const filters = {
+    sort: document.getElementById('filterSort').value
+  };
+  
+  const ratingsViewBody = document.getElementById('ratingsViewBody');
+  if (ratingsViewBody) {
+    renderAllRatings(currentRatingsViewStation, ratingsViewBody, filters);
+  }
+}
+
 // Initialize ratings view modal event listeners
 const ratingsViewModal = document.getElementById('ratingsViewModal');
 const ratingsViewModalClose = document.getElementById('ratingsViewModalClose');
+const filterSort = document.getElementById('filterSort');
 
 if (ratingsViewModalClose) {
   ratingsViewModalClose.addEventListener('click', closeRatingsViewModal);
@@ -1609,6 +1595,9 @@ if (ratingsViewModal) {
     if (e.target === ratingsViewModal) closeRatingsViewModal();
   });
 }
+
+// Add filter event listener
+if (filterSort) filterSort.addEventListener('change', applyRatingsFilters);
 
 // Make functions globally accessible
 window.openRatingModal = openRatingModal;
