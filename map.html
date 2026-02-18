@@ -323,6 +323,60 @@
   .profile-btn:hover { background: var(--surface-light); border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
   .profile-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; }
   .profile-btn:hover svg { stroke: var(--accent); }
+  .profile-btn.active { background: var(--surface-light); border-color: var(--accent); }
+  
+  .profile-dropdown {
+    position: fixed;
+    top: 68px; right: 16px;
+    z-index: 999;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 200px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  }
+  .profile-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .profile-dropdown-item {
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-dropdown-item:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  .profile-dropdown-item:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+  .profile-dropdown-item:hover {
+    background: var(--surface-light);
+  }
+  .profile-dropdown-item svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-secondary);
+    stroke-width: 2;
+  }
+  .profile-dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
 
   /* ── Compass ── */
   .compass {
@@ -692,6 +746,25 @@
 <!-- Profile -->
 <div class="profile-btn" id="profileBtn">
   <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+</div>
+<div class="profile-dropdown" id="profileDropdown">
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+    <span>My Profile</span>
+  </div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>My Ratings</span>
+  </div>
+  <div class="profile-dropdown-divider"></div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
+    <span>Settings</span>
+  </div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span>Sign Out</span>
+  </div>
 </div>
 
 <!-- Locate -->
@@ -1264,7 +1337,48 @@ document.getElementById('infoBtn').addEventListener('click', () => {
   setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
 });
 
-document.getElementById('profileBtn').addEventListener('click', () => { chatOverlay.classList.add('visible'); addMsg("Profile settings coming soon. Stay safe out there!", 'ai'); });
+// Profile dropdown
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+
+if (profileBtn && profileDropdown) {
+  profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileBtn.classList.toggle('active');
+    profileDropdown.classList.toggle('active');
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+      profileBtn.classList.remove('active');
+      profileDropdown.classList.remove('active');
+    }
+  });
+  
+  // Handle dropdown item clicks
+  const dropdownItems = profileDropdown.querySelectorAll('.profile-dropdown-item');
+  dropdownItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const text = item.querySelector('span')?.textContent;
+      if (text === 'My Profile') {
+        chatOverlay.classList.add('visible');
+        addMsg("Profile settings coming soon. Stay safe out there!", 'ai');
+      } else if (text === 'My Ratings') {
+        chatOverlay.classList.add('visible');
+        addMsg("View all your ratings here. Feature coming soon!", 'ai');
+      } else if (text === 'Settings') {
+        chatOverlay.classList.add('visible');
+        addMsg("Settings panel coming soon!", 'ai');
+      } else if (text === 'Sign Out') {
+        chatOverlay.classList.add('visible');
+        addMsg("Sign out feature coming soon!", 'ai');
+      }
+      profileBtn.classList.remove('active');
+      profileDropdown.classList.remove('active');
+    });
+  });
+}
 
 map.on('click', () => {
   if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
