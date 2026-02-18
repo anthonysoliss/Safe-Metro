@@ -472,7 +472,7 @@
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
   </a>
   <div class="nav-title">My Ratings</div>
-  <div class="nav-count" id="navCount"><span>0</span> total</div>
+  <div class="nav-count" id="navCount"><span>{{ ratings_count|default:0 }}</span> total</div>
 </nav>
 
 <!-- Toast -->
@@ -529,7 +529,22 @@ const DJANGO_URLS = {
   myRatings: '{% url "ratemetroapp:my_ratings" %}',
   settings: '{% url "ratemetroapp:settings" %}',
   signIn: '{% url "ratemetroapp:sign_in" %}',
+  deleteRating: '{% url "ratemetroapp:api_delete_rating" %}',
 };
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+  const token = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (token) return token.value;
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'csrftoken') {
+      return value;
+    }
+  }
+  return '';
+}
 const lineColors = {
   A:'#0072bc', B:'#e3242b', C:'#58a738', D:'#a05da5',
   E:'#fdb913', G:'#f58220', J:'#b5a07e', K:'#e96bb0', L:'#c4a73f'
@@ -539,36 +554,26 @@ const lineTextColors = {
   E:'#000', G:'#fff', J:'#fff', K:'#fff', L:'#fff'
 };
 
-// Load ratings from localStorage
-let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings') || '{}');
+// Load ratings from server (database) instead of localStorage
+const serverRatings = {{ ratings_json|safe }};
 
-// Flatten all ratings into array with station name
-function flattenRatings() {
-  const all = [];
-  Object.entries(stationRatings).forEach(([station, ratings]) => {
-    ratings.forEach((r, idx) => {
-      all.push({ ...r, station, _stationKey: station, _idx: idx, _id: `${station}__${idx}` });
-    });
-  });
-  return all;
+// Convert server ratings to format expected by the UI
+function processServerRatings(serverRatings) {
+  return serverRatings.map(r => ({
+    station: r.station,
+    lines: r.lines || [],
+    safety: r.safety,
+    cleanliness: r.cleanliness,
+    staff: r.staff || '',
+    description: r.description || '',
+    photo: r.photo || '',
+    timestamp: r.timestamp,
+    _id: `rating_${r.id}`, // Use database ID
+  }));
 }
 
-// Demo data if no real ratings
-function getDemoRatings() {
-  return [
-    { station:'Union Station', lines:['B','D','L'], safety:5, cleanliness:4, staff:'yes', description:'Great station overall. Plenty of security visible and it was very clean.', timestamp: Date.now()-86400000*0.5, _id:'demo0' },
-    { station:'7th St/Metro Center', lines:['A','B','D','E'], safety:3, cleanliness:3, staff:'yes', description:'Busy but manageable. A bit crowded during rush hour.', timestamp: Date.now()-86400000*2, _id:'demo1' },
-    { station:'Hollywood/Vine', lines:['B'], safety:2, cleanliness:2, staff:'no', description:'Felt uneasy. No staff visible and the platform was messy.', timestamp: Date.now()-86400000*5, _id:'demo2' },
-    { station:'Culver City', lines:['E'], safety:5, cleanliness:5, staff:'yes', timestamp: Date.now()-86400000*8, _id:'demo3' },
-    { station:'North Hollywood', lines:['B','G'], safety:4, cleanliness:3, staff:'yes', description:'Good experience. Staff were around and it felt safe.', timestamp: Date.now()-86400000*12, _id:'demo4' },
-    { station:'Downtown Santa Monica', lines:['E'], safety:5, cleanliness:5, staff:'yes', description:'By far the cleanest station I\'ve been to.', timestamp: Date.now()-86400000*18, _id:'demo5' },
-    { station:'Wilshire/Vermont', lines:['B','D'], safety:3, cleanliness:2, staff:'no', timestamp: Date.now()-86400000*22, _id:'demo6' },
-  ];
-}
-
-let allRatings = flattenRatings();
-const isDemo = allRatings.length === 0;
-if (isDemo) allRatings = getDemoRatings();
+// Use server ratings - no demo data
+const allRatings = processServerRatings(serverRatings);
 
 let activeLineFilter = 'all';
 let pendingDeleteId = null;
@@ -617,7 +622,7 @@ function formatDate(ts) {
 function buildFilters() {
   const lines = new Set();
   allRatings.forEach(r => {
-    const ls = r.lines || [guessLine(r.station)];
+    const ls = r.lines || [];
     ls.forEach(l => lines.add(l));
   });
   const bar = document.getElementById('filterBar');
@@ -658,7 +663,7 @@ function applyFilters() {
 
   if (activeLineFilter !== 'all') {
     filtered = filtered.filter(r => {
-      const ls = r.lines || [guessLine(r.station)];
+      const ls = r.lines || [];
       return ls.includes(activeLineFilter);
     });
   }
@@ -693,8 +698,8 @@ function renderCards(ratings) {
 
   ratings.forEach((r, idx) => {
     const overall = getOverall(r);
-    const lines = r.lines || [guessLine(r.station)];
-    const primaryLine = lines[0];
+    const lines = r.lines || [];
+    const primaryLine = lines.length > 0 ? lines[0] : 'A';
     const color = lineColors[primaryLine] || '#f5c518';
     const textColor = lineTextColors[primaryLine] || '#fff';
     const date = formatDate(r.timestamp || Date.now());
@@ -786,7 +791,8 @@ function renderCards(ratings) {
 }
 
 function viewOnMap(station) {
-  alert(`Navigate to map and select: ${station}\n(Link to map page coming soon)`);
+  // Redirect to map page - the station will need to be selected manually or we could add a URL parameter
+  window.location.href = DJANGO_URLS.map;
 }
 
 async function shareRating(btn, station, overall) {
@@ -802,11 +808,55 @@ async function shareRating(btn, station, overall) {
 }
 
 let deleteCardEl = null;
-function deleteRating(id, btn) {
-  if (isDemo) { alert('Demo mode — deletion disabled.'); return; }
-  pendingDeleteId = id;
-  deleteCardEl = btn.closest('.rating-card');
-  document.getElementById('toast').classList.add('show');
+async function deleteRating(id, btn) {
+  // Extract rating ID from the _id format (rating_123)
+  const ratingId = id.replace('rating_', '');
+  
+  if (!ratingId || !ratingId.match(/^\d+$/)) {
+    alert('Invalid rating ID');
+    return;
+  }
+  
+  if (!confirm('Are you sure you want to delete this rating?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(DJANGO_URLS.deleteRating, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ rating_id: parseInt(ratingId) })
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Remove from display
+      deleteCardEl = btn.closest('.rating-card');
+      if (deleteCardEl) {
+        deleteCardEl.style.opacity = '0';
+        deleteCardEl.style.transform = 'scale(0.95)';
+        deleteCardEl.style.transition = 'all 0.25s ease';
+        setTimeout(() => {
+          deleteCardEl.remove();
+          // Remove from allRatings array
+          const index = allRatings.findIndex(r => r._id === id);
+          if (index > -1) {
+            allRatings.splice(index, 1);
+          }
+          applyFilters();
+        }, 250);
+      }
+    } else {
+      alert('Failed to delete rating: ' + (data.message || 'Please try again.'));
+    }
+  } catch (error) {
+    alert('Failed to delete rating. Please try again.');
+    console.error('Delete error:', error);
+  }
 }
 function cancelDelete() {
   pendingDeleteId = null;
@@ -814,25 +864,8 @@ function cancelDelete() {
   document.getElementById('toast').classList.remove('show');
 }
 function confirmDelete() {
-  if (!pendingDeleteId) return;
-  // Parse id: "stationName__idx"
-  const parts = pendingDeleteId.split('__');
-  const stationKey = parts.slice(0, -1).join('__');
-  const idx = parseInt(parts[parts.length-1]);
-  if (stationRatings[stationKey]) {
-    stationRatings[stationKey].splice(idx, 1);
-    if (stationRatings[stationKey].length === 0) delete stationRatings[stationKey];
-    localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
-    allRatings = flattenRatings();
-  }
-  if (deleteCardEl) {
-    deleteCardEl.style.opacity = '0';
-    deleteCardEl.style.transform = 'scale(0.95)';
-    deleteCardEl.style.transition = 'all 0.25s ease';
-    setTimeout(() => { deleteCardEl.remove(); }, 250);
-  }
+  // This function is kept for compatibility but deleteRating now handles deletion directly
   cancelDelete();
-  applyFilters();
 }
 
 // Init

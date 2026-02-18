@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
 import json
@@ -112,9 +112,36 @@ def profile_view(request):
 @login_required
 def my_ratings_view(request):
     """My ratings page view"""
+    # Get user's ratings from database
+    user_ratings = Rating.objects.filter(user=request.user).select_related('station').order_by('-created_at')
+    
+    # Convert ratings to JSON-serializable format
+    ratings_data = []
+    for rating in user_ratings:
+        # Get station lines
+        station_lines = list(rating.station.lines.values_list('code', flat=True))
+        
+        ratings_data.append({
+            'id': rating.id,
+            'station': rating.station.name,
+            'lines': station_lines,
+            'safety': rating.safety,
+            'cleanliness': rating.cleanliness,
+            'staff': rating.staff_present or '',
+            'description': rating.description or '',
+            'photo': '',  # Would need to handle photo URLs if stored
+            'timestamp': int(rating.created_at.timestamp() * 1000),  # Convert to milliseconds
+        })
+    
+    # Get user's rating stats
+    user_ratings_count = Rating.objects.filter(user=request.user).count()
+    
+    import json
     context = {
         'is_authenticated': True,
         'user': request.user,
+        'ratings_json': json.dumps(ratings_data),
+        'ratings_count': user_ratings_count,
     }
     return render(request, 'ratemetroapp/my-ratings.html', context)
 
@@ -308,6 +335,81 @@ def api_sign_up(request):
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_logout(request):
+    """API endpoint for user logout"""
+    logout(request)
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Signed out successfully'
+    })
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_delete_rating(request):
+    """API endpoint to delete a rating"""
+    try:
+        data = json.loads(request.body)
+        rating_id = data.get('rating_id')
+        
+        if not rating_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Rating ID is required'
+            }, status=400)
+        
+        # Get the rating and verify it belongs to the user
+        try:
+            rating = Rating.objects.get(id=rating_id, user=request.user)
+            rating.delete()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Rating deleted successfully'
+            })
+        except Rating.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Rating not found or you do not have permission to delete it'
+            }, status=404)
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_delete_account(request):
+    """API endpoint for account deletion"""
+    try:
+        # Delete user's ratings
+        Rating.objects.filter(user=request.user).delete()
+        
+        # Delete user's profile
+        try:
+            UserProfile.objects.filter(user=request.user).delete()
+        except:
+            pass
+        
+        # Delete user's location data
+        UserLocation.objects.filter(user=request.user).delete()
+        
+        # Delete the user account
+        user = request.user
+        logout(request)
+        user.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Account deleted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
 
 def get_client_ip(request):
     """Get client IP address"""

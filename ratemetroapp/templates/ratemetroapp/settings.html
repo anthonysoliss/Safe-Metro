@@ -972,7 +972,23 @@ const DJANGO_URLS = {
   myRatings: '{% url "ratemetroapp:my_ratings" %}',
   settings: '{% url "ratemetroapp:settings" %}',
   signIn: '{% url "ratemetroapp:sign_in" %}',
+  logout: '{% url "ratemetroapp:api_logout" %}',
+  deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
 };
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+  const token = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (token) return token.value;
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'csrftoken') {
+      return value;
+    }
+  }
+  return '';
+}
 // ── Settings state ──
 const state = {};
 
@@ -1047,10 +1063,88 @@ function showToast(msg) {
 }
 
 // ── Confirm ──
-function confirmAction(msg, action) {
-  if (confirm(msg)) {
-    if (action === 'sign-out') showToast('Signed out');
-    else if (action === 'delete-account') showToast('Account deleted (demo)');
+async function confirmAction(msg, action) {
+  if (!confirm(msg)) {
+    return;
+  }
+  
+  if (action === 'sign-out') {
+    await handleSignOut();
+  } else if (action === 'delete-account') {
+    await handleDeleteAccount();
+  }
+}
+
+async function handleSignOut() {
+  try {
+    const response = await fetch(DJANGO_URLS.logout, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Clear any client-side data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      showToast('Signed out successfully');
+      // Redirect to sign-in page after a short delay
+      setTimeout(() => {
+        window.location.href = DJANGO_URLS.signIn;
+      }, 1000);
+    } else {
+      showToast('Failed to sign out');
+    }
+  } catch (error) {
+    console.error('Sign out error:', error);
+    showToast('Error signing out');
+    // Even if API fails, try to redirect
+    setTimeout(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = DJANGO_URLS.signIn;
+    }, 1000);
+  }
+}
+
+async function handleDeleteAccount() {
+  // Double confirmation
+  if (!confirm('This will permanently delete your account and all your data. Are you absolutely sure?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(DJANGO_URLS.deleteAccount, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Clear any client-side data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      showToast('Account deleted successfully');
+      // Redirect to sign-in page after a short delay
+      setTimeout(() => {
+        window.location.href = DJANGO_URLS.signIn;
+      }, 1500);
+    } else {
+      showToast('Failed to delete account: ' + (data.message || 'Please try again'));
+    }
+  } catch (error) {
+    console.error('Delete account error:', error);
+    showToast('Error deleting account');
   }
 }
 

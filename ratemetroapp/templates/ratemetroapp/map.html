@@ -1028,6 +1028,24 @@
   </div>
 </div>
 
+<!-- Confirmation Modal -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-modal-content">
+    <div class="confirm-modal-header">
+      <h3 id="confirmModalTitle">Confirm Action</h3>
+      <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+    </div>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-btn cancel" id="confirmModalCancel" onclick="closeConfirmModal()">
+        Cancel
+      </button>
+      <button class="confirm-modal-btn confirm" id="confirmModalConfirm" onclick="executeConfirmAction()">
+        Confirm
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Chat -->
 <div class="chat-overlay" id="chatOverlay"></div>
 <div class="chat-bar-container">
@@ -1054,6 +1072,8 @@ const DJANGO_URLS = {
   updateLocation: '{% url "ratemetroapp:update_location" %}',
   checkAuth: '{% url "ratemetroapp:check_auth" %}',
   submitRating: '{% url "ratemetroapp:submit_rating" %}',
+  logout: '{% url "ratemetroapp:api_logout" %}',
+  deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
 };
 
 // Authentication state
@@ -1083,6 +1103,42 @@ function promptSignIn(action = 'save your data') {
     return true;
   }
   return false;
+}
+
+// Handle sign out
+async function handleSignOut() {
+  if (!confirm('Are you sure you want to sign out?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(DJANGO_URLS.logout, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Clear any client-side data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Redirect to sign-in page
+      window.location.href = DJANGO_URLS.signIn;
+    } else {
+      alert('Failed to sign out. Please try again.');
+    }
+  } catch (error) {
+    console.error('Sign out error:', error);
+    // Even if API fails, try to redirect
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = DJANGO_URLS.signIn;
+  }
 }
 
 // Sign In Prompt Modal Functions
@@ -1791,8 +1847,7 @@ if (profileBtn && profileDropdown) {
       window.location.href = DJANGO_URLS.settings;
       return;
     } else if (action === 'signout') {
-      chatOverlay.classList.add('visible');
-      addMsg("Sign out feature coming soon!", 'ai');
+      handleSignOut();
     } else if (action === 'signin') {
       window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
       return;

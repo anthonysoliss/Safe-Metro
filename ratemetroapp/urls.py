@@ -14,4 +14,7 @@ urlpatterns = [
     path('api/submit-rating/', views.submit_rating, name='submit_rating'),
     path('api/sign-in/', views.api_sign_in, name='api_sign_in'),
     path('api/sign-up/', views.api_sign_up, name='api_sign_up'),
+    path('api/logout/', views.api_logout, name='api_logout'),
+    path('api/delete-account/', views.api_delete_account, name='api_delete_account'),
+    path('api/delete-rating/', views.api_delete_rating, name='api_delete_rating'),
 ]
