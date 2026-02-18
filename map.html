@@ -517,11 +517,16 @@
     padding: 2px 8px; border-radius: 4px;
     font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
   }
-  .popup-rating { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-  .popup-rating-stars { display: flex; gap: 2px; }
-  .popup-rating-stars .star { color: var(--text-muted); font-size: 14px; }
+  .popup-rating { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .popup-rating-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .popup-rating-stars { display: flex; gap: 2px; align-items: center; }
+  .popup-rating-stars .star { color: var(--text-muted); font-size: 14px; line-height: 1; }
   .popup-rating-stars .star.filled { color: var(--accent); }
   .popup-rating-value { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .popup-rating-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; line-height: 1.4; }
+  .popup-rating-item:last-child { margin-bottom: 0; }
+  .popup-rating-item .rating-stars-inline { display: inline-flex; gap: 1px; align-items: center; }
+  .popup-rating-item .rating-stars-inline .star { font-size: 11px; line-height: 1; }
   .popup-rating-btn { margin-top: 8px; padding: 6px 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
   .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
   
@@ -550,11 +555,24 @@
   .rating-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
   .rating-modal-close { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
   .rating-modal-close:hover { color: var(--text-primary); }
-  .rating-stars-input { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
-  .rating-star-btn { background: none; border: none; font-size: 32px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; padding: 4px; }
+  .rating-category { margin-bottom: 24px; }
+  .rating-category-label { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+  .rating-stars-input { display: flex; gap: 6px; justify-content: flex-start; }
+  .rating-star-btn { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; padding: 2px; }
   .rating-star-btn:hover, .rating-star-btn.active { color: var(--accent); transform: scale(1.1); }
+  .rating-thumbs { display: flex; gap: 12px; }
+  .rating-thumb-btn { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px 20px; font-size: 18px; cursor: pointer; transition: all 0.2s; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; }
+  .rating-thumb-btn:hover { border-color: var(--accent); transform: scale(1.02); }
+  .rating-thumb-btn.active.thumb-up { border-color: var(--accent); background: rgba(245, 197, 24, 0.2); }
+  .rating-thumb-btn.active.thumb-down { border-color: var(--danger); background: rgba(255, 59, 48, 0.2); }
+  .rating-overall-display { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .rating-overall-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+  .rating-overall-stars { display: flex; gap: 4px; justify-content: center; }
+  .rating-overall-stars .star { font-size: 20px; color: var(--text-muted); }
+  .rating-overall-stars .star.filled { color: var(--accent); }
   .rating-submit { width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s; }
   .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
+  .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
   
   .station-rating-display { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   .station-rating-stars { display: flex; gap: 1px; }
@@ -651,14 +669,77 @@
       <div class="rating-modal-title" id="ratingModalTitle">Rate Station</div>
       <button class="rating-modal-close" id="ratingModalClose">&times;</button>
     </div>
-    <div class="rating-stars-input" id="ratingStarsInput">
-      <button class="rating-star-btn" data-rating="1">★</button>
-      <button class="rating-star-btn" data-rating="2">★</button>
-      <button class="rating-star-btn" data-rating="3">★</button>
-      <button class="rating-star-btn" data-rating="4">★</button>
-      <button class="rating-star-btn" data-rating="5">★</button>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">🛡️ Safety — Did you feel safe?</div>
+      <div class="rating-stars-input" data-category="safety">
+        <button class="rating-star-btn" data-rating="1">★</button>
+        <button class="rating-star-btn" data-rating="2">★</button>
+        <button class="rating-star-btn" data-rating="3">★</button>
+        <button class="rating-star-btn" data-rating="4">★</button>
+        <button class="rating-star-btn" data-rating="5">★</button>
+      </div>
     </div>
-    <button class="rating-submit" id="ratingSubmit">Submit Rating</button>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">🧹 Cleanliness — Was it clean?</div>
+      <div class="rating-stars-input" data-category="cleanliness">
+        <button class="rating-star-btn" data-rating="1">★</button>
+        <button class="rating-star-btn" data-rating="2">★</button>
+        <button class="rating-star-btn" data-rating="3">★</button>
+        <button class="rating-star-btn" data-rating="4">★</button>
+        <button class="rating-star-btn" data-rating="5">★</button>
+      </div>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">👮 Staff Present — Did you see staff?</div>
+      <div class="rating-thumbs" data-category="staff">
+        <button class="rating-thumb-btn thumb-up" data-value="yes">👍 Yes</button>
+        <button class="rating-thumb-btn thumb-down" data-value="no">👎 No</button>
+      </div>
+    </div>
+    
+    <div class="rating-overall-display">
+      <div class="rating-overall-label">Overall Rating</div>
+      <div class="rating-overall-stars" id="overallRatingDisplay">
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-align: center;">Calculated from Safety & Cleanliness</div>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">📝 Description (Optional)</div>
+      <textarea id="ratingDescription" class="rating-description-input" placeholder="Share your experience at this station..." rows="3"></textarea>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">📷 Photo (Optional)</div>
+      <div class="rating-photo-upload">
+        <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
+        <button type="button" class="rating-photo-btn" id="ratingPhotoBtn">Choose Photo</button>
+        <div class="rating-photo-preview" id="ratingPhotoPreview"></div>
+      </div>
+    </div>
+    
+    <button class="rating-submit" id="ratingSubmit" disabled>Submit Rating</button>
+  </div>
+</div>
+
+<!-- View All Ratings Modal -->
+<div class="ratings-view-modal" id="ratingsViewModal">
+  <div class="ratings-view-modal-content">
+    <div class="ratings-view-modal-header">
+      <div class="ratings-view-modal-title" id="ratingsViewModalTitle">All Ratings</div>
+      <button class="ratings-view-modal-close" id="ratingsViewModalClose">&times;</button>
+    </div>
+    <div class="ratings-view-body" id="ratingsViewBody">
+      <!-- Ratings will be dynamically inserted here -->
+    </div>
   </div>
 </div>
 
@@ -813,14 +894,44 @@ let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || 
 
 function getStationRating(stationName) {
   const ratings = stationRatings[stationName] || [];
-  if (ratings.length === 0) return { avg: 0, count: 0 };
-  const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
-  return { avg: avg.toFixed(1), count: ratings.length };
+  if (ratings.length === 0) return { avg: 0, count: 0, safety: 0, cleanliness: 0, staff: null };
+  
+  // Calculate averages for Safety and Cleanliness (star ratings 1-5)
+  const safetyRatings = ratings.filter(r => r.safety && r.safety > 0);
+  const cleanlinessRatings = ratings.filter(r => r.cleanliness && r.cleanliness > 0);
+  const staffRatings = ratings.filter(r => r.staff !== null && r.staff !== undefined);
+  
+  const safetyAvg = safetyRatings.length > 0 
+    ? safetyRatings.reduce((sum, r) => sum + r.safety, 0) / safetyRatings.length 
+    : 0;
+  const cleanlinessAvg = cleanlinessRatings.length > 0
+    ? cleanlinessRatings.reduce((sum, r) => sum + r.cleanliness, 0) / cleanlinessRatings.length
+    : 0;
+  
+  // Overall rating: average of Safety and Cleanliness
+  const overallAvg = (safetyAvg > 0 && cleanlinessAvg > 0) 
+    ? (safetyAvg + cleanlinessAvg) / 2 
+    : (safetyAvg > 0 ? safetyAvg : cleanlinessAvg);
+  
+  // Staff percentage
+  const staffYes = staffRatings.filter(r => r.staff === 'yes').length;
+  const staffPercent = staffRatings.length > 0 ? staffYes / staffRatings.length : null;
+  
+  return { 
+    avg: Math.round(overallAvg).toString(), 
+    count: ratings.length,
+    safety: safetyAvg > 0 ? Math.round(safetyAvg).toString() : 0,
+    cleanliness: cleanlinessAvg > 0 ? Math.round(cleanlinessAvg).toString() : 0,
+    staff: staffPercent !== null ? (staffPercent * 100).toFixed(0) + '%' : null
+  };
 }
 
-function saveRating(stationName, rating) {
+function saveRating(stationName, ratingData) {
   if (!stationRatings[stationName]) stationRatings[stationName] = [];
-  stationRatings[stationName].push({ rating, timestamp: Date.now() });
+  stationRatings[stationName].push({ 
+    ...ratingData,
+    timestamp: Date.now() 
+  });
   localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
 }
 
@@ -829,9 +940,9 @@ function renderStars(rating, size = '14px') {
   let html = '';
   for (let i = 0; i < 5; i++) {
     if (i < full) {
-      html += `<span class="star filled" style="font-size:${size}">★</span>`;
+      html += `<span class="star filled" style="font-size:${size}; color: var(--accent);">★</span>`;
     } else {
-      html += `<span class="star" style="font-size:${size}">★</span>`;
+      html += `<span class="star" style="font-size:${size}; color: var(--text-muted);">★</span>`;
     }
   }
   return html;
@@ -841,7 +952,6 @@ function renderStars(rating, size = '14px') {
 const defaultLat = 34.0522, defaultLng = -118.2437;
 let userLat = defaultLat, userLng = defaultLng;
 let userMarker = null, stationMarkers = [], activeFilter = 'all';
-let currentRatingStation = null;
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -864,12 +974,23 @@ function createMarkers(filterLine = 'all') {
       return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
     }).join('');
     const rating = getStationRating(station.name);
-    const ratingHTML = rating.count > 0 
-      ? `<div class="popup-rating"><div class="popup-rating-stars">${renderStars(parseFloat(rating.avg))}</div><div class="popup-rating-value">${rating.avg} (${rating.count})</div></div>`
-      : `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
+    let ratingHTML = '';
+    if (rating.count > 0) {
+      ratingHTML = `<div class="popup-rating">
+        <div class="popup-rating-header">
+          <div class="popup-rating-stars">${renderStars(parseInt(rating.avg))}</div>
+          <div class="popup-rating-value">${rating.avg}/5 (${rating.count})</div>
+        </div>`;
+      if (rating.safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(parseInt(rating.safety), '11px')}</span> ${rating.safety}/5</div>`;
+      if (rating.cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(parseInt(rating.cleanliness), '11px')}</span> ${rating.cleanliness}/5</div>`;
+      if (rating.staff) ratingHTML += `<div class="popup-rating-item">👮 Staff: ${rating.staff}</div>`;
+      ratingHTML += `</div>`;
+    } else {
+      ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
+    }
     const stationNameEscaped = station.name.replace(/'/g, "\\'");
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`, { maxWidth: 250 });
+    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`, { maxWidth: 300 });
     marker.stationData = station;
     stationMarkers.push(marker);
   });
@@ -1088,52 +1209,139 @@ map.on('click', () => {
 map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map.getCenter().lng); });
 
 // ── Rating Modal ──
-const ratingModal = document.getElementById('ratingModal');
-const ratingModalTitle = document.getElementById('ratingModalTitle');
-const ratingStarsInput = document.getElementById('ratingStarsInput');
-const ratingSubmit = document.getElementById('ratingSubmit');
-const ratingModalClose = document.getElementById('ratingModalClose');
-let selectedRating = 0;
+let currentRatingStation = null;
+let ratingData = { safety: 0, cleanliness: 0, staff: null };
+
+function updateOverallRating() {
+  const overallRatingDisplay = document.getElementById('overallRatingDisplay');
+  if (!overallRatingDisplay) return;
+  
+  if (ratingData.safety > 0 && ratingData.cleanliness > 0) {
+    const overall = Math.round((ratingData.safety + ratingData.cleanliness) / 2);
+    overallRatingDisplay.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.style.fontSize = '20px';
+      star.style.color = i < overall ? 'var(--accent)' : 'var(--text-muted)';
+      if (i < overall) star.classList.add('filled');
+      star.textContent = '★';
+      overallRatingDisplay.appendChild(star);
+    }
+  } else {
+    overallRatingDisplay.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.style.fontSize = '20px';
+      star.style.color = 'var(--text-muted)';
+      star.textContent = '★';
+      overallRatingDisplay.appendChild(star);
+    }
+  }
+}
+
+function updateSubmitButton() {
+  const ratingSubmit = document.getElementById('ratingSubmit');
+  if (ratingSubmit) {
+    // Enable if Safety and Cleanliness are rated (both > 0)
+    ratingSubmit.disabled = !(ratingData.safety > 0 && ratingData.cleanliness > 0);
+  }
+}
 
 function openRatingModal(stationName) {
+  const ratingModal = document.getElementById('ratingModal');
+  const ratingModalTitle = document.getElementById('ratingModalTitle');
+  
+  if (!ratingModal || !ratingModalTitle) {
+    console.error('Rating modal elements not found');
+    return;
+  }
+  
   currentRatingStation = stationName;
   ratingModalTitle.textContent = `Rate ${stationName}`;
-  selectedRating = 0;
-  ratingStarsInput.querySelectorAll('.rating-star-btn').forEach((btn, i) => {
+  ratingData = { safety: 0, cleanliness: 0, staff: null };
+  
+  // Reset Safety stars
+  document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((btn, i) => {
     btn.classList.remove('active');
-    btn.onclick = () => {
-      selectedRating = i + 1;
-      ratingStarsInput.querySelectorAll('.rating-star-btn').forEach((b, idx) => {
-        b.classList.toggle('active', idx < selectedRating);
+    btn.onclick = function() {
+      ratingData.safety = i + 1;
+      document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx < ratingData.safety);
       });
+      updateOverallRating();
+      updateSubmitButton();
     };
   });
+  
+  // Reset Cleanliness stars
+  document.querySelectorAll('[data-category="cleanliness"] .rating-star-btn').forEach((btn, i) => {
+    btn.classList.remove('active');
+    btn.onclick = function() {
+      ratingData.cleanliness = i + 1;
+      document.querySelectorAll('[data-category="cleanliness"] .rating-star-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx < ratingData.cleanliness);
+      });
+      updateOverallRating();
+      updateSubmitButton();
+    };
+  });
+  
+  // Reset Staff thumbs
+  document.querySelectorAll('[data-category="staff"] .rating-thumb-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.onclick = function() {
+      document.querySelectorAll('[data-category="staff"] .rating-thumb-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      ratingData.staff = this.dataset.value;
+    };
+  });
+  
+  updateOverallRating();
+  updateSubmitButton();
   ratingModal.classList.add('active');
 }
 
 function closeRatingModal() {
-  ratingModal.classList.remove('active');
+  const ratingModal = document.getElementById('ratingModal');
+  if (ratingModal) {
+    ratingModal.classList.remove('active');
+  }
   currentRatingStation = null;
-  selectedRating = 0;
+  ratingData = { safety: null, cleanliness: null, staff: null };
 }
 
-ratingModalClose.addEventListener('click', closeRatingModal);
-ratingModal.addEventListener('click', (e) => {
-  if (e.target === ratingModal) closeRatingModal();
-});
+// Initialize rating modal event listeners (script is at end of body, so elements exist)
+const ratingModal = document.getElementById('ratingModal');
+const ratingModalClose = document.getElementById('ratingModalClose');
+const ratingSubmit = document.getElementById('ratingSubmit');
 
-ratingSubmit.addEventListener('click', () => {
-  if (!currentRatingStation || selectedRating === 0) {
-    alert('Please select a rating');
-    return;
-  }
-  saveRating(currentRatingStation, selectedRating);
-  closeRatingModal();
-  // Refresh markers and list to show updated ratings
-  createMarkers(activeFilter);
-  renderStationList(document.getElementById('stationSearch').value);
-  alert(`Thank you for rating ${currentRatingStation}!`);
-});
+if (ratingModalClose) {
+  ratingModalClose.addEventListener('click', closeRatingModal);
+}
+
+if (ratingModal) {
+  ratingModal.addEventListener('click', (e) => {
+    if (e.target === ratingModal) closeRatingModal();
+  });
+}
+
+if (ratingSubmit) {
+  ratingSubmit.addEventListener('click', () => {
+    if (!currentRatingStation || ratingData.safety === 0 || ratingData.cleanliness === 0) {
+      alert('Please rate Safety and Cleanliness');
+      return;
+    }
+    saveRating(currentRatingStation, ratingData);
+    closeRatingModal();
+    // Refresh markers and list to show updated ratings
+    createMarkers(activeFilter);
+    const searchInput = document.getElementById('stationSearch');
+    renderStationList(searchInput ? searchInput.value : '');
+    alert(`Thank you for rating ${currentRatingStation}!`);
+  });
+}
 
 // Make openRatingModal globally accessible
 window.openRatingModal = openRatingModal;
