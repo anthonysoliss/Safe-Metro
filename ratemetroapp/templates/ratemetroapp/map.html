@@ -312,10 +312,12 @@
     z-index: 1000;
     width: 44px; height: 44px;
     background: var(--surface);
+    display: flex; /* Always visible */
+    align-items: center;
+    justify-content: center;
     backdrop-filter: blur(20px);
     border: 1px solid var(--border);
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
     animation: slideDown 0.5s ease 0.2s both;
@@ -593,6 +595,112 @@
   .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
   
   /* Rating Modal */
+  /* Sign In Prompt Modal */
+  .signin-prompt-modal {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .signin-prompt-modal.active { opacity: 1; pointer-events: auto; }
+  .signin-prompt-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 420px;
+    width: 90%;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+  .signin-prompt-modal.active .signin-prompt-content { transform: scale(1); }
+  .signin-prompt-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    border-radius: 8px;
+  }
+  .signin-prompt-close:hover {
+    color: var(--text-primary);
+    background: var(--surface-light);
+  }
+  .signin-prompt-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .signin-prompt-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .signin-prompt-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .signin-prompt-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .signin-prompt-btn {
+    flex: 1;
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .signin-prompt-btn.primary {
+    background: var(--accent);
+    color: var(--bg-dark);
+    border-color: var(--accent);
+  }
+  .signin-prompt-btn.primary:hover {
+    background: #f5d030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
+  }
+  .signin-prompt-btn.secondary {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+  .signin-prompt-btn.secondary:hover {
+    border-color: var(--accent);
+    background: rgba(245, 197, 24, 0.1);
+  }
+  .signin-prompt-continue {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 8px;
+    text-decoration: underline;
+    transition: color 0.2s;
+  }
+  .signin-prompt-continue:hover {
+    color: var(--text-secondary);
+  }
+
   .rating-modal {
     position: fixed; inset: 0; z-index: 2000;
     background: rgba(0,0,0,0.7);
@@ -757,22 +865,33 @@
   <svg viewBox="0 0 24 24" id="profileBtnIcon"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
 </div>
 <div class="profile-dropdown" id="profileDropdown">
-  <div class="profile-dropdown-item">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
-    <span>My Profile</span>
+  <!-- Authenticated user menu -->
+  <div class="profile-dropdown-auth" id="profileDropdownAuth" style="display: none;">
+    <div class="profile-dropdown-item" data-action="profile">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+      <span>My Profile</span>
+    </div>
+    <div class="profile-dropdown-item" data-action="ratings">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span>My Ratings</span>
+    </div>
+    <div class="profile-dropdown-divider"></div>
+    <div class="profile-dropdown-item" data-action="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
+      <span>Settings</span>
+    </div>
+    <div class="profile-dropdown-item" data-action="signout">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Sign Out</span>
+    </div>
   </div>
-  <div class="profile-dropdown-item">
-    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-    <span>My Ratings</span>
-  </div>
-  <div class="profile-dropdown-divider"></div>
-  <div class="profile-dropdown-item">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
-    <span>Settings</span>
-  </div>
-  <div class="profile-dropdown-item">
-    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    <span>Sign Out</span>
+  
+  <!-- Non-authenticated user menu -->
+  <div class="profile-dropdown-guest" id="profileDropdownGuest">
+    <div class="profile-dropdown-item" data-action="signin">
+      <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <span>Sign In</span>
+    </div>
   </div>
 </div>
 
@@ -882,6 +1001,33 @@
   </div>
 </div>
 
+<!-- Sign In Prompt Modal -->
+<div class="signin-prompt-modal" id="signinPromptModal">
+  <div class="signin-prompt-content">
+    <button class="signin-prompt-close" id="signinPromptClose" onclick="closeSignInPrompt()">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <div class="signin-prompt-header">
+      <h2>Welcome to Rate Metro</h2>
+      <p>Sign in to save your ratings and access your profile</p>
+    </div>
+    <div class="signin-prompt-actions">
+      <button class="signin-prompt-btn primary" onclick="goToSignIn()">
+        Sign In
+      </button>
+      <button class="signin-prompt-btn secondary" onclick="goToSignUp()">
+        Sign Up
+      </button>
+    </div>
+    <button class="signin-prompt-continue" onclick="closeSignInPrompt()">
+      Continue without signing in
+    </button>
+  </div>
+</div>
+
 <!-- Chat -->
 <div class="chat-overlay" id="chatOverlay"></div>
 <div class="chat-bar-container">
@@ -906,7 +1052,65 @@ const DJANGO_URLS = {
   settings: '{% url "ratemetroapp:settings" %}',
   signIn: '{% url "ratemetroapp:sign_in" %}',
   updateLocation: '{% url "ratemetroapp:update_location" %}',
+  checkAuth: '{% url "ratemetroapp:check_auth" %}',
+  submitRating: '{% url "ratemetroapp:submit_rating" %}',
 };
+
+// Authentication state
+let isAuthenticated = {{ is_authenticated|yesno:"true,false" }};
+let currentUsername = '{{ username|default:"" }}';
+
+// Check authentication status
+async function checkAuthentication() {
+  try {
+    const response = await fetch(DJANGO_URLS.checkAuth);
+    const data = await response.json();
+    isAuthenticated = data.is_authenticated;
+    currentUsername = data.username || '';
+    // Update profile button visibility when auth status changes
+    updateProfileButtonVisibility();
+    return isAuthenticated;
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    return false;
+  }
+}
+
+// Prompt user to sign in
+function promptSignIn(action = 'save your data') {
+  if (confirm(`You need to sign in to ${action}. Would you like to sign in now?`)) {
+    window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
+    return true;
+  }
+  return false;
+}
+
+// Sign In Prompt Modal Functions
+function showSignInPrompt() {
+  const modal = document.getElementById('signinPromptModal');
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeSignInPrompt() {
+  const modal = document.getElementById('signinPromptModal');
+  if (modal) {
+    modal.classList.remove('active');
+    // Remember that user dismissed the prompt (don't show again this session)
+    sessionStorage.setItem('signinPromptDismissed', 'true');
+  }
+}
+
+function goToSignIn() {
+  window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
+}
+
+function goToSignUp() {
+  // Redirect to sign-in page and switch to signup tab
+  const url = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname) + '&tab=signup';
+  window.location.href = url;
+}
 
 // Get CSRF token from meta tag or cookie
 function getCSRFToken() {
@@ -1082,18 +1286,80 @@ function getStationRating(stationName) {
   };
 }
 
-function saveRating(stationName, ratingData) {
-  if (!stationRatings[stationName]) stationRatings[stationName] = [];
-  const ratingToSave = {
-    safety: ratingData.safety,
-    cleanliness: ratingData.cleanliness,
-    staff: ratingData.staff,
-    description: ratingData.description || '',
-    photo: ratingData.photo || null,
-    timestamp: Date.now()
-  };
-  stationRatings[stationName].push(ratingToSave);
-  localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+async function saveRating(stationName, ratingData) {
+  // Check authentication first
+  if (!isAuthenticated) {
+    const wantsToSignIn = promptSignIn('save your rating');
+    if (!wantsToSignIn) {
+      return false; // User chose not to sign in
+    }
+    return false; // Will redirect to sign in
+  }
+  
+  // Try to save to backend first
+  try {
+    const formData = {
+      station_name: stationName,
+      safety: ratingData.safety,
+      cleanliness: ratingData.cleanliness,
+      staff_present: ratingData.staff,
+      description: ratingData.description || '',
+      photo: ratingData.photo || null
+    };
+    
+    const response = await fetch(DJANGO_URLS.submitRating, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.status === 'success') {
+      // Also save to localStorage as backup/cache
+      if (!stationRatings[stationName]) stationRatings[stationName] = [];
+      const ratingToSave = {
+        safety: ratingData.safety,
+        cleanliness: ratingData.cleanliness,
+        staff: ratingData.staff,
+        description: ratingData.description || '',
+        photo: ratingData.photo || null,
+        timestamp: Date.now()
+      };
+      stationRatings[stationName].push(ratingToSave);
+      localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+      return true;
+    } else if (result.requires_auth) {
+      // Re-check auth status
+      const authStatus = await checkAuthentication();
+      if (!authStatus) {
+        promptSignIn('save your rating');
+        return false;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save rating to backend:', error);
+    // Fallback to localStorage only if authenticated
+    if (isAuthenticated) {
+      if (!stationRatings[stationName]) stationRatings[stationName] = [];
+      const ratingToSave = {
+        safety: ratingData.safety,
+        cleanliness: ratingData.cleanliness,
+        staff: ratingData.staff,
+        description: ratingData.description || '',
+        photo: ratingData.photo || null,
+        timestamp: Date.now()
+      };
+      stationRatings[stationName].push(ratingToSave);
+      localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 function renderStars(rating, size = '14px') {
@@ -1401,8 +1667,14 @@ document.getElementById('infoBtn').addEventListener('click', () => {
   setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
 });
 
-// Load and display user profile image
+// Load and display user profile image (only when authenticated)
 function loadProfileImage() {
+  // Only load avatar if user is authenticated
+  if (!isAuthenticated) {
+    updateProfileButtonVisibility();
+    return;
+  }
+  
   const savedAvatar = localStorage.getItem('userAvatar');
   const profileBtn = document.getElementById('profileBtn');
   const profileAvatarImg = document.getElementById('profileAvatarImg');
@@ -1418,15 +1690,68 @@ function loadProfileImage() {
     if (profileBtnIcon) profileBtnIcon.style.display = 'block';
     if (profileBtn) profileBtn.classList.remove('has-avatar');
   }
+  
+  // Update visibility after loading
+  updateProfileButtonVisibility();
 }
 
 // Load profile image on page load
 loadProfileImage();
 
+// Show/hide profile button content and dropdown based on authentication
+function updateProfileButtonVisibility() {
+  const profileBtn = document.getElementById('profileBtn');
+  const profileAvatarImg = document.getElementById('profileAvatarImg');
+  const profileBtnIcon = document.getElementById('profileBtnIcon');
+  const profileDropdownAuth = document.getElementById('profileDropdownAuth');
+  const profileDropdownGuest = document.getElementById('profileDropdownGuest');
+  
+  if (isAuthenticated) {
+    // Show avatar if available, otherwise show default icon
+    if (profileAvatarImg && profileAvatarImg.src && profileAvatarImg.src !== window.location.href) {
+      profileAvatarImg.style.display = 'block';
+      if (profileBtnIcon) profileBtnIcon.style.display = 'none';
+    } else {
+      if (profileAvatarImg) profileAvatarImg.style.display = 'none';
+      if (profileBtnIcon) profileBtnIcon.style.display = 'block';
+    }
+    // Show authenticated menu
+    if (profileDropdownAuth) profileDropdownAuth.style.display = 'block';
+    if (profileDropdownGuest) profileDropdownGuest.style.display = 'none';
+  } else {
+    // Always show default icon when not authenticated
+    if (profileAvatarImg) profileAvatarImg.style.display = 'none';
+    if (profileBtnIcon) profileBtnIcon.style.display = 'block';
+    // Show guest menu
+    if (profileDropdownAuth) profileDropdownAuth.style.display = 'none';
+    if (profileDropdownGuest) profileDropdownGuest.style.display = 'block';
+  }
+}
+
+// Update profile button visibility on page load
+updateProfileButtonVisibility();
+
 // Listen for storage changes (in case avatar is updated in another tab/window)
 window.addEventListener('storage', function(e) {
   if (e.key === 'userAvatar') {
     loadProfileImage();
+  }
+});
+
+// Show sign-in prompt modal if user is not authenticated
+window.addEventListener('DOMContentLoaded', function() {
+  // Update profile button visibility based on initial auth state
+  updateProfileButtonVisibility();
+  
+  // Check if user dismissed the prompt in this session
+  const promptDismissed = sessionStorage.getItem('signinPromptDismissed');
+  
+  // Show prompt if user is not authenticated and hasn't dismissed it
+  if (!isAuthenticated && !promptDismissed) {
+    // Small delay to let page load first
+    setTimeout(() => {
+      showSignInPrompt();
+    }, 500);
   }
 });
 
@@ -1449,27 +1774,32 @@ if (profileBtn && profileDropdown) {
     }
   });
   
-  // Handle dropdown item clicks
-  const dropdownItems = profileDropdown.querySelectorAll('.profile-dropdown-item');
-  dropdownItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      const text = item.querySelector('span')?.textContent;
-      if (text === 'My Profile') {
-        window.location.href = DJANGO_URLS.profile;
-        return;
-      } else if (text === 'My Ratings') {
-        window.location.href = DJANGO_URLS.myRatings;
-        return;
-      } else if (text === 'Settings') {
-        window.location.href = DJANGO_URLS.settings;
-        return;
-      } else if (text === 'Sign Out') {
-        chatOverlay.classList.add('visible');
-        addMsg("Sign out feature coming soon!", 'ai');
-      }
-      profileBtn.classList.remove('active');
-      profileDropdown.classList.remove('active');
-    });
+  // Handle dropdown item clicks using event delegation
+  profileDropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.profile-dropdown-item');
+    if (!item) return;
+    
+    const action = item.dataset.action;
+    
+    if (action === 'profile') {
+      window.location.href = DJANGO_URLS.profile;
+      return;
+    } else if (action === 'ratings') {
+      window.location.href = DJANGO_URLS.myRatings;
+      return;
+    } else if (action === 'settings') {
+      window.location.href = DJANGO_URLS.settings;
+      return;
+    } else if (action === 'signout') {
+      chatOverlay.classList.add('visible');
+      addMsg("Sign out feature coming soon!", 'ai');
+    } else if (action === 'signin') {
+      window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    
+    profileBtn.classList.remove('active');
+    profileDropdown.classList.remove('active');
   });
 }
 
@@ -1654,22 +1984,46 @@ window.removeRatingPhoto = function() {
 };
 
 if (ratingSubmit) {
-  ratingSubmit.addEventListener('click', () => {
+  ratingSubmit.addEventListener('click', async () => {
     if (!currentRatingStation || ratingData.safety === 0 || ratingData.cleanliness === 0) {
       alert('Please rate Safety and Cleanliness');
       return;
     }
+    
+    // Check authentication before saving
+    if (!isAuthenticated) {
+      const authStatus = await checkAuthentication();
+      if (!authStatus) {
+        const wantsToSignIn = promptSignIn('submit your rating');
+        if (wantsToSignIn) {
+          return; // Will redirect to sign in
+        }
+        return; // User chose not to sign in
+      }
+    }
+    
     // Get description
     if (ratingDescription) {
       ratingData.description = ratingDescription.value.trim();
     }
-    saveRating(currentRatingStation, ratingData);
-    closeRatingModal();
-    // Refresh markers and list to show updated ratings
-    createMarkers(activeFilter);
-    const searchInput = document.getElementById('stationSearch');
-    renderStationList(searchInput ? searchInput.value : '');
-    alert(`Thank you for rating ${currentRatingStation}!`);
+    
+    // Save rating (will check auth again inside)
+    const saved = await saveRating(currentRatingStation, ratingData);
+    
+    if (saved) {
+      closeRatingModal();
+      // Refresh markers and list to show updated ratings
+      createMarkers(activeFilter);
+      const searchInput = document.getElementById('stationSearch');
+      renderStationList(searchInput ? searchInput.value : '');
+      alert(`Thank you for rating ${currentRatingStation}!`);
+    } else {
+      // Rating not saved - user may have been redirected to sign in
+      // Don't close modal if they're coming back
+      if (isAuthenticated) {
+        alert('Failed to save rating. Please try again.');
+      }
+    }
   });
 }
 

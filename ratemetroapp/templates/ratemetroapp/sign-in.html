@@ -630,8 +630,30 @@ const DJANGO_URLS = {
   myRatings: '{% url "ratemetroapp:my_ratings" %}',
   settings: '{% url "ratemetroapp:settings" %}',
   signIn: '{% url "ratemetroapp:sign_in" %}',
+  apiSignIn: '{% url "ratemetroapp:api_sign_in" %}',
+  apiSignUp: '{% url "ratemetroapp:api_sign_up" %}',
 };
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+  const token = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (token) return token.value;
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'csrftoken') {
+      return value;
+    }
+  }
+  return '';
+}
 let activeTab = 'signin';
+
+// Check URL parameter for tab preference
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tab') === 'signup') {
+  activeTab = 'signup';
+}
 
 function switchTab(tab) {
   activeTab = tab;
@@ -698,7 +720,7 @@ function simulateLoad(btnId, cb) {
   setTimeout(() => { btn.classList.remove('loading'); cb(); }, 1400);
 }
 
-function handleSignIn() {
+async function handleSignIn() {
   clearErrors();
   const email = document.getElementById('signinEmail').value.trim();
   const pass = document.getElementById('signinPassword').value;
@@ -706,10 +728,53 @@ function handleSignIn() {
   if (!email || !email.includes('@')) { showError('signinEmail','signinEmailErr'); valid = false; }
   if (!pass) { showError('signinPassword','signinPassErr'); valid = false; }
   if (!valid) return;
-  simulateLoad('signinBtn', () => showSuccess('Welcome back! 👋', 'Redirecting to the map...'));
+  
+  const btn = document.getElementById('signinBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  
+  try {
+    const response = await fetch(DJANGO_URLS.apiSignIn, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ email, password: pass })
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      showSuccess('Welcome back! 👋', 'Redirecting to the map...');
+      setTimeout(() => {
+        const nextUrl = new URLSearchParams(window.location.search).get('next') || DJANGO_URLS.map;
+        // Force a full page reload to ensure authentication state is updated
+        window.location.href = nextUrl;
+      }, 1500);
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      // Show error message
+      const errorMsg = data.message || 'Sign in failed. Please try again.';
+      alert(errorMsg);
+      // Also show error on the form fields
+      if (errorMsg.toLowerCase().includes('email')) {
+        showError('signinEmail', 'signinEmailErr');
+      } else if (errorMsg.toLowerCase().includes('password')) {
+        showError('signinPassword', 'signinPassErr');
+      }
+    }
+  } catch (error) {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    alert('An error occurred. Please try again.');
+    console.error('Sign in error:', error);
+  }
 }
 
-function handleSignUp() {
+async function handleSignUp() {
   clearErrors();
   const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
@@ -719,7 +784,41 @@ function handleSignUp() {
   if (!email || !email.includes('@')) { showError('signupEmail','signupEmailErr'); valid = false; }
   if (pass.length < 8) { showError('signupPassword','signupPassErr'); valid = false; }
   if (!valid) return;
-  simulateLoad('signupBtn', () => showSuccess('Account created! 🎉', 'You\'re all set. Opening the map...'));
+  
+  const btn = document.getElementById('signupBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
+  
+  try {
+    const response = await fetch(DJANGO_URLS.apiSignUp, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ name, email, password: pass })
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      showSuccess('Account created! 🎉', 'You\'re all set. Opening the map...');
+      setTimeout(() => {
+        const nextUrl = new URLSearchParams(window.location.search).get('next') || DJANGO_URLS.map;
+        window.location.href = nextUrl;
+      }, 1500);
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      alert(data.message || 'Sign up failed. Please try again.');
+    }
+  } catch (error) {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    alert('An error occurred. Please try again.');
+    console.error('Sign up error:', error);
+  }
 }
 
 function showSuccess(title, sub) {
@@ -743,6 +842,11 @@ function showForgot() {
 
 function socialAuth(provider) {
   alert(`${provider} sign-in coming soon.`);
+}
+
+// Initialize tab on page load
+if (activeTab === 'signup') {
+  switchTab('signup');
 }
 
 // Enter key support

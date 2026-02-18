@@ -574,22 +574,22 @@
         <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
       </div>
       <div class="hero-info">
-        <div class="hero-name" id="displayName">Toni Solis</div>
-        <div class="hero-handle" id="displayHandle">@toni_metro</div>
+        <div class="hero-name" id="displayName">{{ full_name|default:user.username }}</div>
+        <div class="hero-handle" id="displayHandle">@{{ user.username }}</div>
         <div class="hero-badge"><div class="badge-dot"></div>Active Contributor</div>
       </div>
     </div>
     <div class="hero-stats">
       <div class="stat-cell">
-        <div class="stat-value" id="statRatings">12</div>
+        <div class="stat-value" id="statRatings">{{ ratings_count|default:0 }}</div>
         <div class="stat-label">Ratings</div>
       </div>
       <div class="stat-cell">
-        <div class="stat-value" id="statStations">8</div>
+        <div class="stat-value" id="statStations">{{ stations_count|default:0 }}</div>
         <div class="stat-label">Stations</div>
       </div>
       <div class="stat-cell">
-        <div class="stat-value" id="statStreak">5</div>
+        <div class="stat-value" id="statStreak">0</div>
         <div class="stat-label">Day Streak</div>
       </div>
     </div>
@@ -605,7 +605,7 @@
       </div>
       <div class="field-body">
         <div class="field-label">Full Name</div>
-        <input class="field-input" id="inputName" type="text" value="Toni Solis" readonly placeholder="Your name" />
+        <input class="field-input" id="inputName" type="text" value="{{ full_name|default:user.username }}" readonly placeholder="Your name" />
       </div>
       <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>
@@ -616,7 +616,7 @@
       </div>
       <div class="field-body">
         <div class="field-label">Email</div>
-        <input class="field-input" id="inputEmail" type="email" value="toni@metrosafela.app" readonly placeholder="your@email.com" />
+        <input class="field-input" id="inputEmail" type="email" value="{{ email|default:'' }}" readonly placeholder="your@email.com" />
       </div>
       <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>
@@ -627,7 +627,7 @@
       </div>
       <div class="field-body">
         <div class="field-label">Username</div>
-        <input class="field-input" id="inputUsername" type="text" value="@toni_metro" readonly placeholder="@username" />
+        <input class="field-input" id="inputUsername" type="text" value="{{ user.username }}" readonly placeholder="@username" />
       </div>
       <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>
@@ -638,7 +638,7 @@
       </div>
       <div class="field-body">
         <div class="field-label">Home Station</div>
-        <input class="field-input" id="inputStation" type="text" value="7th St/Metro Center" readonly placeholder="Pick a station" />
+        <input class="field-input" id="inputStation" type="text" value="{% if user_profile.home_station %}{{ user_profile.home_station.name }}{% endif %}" readonly placeholder="Pick a station" />
       </div>
       <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>
@@ -658,35 +658,35 @@
   <div class="section-card">
     <div class="section-header">Achievements</div>
     <div class="achievements-grid">
-      <div class="achievement earned" title="First rating submitted">
+      <div class="achievement {% if achievements.first_star %}earned{% else %}locked{% endif %}" title="First rating submitted">
         <div class="achievement-icon">⭐</div>
         <div class="achievement-label">First Star</div>
       </div>
-      <div class="achievement earned" title="Rated 10 stations">
+      <div class="achievement {% if achievements.explorer %}earned{% else %}locked{% endif %}" title="Rated 10 stations">
         <div class="achievement-icon">🗺️</div>
         <div class="achievement-label">Explorer</div>
       </div>
-      <div class="achievement earned" title="5-day rating streak">
+      <div class="achievement {% if achievements.on_fire %}earned{% else %}locked{% endif %}" title="5-day rating streak">
         <div class="achievement-icon">🔥</div>
         <div class="achievement-label">On Fire</div>
       </div>
-      <div class="achievement locked" title="Rate 25 stations">
+      <div class="achievement {% if achievements.champion %}earned{% else %}locked{% endif %}" title="Rate 25 stations">
         <div class="achievement-icon">🏆</div>
         <div class="achievement-label">Champion</div>
       </div>
-      <div class="achievement locked" title="Rate all A Line stations">
+      <div class="achievement {% if achievements.line_rider %}earned{% else %}locked{% endif %}" title="Rate all A Line stations">
         <div class="achievement-icon">🚆</div>
         <div class="achievement-label">Line Rider</div>
       </div>
-      <div class="achievement locked" title="Submit 3 photos">
+      <div class="achievement {% if achievements.photog %}earned{% else %}locked{% endif %}" title="Submit 3 photos">
         <div class="achievement-icon">📸</div>
         <div class="achievement-label">Photog</div>
       </div>
-      <div class="achievement locked" title="Rate same station 5 times">
+      <div class="achievement {% if achievements.regular %}earned{% else %}locked{% endif %}" title="Rate same station 5 times">
         <div class="achievement-icon">📍</div>
         <div class="achievement-label">Regular</div>
       </div>
-      <div class="achievement locked" title="30-day streak">
+      <div class="achievement {% if achievements.diamond %}earned{% else %}locked{% endif %}" title="30-day streak">
         <div class="achievement-icon">💎</div>
         <div class="achievement-label">Diamond</div>
       </div>
@@ -749,25 +749,70 @@ const DJANGO_URLS = {
   myRatings: '{% url "ratemetroapp:my_ratings" %}',
   settings: '{% url "ratemetroapp:settings" %}',
   signIn: '{% url "ratemetroapp:sign_in" %}',
+  checkAuth: '{% url "ratemetroapp:check_auth" %}',
 };
+
+// Authentication state
+let isAuthenticated = {{ is_authenticated|yesno:"true,false" }};
+let currentUsername = '{{ user.username|default:"" }}';
+
+// Check authentication status
+async function checkAuthentication() {
+  try {
+    const response = await fetch(DJANGO_URLS.checkAuth);
+    const data = await response.json();
+    isAuthenticated = data.is_authenticated;
+    currentUsername = data.username || '';
+    return isAuthenticated;
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    return false;
+  }
+}
+
+// Prompt user to sign in
+function promptSignIn(action = 'save your data') {
+  if (confirm(`You need to sign in to ${action}. Would you like to sign in now?`)) {
+    window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
+    return true;
+  }
+  return false;
+}
 // ── Activity Grid ──
 const months = ['F','M','A','M','J','J','A','S','O','N','D','J'];
 const monthsFull = ['Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan'];
 const gridEl = document.getElementById('activityGrid');
 const monthsEl = document.getElementById('chartMonths');
-const levels = [0,0,1,0,2,1,0,3,2,1,4,3];
+
+// Load activity data from server
+const activityData = {{ activity_json|safe }};
 
 months.forEach((m, mi) => {
   const col = document.createElement('div');
   col.className = 'activity-col';
+  
+  // Get activity count for this month
+  const monthCount = activityData[mi] || 0;
+  
+  // Calculate level based on count (0-4 levels)
+  const maxLevel = Math.min(4, Math.floor(monthCount / 2)); // Scale: 0-2=level1, 3-4=level2, etc.
+  
   for (let w = 0; w < 4; w++) {
     const cell = document.createElement('div');
-    const r = Math.random();
-    const base = levels[mi];
+    // Distribute activity across weeks (simple distribution)
     let lvl = 0;
-    if (base > 0 && r > 0.3) lvl = Math.min(base, Math.floor(r * (base + 1)));
+    if (monthCount > 0) {
+      const weekCount = Math.floor(monthCount / 4);
+      const remainder = monthCount % 4;
+      if (w < remainder) {
+        lvl = Math.min(4, weekCount + 1);
+      } else {
+        lvl = Math.min(4, weekCount);
+      }
+    }
+    
     cell.className = `activity-cell${lvl > 0 ? ' l' + lvl : ''}`;
-    cell.title = `${monthsFull[mi]} — ${lvl > 0 ? lvl + ' ratings' : 'No activity'}`;
+    cell.title = `${monthsFull[mi]} — ${monthCount > 0 ? monthCount + ' rating' + (monthCount !== 1 ? 's' : '') : 'No activity'}`;
     col.appendChild(cell);
   }
   gridEl.appendChild(col);
@@ -784,22 +829,12 @@ const lineColors = {
   E:'#fdb913', G:'#f58220', J:'#b5a07e', K:'#e96bb0', L:'#c4a73f'
 };
 
-const sampleRatings = JSON.parse(localStorage.getItem('metroStationRatings') || '{}');
+// Load ratings from server (database) instead of localStorage
+const serverRatings = {{ ratings_json|safe }};
 const listEl = document.getElementById('myRatingsList');
 
-const allRatings = [];
-Object.entries(sampleRatings).forEach(([station, ratings]) => {
-  ratings.forEach(r => allRatings.push({ station, ...r }));
-});
-allRatings.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-// Demo entries if no real data
-const displayRatings = allRatings.length > 0 ? allRatings.slice(0, 5) : [
-  { station: '7th St/Metro Center', safety: 4, cleanliness: 3, staff: 'yes', timestamp: Date.now() - 86400000, line: 'A' },
-  { station: 'Union Station', safety: 5, cleanliness: 4, staff: 'yes', timestamp: Date.now() - 172800000, line: 'B' },
-  { station: 'Hollywood/Vine', safety: 3, cleanliness: 2, staff: 'no', timestamp: Date.now() - 259200000, line: 'B' },
-  { station: 'Culver City', safety: 5, cleanliness: 5, staff: 'yes', timestamp: Date.now() - 345600000, line: 'E' },
-];
+// Use server ratings, sorted by timestamp (already sorted by server)
+const displayRatings = serverRatings.slice(0, 5);
 
 function renderStars(n) {
   return Array.from({length:5}, (_,i) =>
@@ -828,10 +863,7 @@ if (displayRatings.length === 0) {
     listEl.appendChild(row);
   });
 
-  // Update stats
-  const uniqueStations = new Set(displayRatings.map(r => r.station)).size;
-  document.getElementById('statRatings').textContent = displayRatings.length;
-  document.getElementById('statStations').textContent = uniqueStations;
+  // Stats are already set by server template variables, no need to update here
 }
 
 // ── Edit Mode ──
@@ -943,7 +975,19 @@ function toggleEdit() {
   }
 }
 
-function saveProfile() {
+async function saveProfile() {
+  // Check authentication
+  if (!isAuthenticated) {
+    const authStatus = await checkAuthentication();
+    if (!authStatus) {
+      const wantsToSignIn = promptSignIn('save your profile');
+      if (wantsToSignIn) {
+        return; // Will redirect to sign in
+      }
+      return; // User chose not to sign in
+    }
+  }
+  
   const name = document.getElementById('inputName').value.trim();
   const username = document.getElementById('inputUsername').value.trim();
   const email = document.getElementById('inputEmail').value.trim();
@@ -961,7 +1005,9 @@ function saveProfile() {
   
   // Save username
   if (username) {
-    document.getElementById('displayHandle').textContent = username;
+    // Ensure @ symbol is included
+    const displayUsername = username.startsWith('@') ? username : '@' + username;
+    document.getElementById('displayHandle').textContent = displayUsername;
   }
   
   // Save avatar if changed

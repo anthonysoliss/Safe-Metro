@@ -10,4 +10,8 @@ urlpatterns = [
     path('my-ratings/', views.my_ratings_view, name='my_ratings'),
     path('settings/', views.settings_view, name='settings'),
     path('api/location/', views.update_location, name='update_location'),
+    path('api/check-auth/', views.check_auth, name='check_auth'),
+    path('api/submit-rating/', views.submit_rating, name='submit_rating'),
+    path('api/sign-in/', views.api_sign_in, name='api_sign_in'),
+    path('api/sign-up/', views.api_sign_up, name='api_sign_up'),
 ]
