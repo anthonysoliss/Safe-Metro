@@ -584,16 +584,30 @@
   .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
   
   /* View All Ratings Modal */
-  .ratings-view-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; }
-  .ratings-view-modal.active { display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
-  .ratings-view-modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
+  .ratings-view-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+  .ratings-view-modal.active { opacity: 1; visibility: visible; }
+  .ratings-view-modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); transform: translateY(-20px) scale(0.95); opacity: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .ratings-view-modal.active .ratings-view-modal-content { transform: translateY(0) scale(1); opacity: 1; }
   .ratings-view-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border); }
   .ratings-view-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
   .ratings-view-modal-close { background: none; border: none; font-size: 28px; color: var(--text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .ratings-view-modal-close:hover { color: var(--text-primary); }
+  .ratings-view-filters { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: var(--surface-light); }
+  .ratings-view-filter-group { display: flex; align-items: center; gap: 8px; }
+  .ratings-view-filter-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  .ratings-view-filter-select { padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .ratings-view-filter-select:hover { border-color: var(--accent); }
+  .ratings-view-filter-select:focus { outline: none; border-color: var(--accent); }
   .ratings-view-body { padding: 20px; overflow-y: auto; flex: 1; }
-  .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s ease forwards; }
   .rating-item-card:last-child { margin-bottom: 0; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .rating-item-card:nth-child(1) { animation-delay: 0.1s; }
+  .rating-item-card:nth-child(2) { animation-delay: 0.15s; }
+  .rating-item-card:nth-child(3) { animation-delay: 0.2s; }
+  .rating-item-card:nth-child(4) { animation-delay: 0.25s; }
+  .rating-item-card:nth-child(5) { animation-delay: 0.3s; }
+  .rating-item-card:nth-child(n+6) { animation-delay: 0.35s; }
   .rating-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
   .rating-item-user { display: flex; align-items: center; gap: 10px; }
   .rating-item-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: 700; font-size: 16px; }
@@ -770,6 +784,58 @@
     <div class="ratings-view-modal-header">
       <div class="ratings-view-modal-title" id="ratingsViewModalTitle">All Ratings</div>
       <button class="ratings-view-modal-close" id="ratingsViewModalClose">&times;</button>
+    </div>
+    <div class="ratings-view-filters">
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Overall:</label>
+        <select class="ratings-view-filter-select" id="filterOverall">
+          <option value="all">All Ratings</option>
+          <option value="5">5 Stars</option>
+          <option value="4">4+ Stars</option>
+          <option value="3">3+ Stars</option>
+          <option value="2">2+ Stars</option>
+          <option value="1">1+ Stars</option>
+        </select>
+      </div>
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Safety:</label>
+        <select class="ratings-view-filter-select" id="filterSafety">
+          <option value="all">All</option>
+          <option value="5">5 Stars</option>
+          <option value="4">4+ Stars</option>
+          <option value="3">3+ Stars</option>
+          <option value="2">2+ Stars</option>
+          <option value="1">1+ Stars</option>
+        </select>
+      </div>
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Cleanliness:</label>
+        <select class="ratings-view-filter-select" id="filterCleanliness">
+          <option value="all">All</option>
+          <option value="5">5 Stars</option>
+          <option value="4">4+ Stars</option>
+          <option value="3">3+ Stars</option>
+          <option value="2">2+ Stars</option>
+          <option value="1">1+ Stars</option>
+        </select>
+      </div>
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Staff:</label>
+        <select class="ratings-view-filter-select" id="filterStaff">
+          <option value="all">All</option>
+          <option value="yes">Present</option>
+          <option value="no">Not Present</option>
+        </select>
+      </div>
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Sort:</label>
+        <select class="ratings-view-filter-select" id="filterSort">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="highest">Highest Rating</option>
+          <option value="lowest">Lowest Rating</option>
+        </select>
+      </div>
     </div>
     <div class="ratings-view-body" id="ratingsViewBody">
       <!-- Ratings will be dynamically inserted here -->
@@ -1456,18 +1522,32 @@ window.openRatingsViewModal = function(stationName) {
   
   ratingsViewModalTitle.textContent = `All Ratings - ${stationName}`;
   renderAllRatings(stationName, ratingsViewBody);
-  ratingsViewModal.classList.add('active');
+  
+  // Trigger smooth animation
+  requestAnimationFrame(() => {
+    ratingsViewModal.classList.add('active');
+  });
 };
 
 function closeRatingsViewModal() {
   const ratingsViewModal = document.getElementById('ratingsViewModal');
   if (ratingsViewModal) {
     ratingsViewModal.classList.remove('active');
+    // Clear content after animation completes
+    setTimeout(() => {
+      const ratingsViewBody = document.getElementById('ratingsViewBody');
+      if (ratingsViewBody) {
+        ratingsViewBody.innerHTML = '';
+      }
+    }, 300);
   }
 }
 
 function renderAllRatings(stationName, container) {
   const ratings = stationRatings[stationName] || [];
+  
+  // Clear container first
+  container.innerHTML = '';
   
   if (ratings.length === 0) {
     container.innerHTML = '<div class="no-ratings-message">No ratings yet for this station.</div>';
@@ -1477,7 +1557,8 @@ function renderAllRatings(stationName, container) {
   // Sort by timestamp (newest first)
   const sortedRatings = [...ratings].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   
-  container.innerHTML = sortedRatings.map((rating, index) => {
+  // Create rating cards with staggered animation
+  sortedRatings.forEach((rating, index) => {
     const date = new Date(rating.timestamp);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const overall = rating.safety > 0 && rating.cleanliness > 0 
@@ -1487,30 +1568,32 @@ function renderAllRatings(stationName, container) {
     // Generate user avatar initial
     const userInitial = String.fromCharCode(65 + (index % 26)); // A-Z
     
-    return `
-      <div class="rating-item-card">
-        <div class="rating-item-header">
-          <div class="rating-item-user">
-            <div class="rating-item-avatar">${userInitial}</div>
-            <div class="rating-item-info">
-              <h4>User ${index + 1}</h4>
-              <div class="rating-item-date">${dateStr}</div>
-            </div>
-          </div>
-          <div class="rating-item-stars">
-            ${renderStars(overall, '14px')}
+    const card = document.createElement('div');
+    card.className = 'rating-item-card';
+    card.style.animationDelay = `${0.1 + (index * 0.05)}s`;
+    card.innerHTML = `
+      <div class="rating-item-header">
+        <div class="rating-item-user">
+          <div class="rating-item-avatar">${userInitial}</div>
+          <div class="rating-item-info">
+            <h4>User ${index + 1}</h4>
+            <div class="rating-item-date">${dateStr}</div>
           </div>
         </div>
-        <div class="rating-item-details">
-          <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
-          <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
-          ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+        <div class="rating-item-stars">
+          ${renderStars(overall, '14px')}
         </div>
-        ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
-        ${rating.photo ? `<div class="rating-item-photo"><img src="${rating.photo}" alt="Rating photo"></div>` : ''}
       </div>
+      <div class="rating-item-details">
+        <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
+        <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
+        ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+      </div>
+      ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
+      ${rating.photo ? `<div class="rating-item-photo"><img src="${rating.photo}" alt="Rating photo"></div>` : ''}
     `;
-  }).join('');
+    container.appendChild(card);
+  });
 }
 
 // Initialize ratings view modal event listeners
