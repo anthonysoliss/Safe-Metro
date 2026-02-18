@@ -1362,8 +1362,8 @@ if (profileBtn && profileDropdown) {
     item.addEventListener('click', (e) => {
       const text = item.querySelector('span')?.textContent;
       if (text === 'My Profile') {
-        chatOverlay.classList.add('visible');
-        addMsg("Profile settings coming soon. Stay safe out there!", 'ai');
+        window.location.href = 'profile.html';
+        return;
       } else if (text === 'My Ratings') {
         chatOverlay.classList.add('visible');
         addMsg("View all your ratings here. Feature coming soon!", 'ai');
