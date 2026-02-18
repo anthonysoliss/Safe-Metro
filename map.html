@@ -570,9 +570,43 @@
   .rating-overall-stars { display: flex; gap: 4px; justify-content: center; }
   .rating-overall-stars .star { font-size: 20px; color: var(--text-muted); }
   .rating-overall-stars .star.filled { color: var(--accent); }
+  .rating-description-input { width: 100%; padding: 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; resize: vertical; min-height: 60px; }
+  .rating-description-input:focus { outline: none; border-color: var(--accent); }
+  .rating-photo-upload { display: flex; flex-direction: column; gap: 10px; }
+  .rating-photo-btn { padding: 8px 16px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .rating-photo-btn:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .rating-photo-preview { display: none; }
+  .rating-photo-preview.has-image { display: block; margin-top: 8px; }
+  .rating-photo-preview img { width: 100%; max-width: 300px; border-radius: 6px; border: 1px solid var(--border); }
+  .rating-photo-preview .remove-photo { margin-top: 6px; padding: 4px 8px; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
   .rating-submit { width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s; }
   .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
   .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  /* View All Ratings Modal */
+  .ratings-view-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; }
+  .ratings-view-modal.active { display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+  .ratings-view-modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
+  .ratings-view-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border); }
+  .ratings-view-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .ratings-view-modal-close { background: none; border: none; font-size: 28px; color: var(--text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .ratings-view-modal-close:hover { color: var(--text-primary); }
+  .ratings-view-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .rating-item-card:last-child { margin-bottom: 0; }
+  .rating-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .rating-item-user { display: flex; align-items: center; gap: 10px; }
+  .rating-item-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: 700; font-size: 16px; }
+  .rating-item-info h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .rating-item-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .rating-item-stars { display: flex; gap: 2px; margin-top: 4px; }
+  .rating-item-stars .star { font-size: 14px; color: var(--text-muted); }
+  .rating-item-stars .star.filled { color: var(--accent); }
+  .rating-item-details { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+  .rating-item-description { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+  .rating-item-photo { margin-top: 12px; }
+  .rating-item-photo img { width: 100%; max-width: 400px; border-radius: 6px; border: 1px solid var(--border); }
+  .no-ratings-message { text-align: center; padding: 40px 20px; color: var(--text-muted); }
   
   .station-rating-display { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   .station-rating-stars { display: flex; gap: 1px; }
@@ -928,10 +962,15 @@ function getStationRating(stationName) {
 
 function saveRating(stationName, ratingData) {
   if (!stationRatings[stationName]) stationRatings[stationName] = [];
-  stationRatings[stationName].push({ 
-    ...ratingData,
-    timestamp: Date.now() 
-  });
+  const ratingToSave = {
+    safety: ratingData.safety,
+    cleanliness: ratingData.cleanliness,
+    staff: ratingData.staff,
+    description: ratingData.description || '',
+    photo: ratingData.photo || null,
+    timestamp: Date.now()
+  };
+  stationRatings[stationName].push(ratingToSave);
   localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
 }
 
@@ -989,8 +1028,9 @@ function createMarkers(filterLine = 'all') {
       ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
     }
     const stationNameEscaped = station.name.replace(/'/g, "\\'");
+    const viewRatingsBtn = rating.count > 0 ? `<button class="popup-rating-btn" onclick="openRatingsViewModal('${stationNameEscaped}')" style="margin-top: 6px;">View All Ratings (${rating.count})</button>` : '';
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`, { maxWidth: 300 });
+    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 300 });
     marker.stationData = station;
     stationMarkers.push(marker);
   });
@@ -1210,7 +1250,7 @@ map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map
 
 // ── Rating Modal ──
 let currentRatingStation = null;
-let ratingData = { safety: 0, cleanliness: 0, staff: null };
+let ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
 
 function updateOverallRating() {
   const overallRatingDisplay = document.getElementById('overallRatingDisplay');
@@ -1260,7 +1300,18 @@ function openRatingModal(stationName) {
   
   currentRatingStation = stationName;
   ratingModalTitle.textContent = `Rate ${stationName}`;
-  ratingData = { safety: 0, cleanliness: 0, staff: null };
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+  
+  // Reset description and photo
+  const descriptionInput = document.getElementById('ratingDescription');
+  const photoInput = document.getElementById('ratingPhotoInput');
+  const photoPreview = document.getElementById('ratingPhotoPreview');
+  if (descriptionInput) descriptionInput.value = '';
+  if (photoInput) photoInput.value = '';
+  if (photoPreview) {
+    photoPreview.innerHTML = '';
+    photoPreview.classList.remove('has-image');
+  }
   
   // Reset Safety stars
   document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((btn, i) => {
@@ -1309,7 +1360,7 @@ function closeRatingModal() {
     ratingModal.classList.remove('active');
   }
   currentRatingStation = null;
-  ratingData = { safety: null, cleanliness: null, staff: null };
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
 }
 
 // Initialize rating modal event listeners (script is at end of body, so elements exist)
@@ -1327,11 +1378,60 @@ if (ratingModal) {
   });
 }
 
+// Photo upload handling
+const ratingPhotoBtn = document.getElementById('ratingPhotoBtn');
+const ratingPhotoInput = document.getElementById('ratingPhotoInput');
+const ratingPhotoPreview = document.getElementById('ratingPhotoPreview');
+const ratingDescription = document.getElementById('ratingDescription');
+
+if (ratingPhotoBtn && ratingPhotoInput) {
+  ratingPhotoBtn.addEventListener('click', () => {
+    ratingPhotoInput.click();
+  });
+  
+  ratingPhotoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        ratingData.photo = event.target.result;
+        if (ratingPhotoPreview) {
+          ratingPhotoPreview.innerHTML = `
+            <img src="${event.target.result}" alt="Rating photo">
+            <button type="button" class="remove-photo" onclick="removeRatingPhoto()">Remove Photo</button>
+          `;
+          ratingPhotoPreview.classList.add('has-image');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+if (ratingDescription) {
+  ratingDescription.addEventListener('input', (e) => {
+    ratingData.description = e.target.value;
+  });
+}
+
+window.removeRatingPhoto = function() {
+  ratingData.photo = null;
+  if (ratingPhotoInput) ratingPhotoInput.value = '';
+  if (ratingPhotoPreview) {
+    ratingPhotoPreview.innerHTML = '';
+    ratingPhotoPreview.classList.remove('has-image');
+  }
+};
+
 if (ratingSubmit) {
   ratingSubmit.addEventListener('click', () => {
     if (!currentRatingStation || ratingData.safety === 0 || ratingData.cleanliness === 0) {
       alert('Please rate Safety and Cleanliness');
       return;
+    }
+    // Get description
+    if (ratingDescription) {
+      ratingData.description = ratingDescription.value.trim();
     }
     saveRating(currentRatingStation, ratingData);
     closeRatingModal();
@@ -1343,8 +1443,93 @@ if (ratingSubmit) {
   });
 }
 
-// Make openRatingModal globally accessible
+// ── View All Ratings Modal ──
+window.openRatingsViewModal = function(stationName) {
+  const ratingsViewModal = document.getElementById('ratingsViewModal');
+  const ratingsViewModalTitle = document.getElementById('ratingsViewModalTitle');
+  const ratingsViewBody = document.getElementById('ratingsViewBody');
+  
+  if (!ratingsViewModal || !ratingsViewModalTitle || !ratingsViewBody) {
+    console.error('Ratings view modal elements not found');
+    return;
+  }
+  
+  ratingsViewModalTitle.textContent = `All Ratings - ${stationName}`;
+  renderAllRatings(stationName, ratingsViewBody);
+  ratingsViewModal.classList.add('active');
+};
+
+function closeRatingsViewModal() {
+  const ratingsViewModal = document.getElementById('ratingsViewModal');
+  if (ratingsViewModal) {
+    ratingsViewModal.classList.remove('active');
+  }
+}
+
+function renderAllRatings(stationName, container) {
+  const ratings = stationRatings[stationName] || [];
+  
+  if (ratings.length === 0) {
+    container.innerHTML = '<div class="no-ratings-message">No ratings yet for this station.</div>';
+    return;
+  }
+  
+  // Sort by timestamp (newest first)
+  const sortedRatings = [...ratings].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  
+  container.innerHTML = sortedRatings.map((rating, index) => {
+    const date = new Date(rating.timestamp);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const overall = rating.safety > 0 && rating.cleanliness > 0 
+      ? Math.round((rating.safety + rating.cleanliness) / 2) 
+      : (rating.safety > 0 ? rating.safety : rating.cleanliness);
+    
+    // Generate user avatar initial
+    const userInitial = String.fromCharCode(65 + (index % 26)); // A-Z
+    
+    return `
+      <div class="rating-item-card">
+        <div class="rating-item-header">
+          <div class="rating-item-user">
+            <div class="rating-item-avatar">${userInitial}</div>
+            <div class="rating-item-info">
+              <h4>User ${index + 1}</h4>
+              <div class="rating-item-date">${dateStr}</div>
+            </div>
+          </div>
+          <div class="rating-item-stars">
+            ${renderStars(overall, '14px')}
+          </div>
+        </div>
+        <div class="rating-item-details">
+          <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
+          <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
+          ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+        </div>
+        ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
+        ${rating.photo ? `<div class="rating-item-photo"><img src="${rating.photo}" alt="Rating photo"></div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// Initialize ratings view modal event listeners
+const ratingsViewModal = document.getElementById('ratingsViewModal');
+const ratingsViewModalClose = document.getElementById('ratingsViewModalClose');
+
+if (ratingsViewModalClose) {
+  ratingsViewModalClose.addEventListener('click', closeRatingsViewModal);
+}
+
+if (ratingsViewModal) {
+  ratingsViewModal.addEventListener('click', (e) => {
+    if (e.target === ratingsViewModal) closeRatingsViewModal();
+  });
+}
+
+// Make functions globally accessible
 window.openRatingModal = openRatingModal;
+window.openRatingsViewModal = openRatingsViewModal;
 </script>
 </body>
 </html>
