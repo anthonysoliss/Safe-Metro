@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Metro Safe LA</title>
+<title>Rate Metro</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -407,8 +407,15 @@
     font-size: 15px; font-weight: 400;
     padding: 10px 4px;
     caret-color: var(--accent);
+    transition: opacity 0.4s ease;
   }
-  .chat-input::placeholder { color: var(--text-muted); }
+  .chat-input::placeholder { 
+    color: var(--text-muted);
+    transition: opacity 0.4s ease;
+  }
+  .chat-input.fading {
+    opacity: 0.4;
+  }
 
   .send-btn {
     width: 40px; height: 40px; min-width: 40px;
@@ -505,11 +512,55 @@
     margin: 12px 16px !important;
   }
   .leaflet-popup-content .popup-title { font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
-  .leaflet-popup-content .popup-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+  .leaflet-popup-content .popup-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
   .leaflet-popup-content .popup-badge {
     padding: 2px 8px; border-radius: 4px;
     font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
   }
+  .popup-rating { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .popup-rating-stars { display: flex; gap: 2px; }
+  .popup-rating-stars .star { color: var(--text-muted); font-size: 14px; }
+  .popup-rating-stars .star.filled { color: var(--accent); }
+  .popup-rating-value { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .popup-rating-btn { margin-top: 8px; padding: 6px 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
+  .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+  
+  /* Rating Modal */
+  .rating-modal {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .rating-modal.active { opacity: 1; pointer-events: auto; }
+  .rating-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+  }
+  .rating-modal.active .rating-modal-content { transform: scale(1); }
+  .rating-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .rating-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .rating-modal-close { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
+  .rating-modal-close:hover { color: var(--text-primary); }
+  .rating-stars-input { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+  .rating-star-btn { background: none; border: none; font-size: 32px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; padding: 4px; }
+  .rating-star-btn:hover, .rating-star-btn.active { color: var(--accent); transform: scale(1.1); }
+  .rating-submit { width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s; }
+  .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
+  
+  .station-rating-display { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .station-rating-stars { display: flex; gap: 1px; }
+  .station-rating-stars .star { color: var(--text-muted); font-size: 11px; }
+  .station-rating-stars .star.filled { color: var(--accent); }
+  .station-rating-count { font-size: 10px; color: var(--text-muted); }
   .leaflet-popup-tip { background: var(--surface) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
   .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 18px !important; }
 
@@ -590,6 +641,24 @@
       <polygon points="20,36 16,22 20,25 24,22" fill="rgba(255,255,255,0.5)"/>
       <circle cx="20" cy="20" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
     </svg>
+  </div>
+</div>
+
+<!-- Rating Modal -->
+<div class="rating-modal" id="ratingModal">
+  <div class="rating-modal-content">
+    <div class="rating-modal-header">
+      <div class="rating-modal-title" id="ratingModalTitle">Rate Station</div>
+      <button class="rating-modal-close" id="ratingModalClose">&times;</button>
+    </div>
+    <div class="rating-stars-input" id="ratingStarsInput">
+      <button class="rating-star-btn" data-rating="1">★</button>
+      <button class="rating-star-btn" data-rating="2">★</button>
+      <button class="rating-star-btn" data-rating="3">★</button>
+      <button class="rating-star-btn" data-rating="4">★</button>
+      <button class="rating-star-btn" data-rating="5">★</button>
+    </div>
+    <button class="rating-submit" id="ratingSubmit">Submit Rating</button>
   </div>
 </div>
 
@@ -739,10 +808,40 @@ const metroStations = [
   { name: "Woodman", lines: ["G"], lat: 34.1668, lng: -118.3841 },
 ];
 
+// ── Ratings Storage ──
+let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || {};
+
+function getStationRating(stationName) {
+  const ratings = stationRatings[stationName] || [];
+  if (ratings.length === 0) return { avg: 0, count: 0 };
+  const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+  return { avg: avg.toFixed(1), count: ratings.length };
+}
+
+function saveRating(stationName, rating) {
+  if (!stationRatings[stationName]) stationRatings[stationName] = [];
+  stationRatings[stationName].push({ rating, timestamp: Date.now() });
+  localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+}
+
+function renderStars(rating, size = '14px') {
+  const full = Math.floor(rating);
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    if (i < full) {
+      html += `<span class="star filled" style="font-size:${size}">★</span>`;
+    } else {
+      html += `<span class="star" style="font-size:${size}">★</span>`;
+    }
+  }
+  return html;
+}
+
 // ── Map ──
 const defaultLat = 34.0522, defaultLng = -118.2437;
 let userLat = defaultLat, userLng = defaultLng;
 let userMarker = null, stationMarkers = [], activeFilter = 'all';
+let currentRatingStation = null;
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -764,8 +863,13 @@ function createMarkers(filterLine = 'all') {
       const line = metroLines[l];
       return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
     }).join('');
+    const rating = getStationRating(station.name);
+    const ratingHTML = rating.count > 0 
+      ? `<div class="popup-rating"><div class="popup-rating-stars">${renderStars(parseFloat(rating.avg))}</div><div class="popup-rating-value">${rating.avg} (${rating.count})</div></div>`
+      : `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
+    const stationNameEscaped = station.name.replace(/'/g, "\\'");
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>`);
+    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`, { maxWidth: 250 });
     marker.stationData = station;
     stationMarkers.push(marker);
   });
@@ -816,15 +920,22 @@ function renderStationList(searchQuery = '') {
 
   listEl.innerHTML = filtered.map(station => {
     const badges = station.lines.map(l => `<span class="station-line-badge" style="background:${metroLines[l].color}22;color:${metroLines[l].color}">${l}</span>`).join('');
-    return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}">
+    const rating = getStationRating(station.name);
+    const ratingDisplay = rating.count > 0 
+      ? `<div class="station-rating-display"><div class="station-rating-stars">${renderStars(parseFloat(rating.avg), '11px')}</div><div class="station-rating-count">${rating.avg}</div></div>`
+      : '';
+    return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}" data-name="${station.name}">
       <div class="station-color-bar" style="background:${getStationColor(station)}"></div>
-      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div></div>
+      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div>${ratingDisplay}</div>
       <svg class="station-arrow" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`;
   }).join('');
 
   listEl.querySelectorAll('.station-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't trigger if clicking on rating (allow separate click handler)
+      if (e.target.closest('.station-rating-display')) return;
+      
       const lat = +item.dataset.lat, lng = +item.dataset.lng;
       map.setView([lat, lng], 16, { animate: true, duration: 0.6 });
       stationMarkers.forEach(m => {
@@ -833,6 +944,18 @@ function renderStationList(searchQuery = '') {
       });
       closePanel();
     });
+    
+    // Add rating button to station items
+    const stationName = item.dataset.name;
+    const ratingDisplay = item.querySelector('.station-rating-display');
+    if (ratingDisplay) {
+      ratingDisplay.style.cursor = 'pointer';
+      ratingDisplay.title = 'Click to rate';
+      ratingDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openRatingModal(stationName);
+      });
+    }
   });
 }
 renderStationList();
@@ -886,6 +1009,38 @@ const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatOverlay = document.getElementById('chatOverlay');
 
+// Rotating questions for chat placeholder
+const rotatingQuestions = [
+  "Need help with directions?",
+  "How can I help?",
+  "Safest route to your destination?",
+  "Ask about station safety...",
+  "Looking for the nearest station?"
+];
+
+let currentQuestionIndex = 0;
+function rotateChatPlaceholder() {
+  // Only rotate if input is empty and not focused
+  if (chatInput.value.trim() || document.activeElement === chatInput) return;
+  
+  // Fade out
+  chatInput.classList.add('fading');
+  
+  setTimeout(() => {
+    chatInput.placeholder = rotatingQuestions[currentQuestionIndex];
+    currentQuestionIndex = (currentQuestionIndex + 1) % rotatingQuestions.length;
+    
+    // Fade in
+    setTimeout(() => {
+      chatInput.classList.remove('fading');
+    }, 50);
+  }, 400);
+}
+
+// Rotate every 5.5 seconds
+rotateChatPlaceholder();
+setInterval(rotateChatPlaceholder, 5500);
+
 chatInput.addEventListener('input', () => sendBtn.classList.toggle('active', chatInput.value.trim().length > 0));
 
 const aiR = {
@@ -931,6 +1086,57 @@ map.on('click', () => {
   if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
 });
 map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map.getCenter().lng); });
+
+// ── Rating Modal ──
+const ratingModal = document.getElementById('ratingModal');
+const ratingModalTitle = document.getElementById('ratingModalTitle');
+const ratingStarsInput = document.getElementById('ratingStarsInput');
+const ratingSubmit = document.getElementById('ratingSubmit');
+const ratingModalClose = document.getElementById('ratingModalClose');
+let selectedRating = 0;
+
+function openRatingModal(stationName) {
+  currentRatingStation = stationName;
+  ratingModalTitle.textContent = `Rate ${stationName}`;
+  selectedRating = 0;
+  ratingStarsInput.querySelectorAll('.rating-star-btn').forEach((btn, i) => {
+    btn.classList.remove('active');
+    btn.onclick = () => {
+      selectedRating = i + 1;
+      ratingStarsInput.querySelectorAll('.rating-star-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx < selectedRating);
+      });
+    };
+  });
+  ratingModal.classList.add('active');
+}
+
+function closeRatingModal() {
+  ratingModal.classList.remove('active');
+  currentRatingStation = null;
+  selectedRating = 0;
+}
+
+ratingModalClose.addEventListener('click', closeRatingModal);
+ratingModal.addEventListener('click', (e) => {
+  if (e.target === ratingModal) closeRatingModal();
+});
+
+ratingSubmit.addEventListener('click', () => {
+  if (!currentRatingStation || selectedRating === 0) {
+    alert('Please select a rating');
+    return;
+  }
+  saveRating(currentRatingStation, selectedRating);
+  closeRatingModal();
+  // Refresh markers and list to show updated ratings
+  createMarkers(activeFilter);
+  renderStationList(document.getElementById('stationSearch').value);
+  alert(`Thank you for rating ${currentRatingStation}!`);
+});
+
+// Make openRatingModal globally accessible
+window.openRatingModal = openRatingModal;
 </script>
 </body>
 </html>
