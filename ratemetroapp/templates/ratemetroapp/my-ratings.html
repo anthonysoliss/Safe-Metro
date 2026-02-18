@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>My Ratings — Metro Safe LA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --surface: rgba(18, 18, 28, 0.92);
+    --surface-light: rgba(30, 30, 45, 0.85);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; }
+  .nav-back:hover svg { stroke: var(--accent); }
+  .nav-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+  .nav-count {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+  }
+  .nav-count span { color: var(--accent); font-weight: 600; }
+
+  /* ── Page ── */
+  .page {
+    padding-top: 72px;
+    padding-bottom: 40px;
+    max-width: 560px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Summary Strip ── */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 16px;
+    animation: slideDown 0.5s ease 0.1s both;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    transition: all 0.2s ease;
+    cursor: default;
+  }
+  .summary-card:hover { border-color: rgba(245,197,24,0.2); background: var(--surface-light); }
+  .summary-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .summary-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  /* ── Filter Bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    animation: slideDown 0.5s ease 0.15s both;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  .filter-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    background: var(--surface);
+    color: var(--text-secondary);
+    user-select: none;
+    text-transform: uppercase;
+    backdrop-filter: blur(12px);
+  }
+  .filter-chip:hover { background: var(--surface-light); color: var(--text-primary); }
+  .filter-chip.active {
+    border-color: var(--accent);
+    background: rgba(245,197,24,0.1);
+    color: var(--accent);
+  }
+  .filter-chip .chip-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Sort Row ── */
+  .sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px 12px;
+    animation: slideDown 0.5s ease 0.18s both;
+  }
+  .sort-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .sort-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 24px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+  .sort-select:focus { border-color: rgba(245,197,24,0.4); }
+  .sort-select option { background: #12121c; }
+
+  /* ── Rating Cards ── */
+  .ratings-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .rating-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    transition: all 0.2s ease;
+    animation: cardIn 0.4s ease both;
+    cursor: pointer;
+  }
+  .rating-card:hover {
+    border-color: rgba(245,197,24,0.2);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-line-bar {
+    width: 4px;
+    border-radius: 2px;
+    align-self: stretch;
+    flex-shrink: 0;
+    min-height: 38px;
+  }
+  .card-station { flex: 1; min-width: 0; }
+  .card-station-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .card-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .card-line-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .card-overall {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .card-overall-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .card-overall-stars { display: flex; gap: 1px; }
+  .card-overall-stars .star { font-size: 11px; color: var(--text-muted); }
+  .card-overall-stars .star.filled { color: var(--accent); }
+
+  .card-scores {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .score-item { display: flex; flex-direction: column; gap: 5px; }
+  .score-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .score-label .emoji { font-size: 11px; }
+  .score-bar-wrap {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .score-val {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .score-staff-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .score-staff-pill.yes { background: rgba(88,167,56,0.15); color: #58a738; border: 1px solid rgba(88,167,56,0.25); }
+  .score-staff-pill.no { background: rgba(255,59,48,0.1); color: var(--danger); border: 1px solid rgba(255,59,48,0.2); }
+
+  /* Description */
+  .card-description {
+    padding: 0 16px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  /* Photo */
+  .card-photo {
+    padding: 0 16px 14px;
+  }
+  .card-photo img {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    display: block;
+    max-height: 200px;
+    object-fit: cover;
+  }
+
+  /* Card actions */
+  .card-actions {
+    display: flex;
+    border-top: 1px solid var(--border);
+  }
+  .card-action-btn {
+    flex: 1;
+    padding: 11px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .card-action-btn:not(:last-child) { border-right: 1px solid var(--border); }
+  .card-action-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .card-action-btn.delete:hover { background: rgba(255,59,48,0.07); color: var(--danger); }
+  .card-action-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── Empty ── */
+  .empty-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 32px;
+    text-align: center;
+    animation: slideUp 0.5s ease both;
+  }
+  .empty-icon-ring {
+    width: 80px; height: 80px;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin-bottom: 20px;
+    background: var(--surface);
+  }
+  .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .empty-cta {
+    margin-top: 20px;
+    padding: 10px 24px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.4px;
+  }
+  .empty-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
+
+  /* ── Delete confirm toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    z-index: 200;
+    background: #1a1a2a;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-msg { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .toast-actions { display: flex; gap: 8px; }
+  .toast-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .toast-btn.cancel { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+  .toast-btn.cancel:hover { background: rgba(255,255,255,0.14); }
+  .toast-btn.confirm { background: var(--danger); color: #fff; }
+  .toast-btn.confirm:hover { box-shadow: 0 0 12px rgba(255,59,48,0.4); }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <a class="nav-back" href="#" onclick="history.back(); return false;">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <div class="nav-title">My Ratings</div>
+  <div class="nav-count" id="navCount"><span>0</span> total</div>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-msg">Delete this rating?</div>
+  <div class="toast-actions">
+    <button class="toast-btn cancel" onclick="cancelDelete()">Cancel</button>
+    <button class="toast-btn confirm" onclick="confirmDelete()">Delete</button>
+  </div>
+</div>
+
+<div class="page">
+  <!-- Summary strip -->
+  <div class="summary-strip">
+    <div class="summary-card">
+      <div class="summary-val" id="sumTotal">0</div>
+      <div class="summary-lbl">Ratings</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-val" id="sumSafety">—</div>
+      <div class="summary-lbl">Avg Safety</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-val" id="sumClean">—</div>
+      <div class="summary-lbl">Avg Clean</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar">
+    <div class="filter-chip active" data-line="all">All Lines</div>
+  </div>
+
+  <!-- Sort row -->
+  <div class="sort-row">
+    <div class="sort-label" id="sortResultCount">Showing all</div>
+    <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+      <option value="newest">Newest First</option>
+      <option value="oldest">Oldest First</option>
+      <option value="highest">Highest Rated</option>
+      <option value="lowest">Lowest Rated</option>
+    </select>
+  </div>
+
+  <!-- Cards -->
+  <div class="ratings-list" id="ratingsList"></div>
+</div>
+
+<script>
+// Django URLs injected for JavaScript
+const DJANGO_URLS = {
+  map: '{% url "ratemetroapp:map" %}',
+  profile: '{% url "ratemetroapp:profile" %}',
+  myRatings: '{% url "ratemetroapp:my_ratings" %}',
+  settings: '{% url "ratemetroapp:settings" %}',
+  signIn: '{% url "ratemetroapp:sign_in" %}',
+};
+const lineColors = {
+  A:'#0072bc', B:'#e3242b', C:'#58a738', D:'#a05da5',
+  E:'#fdb913', G:'#f58220', J:'#b5a07e', K:'#e96bb0', L:'#c4a73f'
+};
+const lineTextColors = {
+  A:'#fff', B:'#fff', C:'#fff', D:'#fff',
+  E:'#000', G:'#fff', J:'#fff', K:'#fff', L:'#fff'
+};
+
+// Load ratings from localStorage
+let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings') || '{}');
+
+// Flatten all ratings into array with station name
+function flattenRatings() {
+  const all = [];
+  Object.entries(stationRatings).forEach(([station, ratings]) => {
+    ratings.forEach((r, idx) => {
+      all.push({ ...r, station, _stationKey: station, _idx: idx, _id: `${station}__${idx}` });
+    });
+  });
+  return all;
+}
+
+// Demo data if no real ratings
+function getDemoRatings() {
+  return [
+    { station:'Union Station', lines:['B','D','L'], safety:5, cleanliness:4, staff:'yes', description:'Great station overall. Plenty of security visible and it was very clean.', timestamp: Date.now()-86400000*0.5, _id:'demo0' },
+    { station:'7th St/Metro Center', lines:['A','B','D','E'], safety:3, cleanliness:3, staff:'yes', description:'Busy but manageable. A bit crowded during rush hour.', timestamp: Date.now()-86400000*2, _id:'demo1' },
+    { station:'Hollywood/Vine', lines:['B'], safety:2, cleanliness:2, staff:'no', description:'Felt uneasy. No staff visible and the platform was messy.', timestamp: Date.now()-86400000*5, _id:'demo2' },
+    { station:'Culver City', lines:['E'], safety:5, cleanliness:5, staff:'yes', timestamp: Date.now()-86400000*8, _id:'demo3' },
+    { station:'North Hollywood', lines:['B','G'], safety:4, cleanliness:3, staff:'yes', description:'Good experience. Staff were around and it felt safe.', timestamp: Date.now()-86400000*12, _id:'demo4' },
+    { station:'Downtown Santa Monica', lines:['E'], safety:5, cleanliness:5, staff:'yes', description:'By far the cleanest station I\'ve been to.', timestamp: Date.now()-86400000*18, _id:'demo5' },
+    { station:'Wilshire/Vermont', lines:['B','D'], safety:3, cleanliness:2, staff:'no', timestamp: Date.now()-86400000*22, _id:'demo6' },
+  ];
+}
+
+let allRatings = flattenRatings();
+const isDemo = allRatings.length === 0;
+if (isDemo) allRatings = getDemoRatings();
+
+let activeLineFilter = 'all';
+let pendingDeleteId = null;
+
+// Guess line from station name (for real data that doesn't store line)
+function guessLine(stationName) {
+  // rough heuristic based on station list from main app
+  const map = {
+    'Union Station':'B','Civic Center':'B','Pershing Square':'B','7th St':'A',
+    'Hollywood':'B','North Hollywood':'B','Westlake':'B','Vermont':'B',
+    'Universal':'B','Wilshire':'D','Century City':'D','Westwood':'D',
+    'Culver City':'E','Santa Monica':'E','Expo':'E','Palms':'E',
+    'Pico':'A','Long Beach':'A','Compton':'A','Willowbrook':'A',
+    'Redondo Beach':'C','Aviation':'C','Norwalk':'C',
+    'Chinatown':'L','Pasadena':'L','Arcadia':'L','Azusa':'L',
+    'Chatsworth':'G','Van Nuys':'G','Reseda':'G',
+    'Leimert':'K','Hyde Park':'K','Inglewood':'K',
+  };
+  for (const [key, line] of Object.entries(map)) {
+    if (stationName.includes(key)) return line;
+  }
+  return 'A';
+}
+
+function getOverall(r) {
+  if (r.safety > 0 && r.cleanliness > 0) return Math.round((r.safety + r.cleanliness) / 2);
+  return r.safety || r.cleanliness || 0;
+}
+
+function renderStars(n, size = '12px') {
+  return Array.from({length:5}, (_,i) =>
+    `<span class="star${i < n ? ' filled' : ''}" style="font-size:${size}">★</span>`
+  ).join('');
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function buildFilters() {
+  const lines = new Set();
+  allRatings.forEach(r => {
+    const ls = r.lines || [guessLine(r.station)];
+    ls.forEach(l => lines.add(l));
+  });
+  const bar = document.getElementById('filterBar');
+  bar.innerHTML = `<div class="filter-chip active" data-line="all">All Lines</div>`;
+  [...lines].sort().forEach(line => {
+    const color = lineColors[line] || '#f5c518';
+    const chip = document.createElement('div');
+    chip.className = 'filter-chip';
+    chip.dataset.line = line;
+    chip.innerHTML = `<div class="chip-dot" style="background:${color}"></div>${line} Line`;
+    bar.appendChild(chip);
+  });
+  bar.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      bar.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeLineFilter = chip.dataset.line;
+      applyFilters();
+    });
+  });
+}
+
+function buildSummary(ratings) {
+  const total = ratings.length;
+  const safetyArr = ratings.filter(r => r.safety > 0).map(r => r.safety);
+  const cleanArr = ratings.filter(r => r.cleanliness > 0).map(r => r.cleanliness);
+  const safetyAvg = safetyArr.length ? (safetyArr.reduce((a,b)=>a+b,0)/safetyArr.length).toFixed(1) : '—';
+  const cleanAvg = cleanArr.length ? (cleanArr.reduce((a,b)=>a+b,0)/cleanArr.length).toFixed(1) : '—';
+  document.getElementById('sumTotal').textContent = total;
+  document.getElementById('sumSafety').textContent = safetyAvg;
+  document.getElementById('sumClean').textContent = cleanAvg;
+  document.getElementById('navCount').innerHTML = `<span>${total}</span> total`;
+}
+
+function applyFilters() {
+  const sort = document.getElementById('sortSelect').value;
+  let filtered = [...allRatings];
+
+  if (activeLineFilter !== 'all') {
+    filtered = filtered.filter(r => {
+      const ls = r.lines || [guessLine(r.station)];
+      return ls.includes(activeLineFilter);
+    });
+  }
+
+  if (sort === 'newest') filtered.sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
+  else if (sort === 'oldest') filtered.sort((a,b) => (a.timestamp||0)-(b.timestamp||0));
+  else if (sort === 'highest') filtered.sort((a,b) => getOverall(b)-getOverall(a));
+  else if (sort === 'lowest') filtered.sort((a,b) => getOverall(a)-getOverall(b));
+
+  document.getElementById('sortResultCount').textContent =
+    filtered.length === allRatings.length
+      ? `Showing all ${filtered.length}`
+      : `${filtered.length} of ${allRatings.length}`;
+
+  renderCards(filtered);
+  buildSummary(filtered);
+}
+
+function renderCards(ratings) {
+  const list = document.getElementById('ratingsList');
+  list.innerHTML = '';
+
+  if (!ratings.length) {
+    list.innerHTML = `<div class="empty-wrap">
+      <div class="empty-icon-ring">⭐</div>
+      <div class="empty-title">No ratings yet</div>
+      <div class="empty-sub">Head back to the map and rate a station<br>to see it here.</div>
+      <button class="empty-cta" onclick="window.location.href = DJANGO_URLS.map">Open Map</button>
+    </div>`;
+    return;
+  }
+
+  ratings.forEach((r, idx) => {
+    const overall = getOverall(r);
+    const lines = r.lines || [guessLine(r.station)];
+    const primaryLine = lines[0];
+    const color = lineColors[primaryLine] || '#f5c518';
+    const textColor = lineTextColors[primaryLine] || '#fff';
+    const date = formatDate(r.timestamp || Date.now());
+    const safetyPct = ((r.safety || 0) / 5 * 100);
+    const cleanPct = ((r.cleanliness || 0) / 5 * 100);
+
+    const staffHTML = r.staff
+      ? `<span class="score-staff-pill ${r.staff}">${r.staff === 'yes' ? '👍 Seen' : '👎 None'}</span>`
+      : `<span style="color:var(--text-muted);font-size:11px">—</span>`;
+
+    const badgesHTML = lines.map(l =>
+      `<span class="card-line-badge" style="background:${lineColors[l]}22;color:${lineColors[l]}">${l}</span>`
+    ).join('');
+
+    const descHTML = r.description
+      ? `<div class="card-description">${r.description}</div>` : '';
+
+    const photoHTML = r.photo
+      ? `<div class="card-photo"><img src="${r.photo}" alt="Station photo" loading="lazy"></div>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'rating-card';
+    card.style.animationDelay = `${idx * 0.05}s`;
+    card.dataset.id = r._id;
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-line-bar" style="background:${color}"></div>
+        <div class="card-station">
+          <div class="card-station-name">${r.station}</div>
+          <div class="card-meta">
+            <span class="card-date">${date}</span>
+            ${badgesHTML}
+          </div>
+        </div>
+        <div class="card-overall">
+          <div class="card-overall-val">${overall}</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+            ${renderStars(overall, '10px')}
+            <span style="font-size:9px;color:var(--text-muted);font-weight:600">/ 5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-scores">
+        <div class="score-item">
+          <div class="score-label"><span class="emoji">🛡️</span> Safety</div>
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${safetyPct}%"></div></div>
+          <div class="score-val">${r.safety || 0}/5</div>
+        </div>
+        <div class="score-item">
+          <div class="score-label"><span class="emoji">🧹</span> Clean</div>
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${cleanPct}%"></div></div>
+          <div class="score-val">${r.cleanliness || 0}/5</div>
+        </div>
+        <div class="score-item">
+          <div class="score-label"><span class="emoji">👮</span> Staff</div>
+          <div style="margin-top:4px">${staffHTML}</div>
+        </div>
+      </div>
+
+      ${descHTML}${photoHTML}
+
+      <div class="card-actions">
+        <button class="card-action-btn" onclick="viewOnMap('${r.station.replace(/'/g,"\\'")}')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          View on Map
+        </button>
+        <button class="card-action-btn" onclick="shareRating(this, '${r.station.replace(/'/g,"\\'")}', ${overall})">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </button>
+        <button class="card-action-btn delete" onclick="deleteRating('${(r._id || '').replace(/'/g,"\\'")}', this)">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Delete
+        </button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  // Animate bars after paint
+  requestAnimationFrame(() => {
+    list.querySelectorAll('.score-bar').forEach(bar => {
+      const w = bar.style.width;
+      bar.style.width = '0%';
+      setTimeout(() => { bar.style.width = w; }, 80);
+    });
+  });
+}
+
+function viewOnMap(station) {
+  alert(`Navigate to map and select: ${station}\n(Link to map page coming soon)`);
+}
+
+async function shareRating(btn, station, overall) {
+  const text = `I rated ${station} ${overall}/5 on Metro Safe LA ⭐`;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Metro Safe LA', text }); } catch {}
+  } else {
+    await navigator.clipboard.writeText(text);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  }
+}
+
+let deleteCardEl = null;
+function deleteRating(id, btn) {
+  if (isDemo) { alert('Demo mode — deletion disabled.'); return; }
+  pendingDeleteId = id;
+  deleteCardEl = btn.closest('.rating-card');
+  document.getElementById('toast').classList.add('show');
+}
+function cancelDelete() {
+  pendingDeleteId = null;
+  deleteCardEl = null;
+  document.getElementById('toast').classList.remove('show');
+}
+function confirmDelete() {
+  if (!pendingDeleteId) return;
+  // Parse id: "stationName__idx"
+  const parts = pendingDeleteId.split('__');
+  const stationKey = parts.slice(0, -1).join('__');
+  const idx = parseInt(parts[parts.length-1]);
+  if (stationRatings[stationKey]) {
+    stationRatings[stationKey].splice(idx, 1);
+    if (stationRatings[stationKey].length === 0) delete stationRatings[stationKey];
+    localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+    allRatings = flattenRatings();
+  }
+  if (deleteCardEl) {
+    deleteCardEl.style.opacity = '0';
+    deleteCardEl.style.transform = 'scale(0.95)';
+    deleteCardEl.style.transition = 'all 0.25s ease';
+    setTimeout(() => { deleteCardEl.remove(); }, 250);
+  }
+  cancelDelete();
+  applyFilters();
+}
+
+// Init
+buildFilters();
+applyFilters();
+</script>
+</body>
+</html>

@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Profile — Metro Safe LA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --surface: rgba(18, 18, 28, 0.92);
+    --surface-light: rgba(30, 30, 45, 0.85);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Background grid texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Top Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; }
+  .nav-back:hover svg { stroke: var(--accent); }
+
+  .nav-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+  }
+
+  .nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-action-btn {
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+  }
+  .nav-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-action-btn.primary {
+    background: var(--accent);
+    color: var(--bg-dark);
+    border-color: var(--accent);
+  }
+  .nav-action-btn.primary:hover { box-shadow: 0 0 16px var(--accent-glow); transform: translateY(-1px); }
+
+  /* ── Page Layout ── */
+  .page {
+    padding-top: 72px;
+    padding-bottom: 40px;
+    max-width: 560px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Hero Card ── */
+  .hero-card {
+    margin: 20px 16px 0;
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.5s ease 0.1s both;
+  }
+
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(245,197,24,0.08), transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(245,197,24,0.3), rgba(245,197,24,0.08));
+    border: 2px solid rgba(245,197,24,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(245,197,24,0.15);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .avatar:hover { box-shadow: 0 0 30px rgba(245,197,24,0.3); border-color: var(--accent); }
+  .avatar-edit {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .avatar-edit svg { width: 11px; height: 11px; stroke: #0a0a0f; fill: none; stroke-width: 2.5; }
+
+  .hero-info { flex: 1; min-width: 0; padding-top: 4px; }
+  .hero-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .hero-handle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: rgba(245,197,24,0.1);
+    border: 1px solid rgba(245,197,24,0.25);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .hero-badge .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease infinite;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .stat-cell {
+    background: rgba(255,255,255,0.03);
+    padding: 14px 12px;
+    text-align: center;
+    transition: background 0.2s;
+    cursor: default;
+  }
+  .stat-cell:hover { background: rgba(255,255,255,0.06); }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+  .stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  /* ── Section Cards ── */
+  .section-card {
+    margin: 12px 16px 0;
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    animation: slideUp 0.5s ease both;
+  }
+  .section-card:nth-child(3) { animation-delay: 0.15s; }
+  .section-card:nth-child(4) { animation-delay: 0.2s; }
+  .section-card:nth-child(5) { animation-delay: 0.25s; }
+  .section-card:nth-child(6) { animation-delay: 0.3s; }
+  .section-card:nth-child(7) { animation-delay: 0.35s; }
+
+  .section-header {
+    padding: 14px 16px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Edit Form ── */
+  .form-field {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .form-field:last-child { border-bottom: none; }
+  .form-field:hover { background: rgba(255,255,255,0.03); }
+
+  .field-icon {
+    width: 34px; height: 34px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .field-icon svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; }
+
+  .field-body { flex: 1; min-width: 0; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .field-input {
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    caret-color: var(--accent);
+    padding: 0;
+  }
+  .field-input::placeholder { color: var(--text-muted); font-weight: 400; }
+  .field-chevron {
+    width: 14px; height: 14px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .form-field:hover .field-chevron { opacity: 1; }
+
+  /* ── My Ratings ── */
+  .rating-row {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .rating-row:last-child { border-bottom: none; }
+  .rating-row:hover { background: rgba(255,255,255,0.03); }
+
+  .rating-color-bar {
+    width: 4px;
+    height: 36px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .rating-station-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rating-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .rating-stars-row {
+    display: flex;
+    gap: 1px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .rating-stars-row .star {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .rating-stars-row .star.filled { color: var(--accent); }
+
+  .empty-state {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .empty-state .empty-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+
+  /* ── Settings Rows ── */
+  .setting-row {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row:hover { background: rgba(255,255,255,0.03); }
+  .setting-row.danger:hover { background: rgba(255,59,48,0.05); }
+  .setting-row.danger .setting-label { color: var(--danger); }
+  .setting-row.danger .field-icon svg { stroke: var(--danger); }
+
+  .setting-label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .setting-value {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-right: 4px;
+  }
+
+  /* Toggle */
+  .toggle-wrap { flex-shrink: 0; }
+  .toggle {
+    width: 44px; height: 26px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.25s ease;
+    border: none;
+    outline: none;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* ── Activity Chart ── */
+  .chart-wrap {
+    padding: 16px;
+  }
+  .chart-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 3px;
+  }
+  .activity-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+  }
+  .activity-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: rgba(245,197,24,0.06);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .activity-cell:hover { transform: scale(1.3); z-index: 1; }
+  .activity-cell.l1 { background: rgba(245,197,24,0.15); }
+  .activity-cell.l2 { background: rgba(245,197,24,0.3); }
+  .activity-cell.l3 { background: rgba(245,197,24,0.55); }
+  .activity-cell.l4 { background: rgba(245,197,24,0.8); }
+  .chart-months {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 3px;
+    margin-top: 6px;
+  }
+  .chart-month {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0;
+  }
+
+  /* ── Achievements ── */
+  .achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 16px;
+  }
+  .achievement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .achievement:hover { transform: scale(1.05); }
+  .achievement-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    transition: all 0.2s ease;
+  }
+  .achievement.earned .achievement-icon {
+    background: rgba(245,197,24,0.1);
+    border-color: rgba(245,197,24,0.25);
+    box-shadow: 0 0 16px rgba(245,197,24,0.1);
+  }
+  .achievement:hover .achievement-icon { border-color: rgba(245,197,24,0.4); }
+  .achievement.locked { opacity: 0.35; }
+  .achievement-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+  }
+  .achievement.earned .achievement-label { color: var(--text-secondary); }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Edit mode */
+  .editing .field-input { border-bottom: 1px solid rgba(245,197,24,0.3); padding-bottom: 2px; }
+  .editing .field-input:focus { border-bottom-color: var(--accent); }
+
+  @media (max-width: 480px) {
+    .achievements-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .achievement-icon { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <a class="nav-back" href="#" id="navBackBtn">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <div class="nav-title">My Profile</div>
+  <div class="nav-right">
+    <button class="nav-action-btn" id="editToggleBtn" onclick="toggleEdit()">Edit</button>
+    <button class="nav-action-btn primary" id="saveBtn" onclick="saveProfile()" style="display:none">Save</button>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Hero Card -->
+  <div class="hero-card">
+    <div class="hero-top">
+      <div class="avatar-wrap">
+        <div class="avatar" id="avatarEl">TS</div>
+        <div class="avatar-edit" id="avatarEditBtn" style="display:none;">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
+      </div>
+      <div class="hero-info">
+        <div class="hero-name" id="displayName">Toni Solis</div>
+        <div class="hero-handle" id="displayHandle">@toni_metro</div>
+        <div class="hero-badge"><div class="badge-dot"></div>Active Contributor</div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-cell">
+        <div class="stat-value" id="statRatings">12</div>
+        <div class="stat-label">Ratings</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" id="statStations">8</div>
+        <div class="stat-label">Stations</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" id="statStreak">5</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Profile -->
+  <div class="section-card" id="editCard">
+    <div class="section-header">Personal Info</div>
+
+    <div class="form-field">
+      <div class="field-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+      </div>
+      <div class="field-body">
+        <div class="field-label">Full Name</div>
+        <input class="field-input" id="inputName" type="text" value="Toni Solis" readonly placeholder="Your name" />
+      </div>
+      <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+
+    <div class="form-field">
+      <div class="field-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <div class="field-body">
+        <div class="field-label">Email</div>
+        <input class="field-input" id="inputEmail" type="email" value="toni@metrosafela.app" readonly placeholder="your@email.com" />
+      </div>
+      <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+
+    <div class="form-field">
+      <div class="field-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="field-body">
+        <div class="field-label">Username</div>
+        <input class="field-input" id="inputUsername" type="text" value="@toni_metro" readonly placeholder="@username" />
+      </div>
+      <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+
+    <div class="form-field">
+      <div class="field-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <div class="field-body">
+        <div class="field-label">Home Station</div>
+        <input class="field-input" id="inputStation" type="text" value="7th St/Metro Center" readonly placeholder="Pick a station" />
+      </div>
+      <svg class="field-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+  </div>
+
+  <!-- Activity Chart -->
+  <div class="section-card">
+    <div class="section-header">Rating Activity</div>
+    <div class="chart-wrap">
+      <div class="chart-label">Past 12 Months</div>
+      <div class="activity-grid" id="activityGrid"></div>
+      <div class="chart-months" id="chartMonths"></div>
+    </div>
+  </div>
+
+  <!-- Achievements -->
+  <div class="section-card">
+    <div class="section-header">Achievements</div>
+    <div class="achievements-grid">
+      <div class="achievement earned" title="First rating submitted">
+        <div class="achievement-icon">⭐</div>
+        <div class="achievement-label">First Star</div>
+      </div>
+      <div class="achievement earned" title="Rated 10 stations">
+        <div class="achievement-icon">🗺️</div>
+        <div class="achievement-label">Explorer</div>
+      </div>
+      <div class="achievement earned" title="5-day rating streak">
+        <div class="achievement-icon">🔥</div>
+        <div class="achievement-label">On Fire</div>
+      </div>
+      <div class="achievement locked" title="Rate 25 stations">
+        <div class="achievement-icon">🏆</div>
+        <div class="achievement-label">Champion</div>
+      </div>
+      <div class="achievement locked" title="Rate all A Line stations">
+        <div class="achievement-icon">🚆</div>
+        <div class="achievement-label">Line Rider</div>
+      </div>
+      <div class="achievement locked" title="Submit 3 photos">
+        <div class="achievement-icon">📸</div>
+        <div class="achievement-label">Photog</div>
+      </div>
+      <div class="achievement locked" title="Rate same station 5 times">
+        <div class="achievement-icon">📍</div>
+        <div class="achievement-label">Regular</div>
+      </div>
+      <div class="achievement locked" title="30-day streak">
+        <div class="achievement-icon">💎</div>
+        <div class="achievement-label">Diamond</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Ratings -->
+  <div class="section-card">
+    <div class="section-header">Recent Ratings</div>
+    <div id="myRatingsList">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="section-card">
+    <div class="section-header">Preferences</div>
+
+    <div class="setting-row" onclick="toggleSetting(this)">
+      <div class="field-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <span class="setting-label">Anonymous Ratings</span>
+      <button class="toggle" onclick="event.stopPropagation(); this.classList.toggle('on')"></button>
+    </div>
+
+  </div>
+
+  <!-- Account -->
+  <div class="section-card">
+    <div class="section-header">Account</div>
+    <div class="setting-row" onclick="handleSignOut()">
+      <div class="field-icon" style="border-color: rgba(255,59,48,0.2); background: rgba(255,59,48,0.06);">
+        <svg viewBox="0 0 24 24" style="stroke: var(--danger)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+      <span class="setting-label" style="color: var(--danger);">Sign Out</span>
+      <svg class="field-chevron" viewBox="0 0 24 24" style="opacity:1; stroke: rgba(255,59,48,0.4)"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+  </div>
+
+  <!-- Delete Account -->
+  <div class="section-card" style="margin-bottom: 0;">
+    <div class="section-header">Delete Account</div>
+    <div class="setting-row danger" onclick="handleDeleteAccount()">
+      <div class="field-icon" style="border-color: rgba(255,59,48,0.2); background: rgba(255,59,48,0.06);">
+        <svg viewBox="0 0 24 24" style="stroke: var(--danger)"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </div>
+      <span class="setting-label" style="color: var(--danger);">Delete Account</span>
+      <svg class="field-chevron" viewBox="0 0 24 24" style="opacity:1; stroke: rgba(255,59,48,0.4)"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Django URLs injected for JavaScript
+const DJANGO_URLS = {
+  map: '{% url "ratemetroapp:map" %}',
+  profile: '{% url "ratemetroapp:profile" %}',
+  myRatings: '{% url "ratemetroapp:my_ratings" %}',
+  settings: '{% url "ratemetroapp:settings" %}',
+  signIn: '{% url "ratemetroapp:sign_in" %}',
+};
+// ── Activity Grid ──
+const months = ['F','M','A','M','J','J','A','S','O','N','D','J'];
+const monthsFull = ['Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan'];
+const gridEl = document.getElementById('activityGrid');
+const monthsEl = document.getElementById('chartMonths');
+const levels = [0,0,1,0,2,1,0,3,2,1,4,3];
+
+months.forEach((m, mi) => {
+  const col = document.createElement('div');
+  col.className = 'activity-col';
+  for (let w = 0; w < 4; w++) {
+    const cell = document.createElement('div');
+    const r = Math.random();
+    const base = levels[mi];
+    let lvl = 0;
+    if (base > 0 && r > 0.3) lvl = Math.min(base, Math.floor(r * (base + 1)));
+    cell.className = `activity-cell${lvl > 0 ? ' l' + lvl : ''}`;
+    cell.title = `${monthsFull[mi]} — ${lvl > 0 ? lvl + ' ratings' : 'No activity'}`;
+    col.appendChild(cell);
+  }
+  gridEl.appendChild(col);
+
+  const lbl = document.createElement('div');
+  lbl.className = 'chart-month';
+  lbl.textContent = m;
+  monthsEl.appendChild(lbl);
+});
+
+// ── Ratings List ──
+const lineColors = {
+  A:'#0072bc', B:'#e3242b', C:'#58a738', D:'#a05da5',
+  E:'#fdb913', G:'#f58220', J:'#b5a07e', K:'#e96bb0', L:'#c4a73f'
+};
+
+const sampleRatings = JSON.parse(localStorage.getItem('metroStationRatings') || '{}');
+const listEl = document.getElementById('myRatingsList');
+
+const allRatings = [];
+Object.entries(sampleRatings).forEach(([station, ratings]) => {
+  ratings.forEach(r => allRatings.push({ station, ...r }));
+});
+allRatings.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+// Demo entries if no real data
+const displayRatings = allRatings.length > 0 ? allRatings.slice(0, 5) : [
+  { station: '7th St/Metro Center', safety: 4, cleanliness: 3, staff: 'yes', timestamp: Date.now() - 86400000, line: 'A' },
+  { station: 'Union Station', safety: 5, cleanliness: 4, staff: 'yes', timestamp: Date.now() - 172800000, line: 'B' },
+  { station: 'Hollywood/Vine', safety: 3, cleanliness: 2, staff: 'no', timestamp: Date.now() - 259200000, line: 'B' },
+  { station: 'Culver City', safety: 5, cleanliness: 5, staff: 'yes', timestamp: Date.now() - 345600000, line: 'E' },
+];
+
+function renderStars(n) {
+  return Array.from({length:5}, (_,i) =>
+    `<span class="star${i < n ? ' filled' : ''}">★</span>`
+  ).join('');
+}
+
+if (displayRatings.length === 0) {
+  listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div>No ratings yet.<br>Start rating stations to see them here.</div>`;
+} else {
+  displayRatings.forEach((r, i) => {
+    const overall = (r.safety > 0 && r.cleanliness > 0) ? Math.round((r.safety + r.cleanliness) / 2) : (r.safety || r.cleanliness || 0);
+    const date = new Date(r.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const lineKey = r.line || 'A';
+    const color = lineColors[lineKey] || '#f5c518';
+    const row = document.createElement('div');
+    row.className = 'rating-row';
+    row.innerHTML = `
+      <div class="rating-color-bar" style="background:${color}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="rating-station-name">${r.station}</div>
+        <div class="rating-meta">${date} · ${r.staff ? (r.staff === 'yes' ? '👮 Staff seen' : 'No staff') : ''}</div>
+      </div>
+      <div class="rating-stars-row">${renderStars(overall)}</div>
+    `;
+    listEl.appendChild(row);
+  });
+
+  // Update stats
+  const uniqueStations = new Set(displayRatings.map(r => r.station)).size;
+  document.getElementById('statRatings').textContent = displayRatings.length;
+  document.getElementById('statStations').textContent = uniqueStations;
+}
+
+// ── Edit Mode ──
+let editing = false;
+let hasUnsavedChanges = false;
+let originalValues = {};
+let originalAvatar = null;
+let newAvatarData = null;
+const editInputs = ['inputName','inputEmail','inputUsername','inputStation'];
+
+// Store original values when entering edit mode
+function storeOriginalValues() {
+  originalValues = {};
+  editInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) originalValues[id] = el.value;
+  });
+  // Store original avatar state
+  const avatarEl = document.getElementById('avatarEl');
+  originalAvatar = {
+    isImage: avatarIsImage,
+    imageUrl: avatarEl.style.backgroundImage || '',
+    text: avatarEl.textContent || ''
+  };
+  newAvatarData = null;
+}
+
+// Check if values have changed
+function checkForChanges() {
+  hasUnsavedChanges = false;
+  editInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && originalValues[id] !== undefined && el.value !== originalValues[id]) {
+      hasUnsavedChanges = true;
+    }
+  });
+  // Check avatar changes
+  if (newAvatarData !== null) {
+    hasUnsavedChanges = true;
+  }
+  return hasUnsavedChanges;
+}
+
+function toggleEdit() {
+  const btn = document.getElementById('editToggleBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const card = document.getElementById('editCard');
+
+  if (editing) {
+    // Exiting edit mode - check for unsaved changes
+    if (checkForChanges()) {
+      if (!confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+        return; // User wants to stay in edit mode
+      }
+    }
+    // Cancel edit mode - restore original values
+    editing = false;
+    editInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.setAttribute('readonly', true);
+        // Restore original values
+        if (originalValues[id] !== undefined) {
+          el.value = originalValues[id];
+        }
+      }
+    });
+    // Restore original avatar
+    if (originalAvatar) {
+      const avatarEl = document.getElementById('avatarEl');
+      avatarIsImage = originalAvatar.isImage;
+      if (originalAvatar.isImage && originalAvatar.imageUrl) {
+        avatarEl.style.backgroundImage = originalAvatar.imageUrl;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+        avatarEl.textContent = '';
+      } else {
+        avatarEl.style.backgroundImage = '';
+        avatarEl.textContent = originalAvatar.text;
+      }
+      newAvatarData = null;
+    }
+    // Hide avatar edit button
+    document.getElementById('avatarEditBtn').style.display = 'none';
+    document.getElementById('avatarEl').style.cursor = 'default';
+    btn.textContent = 'Edit';
+    saveBtn.style.display = 'none';
+    card.classList.remove('editing');
+    hasUnsavedChanges = false;
+  } else {
+    // Entering edit mode
+    editing = true;
+    storeOriginalValues();
+    editInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.removeAttribute('readonly');
+        if (id === 'inputName') el.focus();
+        // Track changes
+        el.addEventListener('input', checkForChanges);
+      }
+    });
+    // Show avatar edit button and make avatar clickable
+    document.getElementById('avatarEditBtn').style.display = 'flex';
+    document.getElementById('avatarEl').style.cursor = 'pointer';
+    btn.textContent = 'Cancel';
+    saveBtn.style.display = 'block';
+    card.classList.add('editing');
+  }
+}
+
+function saveProfile() {
+  const name = document.getElementById('inputName').value.trim();
+  const username = document.getElementById('inputUsername').value.trim();
+  const email = document.getElementById('inputEmail').value.trim();
+  const station = document.getElementById('inputStation').value.trim();
+  
+  // Save name
+  if (name) {
+    document.getElementById('displayName').textContent = name;
+    // Update avatar initials if no image
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    if (!avatarIsImage) {
+      document.getElementById('avatarEl').textContent = initials;
+    }
+  }
+  
+  // Save username
+  if (username) {
+    document.getElementById('displayHandle').textContent = username;
+  }
+  
+  // Save avatar if changed
+  if (newAvatarData) {
+    // Store the avatar data (base64) - in production, you'd upload this to server
+    localStorage.setItem('userAvatar', newAvatarData);
+    // Update originalAvatar to current state
+    const avatarEl = document.getElementById('avatarEl');
+    originalAvatar = {
+      isImage: true,
+      imageUrl: avatarEl.style.backgroundImage,
+      text: ''
+    };
+    newAvatarData = null;
+  }
+  
+  // Save other profile data to localStorage (in production, send to Django backend)
+  const profileData = {
+    name: name,
+    username: username,
+    email: email,
+    station: station,
+    avatar: newAvatarData || localStorage.getItem('userAvatar')
+  };
+  localStorage.setItem('userProfile', JSON.stringify(profileData));
+  
+  hasUnsavedChanges = false;
+  toggleEdit();
+}
+
+// Warn before leaving page with unsaved changes
+window.addEventListener('beforeunload', function(e) {
+  if (hasUnsavedChanges && editing) {
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    return e.returnValue;
+  }
+});
+
+// Intercept back button and navigation
+const navBackBtn = document.getElementById('navBackBtn');
+if (navBackBtn) {
+  navBackBtn.addEventListener('click', function(e) {
+    if (hasUnsavedChanges && editing) {
+      e.preventDefault();
+      if (confirm('You have unsaved changes. Are you sure you want to go back without saving?')) {
+        hasUnsavedChanges = false;
+        window.location.href = DJANGO_URLS.map;
+      }
+      return false;
+    } else {
+      // Normal navigation
+      window.location.href = DJANGO_URLS.map;
+      return false;
+    }
+  });
+}
+
+// Also intercept browser back button
+window.addEventListener('popstate', function(e) {
+  if (hasUnsavedChanges && editing) {
+    if (confirm('You have unsaved changes. Are you sure you want to leave without saving?')) {
+      hasUnsavedChanges = false;
+      window.history.back();
+    } else {
+      // Push state again to prevent navigation
+      window.history.pushState(null, null, window.location.href);
+    }
+  }
+});
+
+// ── Avatar ──
+let avatarIsImage = false;
+
+// Load saved avatar on page load
+window.addEventListener('DOMContentLoaded', function() {
+  const savedAvatar = localStorage.getItem('userAvatar');
+  if (savedAvatar) {
+    const avatarEl = document.getElementById('avatarEl');
+    avatarIsImage = true;
+    avatarEl.textContent = '';
+    avatarEl.style.backgroundImage = `url(${savedAvatar})`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+  }
+});
+
+// Setup avatar edit button click handler
+const avatarEditBtn = document.getElementById('avatarEditBtn');
+const avatarEl = document.getElementById('avatarEl');
+const avatarInput = document.getElementById('avatarInput');
+
+if (avatarEditBtn && avatarInput) {
+  avatarEditBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (editing) {
+      avatarInput.click();
+    }
+  });
+  
+  avatarEl.addEventListener('click', function(e) {
+    if (editing) {
+      avatarInput.click();
+    }
+  });
+}
+
+function handleAvatarChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  // Check file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Image size must be less than 5MB');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    avatarIsImage = true;
+    newAvatarData = ev.target.result; // Store base64 data
+    const av = document.getElementById('avatarEl');
+    av.textContent = '';
+    av.style.backgroundImage = `url(${ev.target.result})`;
+    av.style.backgroundSize = 'cover';
+    av.style.backgroundPosition = 'center';
+    
+    // Mark as changed
+    checkForChanges();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Handlers ──
+function handleSignOut() {
+  if (confirm('Sign out of Metro Safe LA?')) {
+    alert('Signed out. (Demo only)');
+  }
+}
+function handleDeleteAccount() {
+  if (confirm('Delete your account? This cannot be undone.')) {
+    alert('Account deleted. (Demo only)');
+  }
+}
+function toggleSetting(row) { /* row click does nothing, toggle handles itself */ }
+</script>
+</body>
+</html>

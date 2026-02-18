@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rate Metro</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --surface: rgba(18, 18, 28, 0.92);
+    --surface-light: rgba(30, 30, 45, 0.85);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+    --chat-bg: rgba(12, 12, 20, 0.88);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #map {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  .leaflet-tile-pane { filter: saturate(0.3) brightness(0.55) contrast(1.2); }
+  .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+
+  /* ── Station Pill ── */
+  .station-pill {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 1001;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideDown 0.5s ease both;
+    user-select: none;
+  }
+  .station-pill:hover { background: var(--surface-light); }
+  .station-pill.active { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .station-pill .dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: pulse-dot 2s ease infinite;
+  }
+  .station-pill span {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .station-pill .chevron { transition: transform 0.3s ease; }
+  .station-pill.active .chevron { transform: rotate(180deg); }
+
+  /* ── Station Panel ── */
+  .station-panel {
+    position: fixed;
+    top: 62px; left: 16px;
+    z-index: 1001;
+    width: 320px;
+    max-height: calc(100vh - 180px);
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+  .station-panel.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .panel-header { padding: 16px 16px 0; position: relative; }
+  .panel-search {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 36px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .panel-search:focus { border-color: rgba(245,197,24,0.4); }
+  .panel-search::placeholder { color: var(--text-muted); }
+  .search-icon {
+    position: absolute;
+    top: 26px; left: 28px;
+    width: 16px; height: 16px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+
+  /* ── Line Filter Chips ── */
+  .line-filters {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .line-filters::-webkit-scrollbar { display: none; }
+
+  .line-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    user-select: none;
+    text-transform: uppercase;
+  }
+  .line-chip .chip-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .line-chip:hover { background: rgba(255,255,255,0.1); }
+  .line-chip.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+  }
+  .line-chip.all-chip.active {
+    border-color: var(--accent);
+    background: rgba(245,197,24,0.12);
+    color: var(--accent);
+  }
+
+  /* ── Station List ── */
+  .station-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .station-list::-webkit-scrollbar { width: 4px; }
+  .station-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  .station-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .station-item:hover { background: rgba(255,255,255,0.06); }
+  .station-item:active { background: rgba(255,255,255,0.1); transform: scale(0.99); }
+
+  .station-color-bar {
+    width: 4px;
+    height: 32px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .station-info { flex: 1; min-width: 0; }
+  .station-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .station-line-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .station-line-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .station-arrow {
+    width: 16px; height: 16px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .station-item:hover .station-arrow { opacity: 1; }
+
+  .station-count {
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .no-results {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── Coordinates ── */
+  .coords-display {
+    position: fixed;
+    top: 16px;
+    left: calc(50% - 100px);
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: slideDown 0.5s ease 0.1s both;
+    white-space: nowrap;
+  }
+  .coords-display .coord-icon { 
+    width: 14px; 
+    height: 14px; 
+    fill: none; 
+    stroke: var(--accent); 
+    stroke-width: 2; 
+    flex-shrink: 0; 
+  }
+  .coords-display .coord-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+  }
+  .coords-display .coord-text strong { color: var(--text-primary); font-weight: 500; }
+
+  /* ── Profile ── */
+  .profile-btn {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 1000;
+    width: 44px; height: 44px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideDown 0.5s ease 0.2s both;
+    overflow: hidden;
+  }
+  .profile-btn:hover { background: var(--surface-light); border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .profile-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; }
+  .profile-btn:hover svg { stroke: var(--accent); }
+  .profile-btn.active { background: var(--surface-light); border-color: var(--accent); }
+  .profile-btn.has-avatar svg { display: none; }
+  .profile-btn .profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  
+  .profile-dropdown {
+    position: fixed;
+    top: 68px; right: 16px;
+    z-index: 999;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 200px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  }
+  .profile-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .profile-dropdown-item {
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-dropdown-item:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  .profile-dropdown-item:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+  .profile-dropdown-item:hover {
+    background: var(--surface-light);
+  }
+  .profile-dropdown-item svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-secondary);
+    stroke-width: 2;
+  }
+  .profile-dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── Compass ── */
+  .compass {
+    position: fixed;
+    bottom: 140px; right: 16px;
+    z-index: 1000;
+    width: 52px; height: 52px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    animation: slideUp 0.5s ease 0.3s both;
+  }
+  .compass:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .compass-needle { width: 28px; height: 28px; transition: transform 0.5s ease; }
+  .compass-needle svg { width: 100%; height: 100%; }
+
+  /* ── Locate ── */
+  .locate-btn {
+    position: fixed;
+    bottom: 200px; right: 16px;
+    z-index: 1000;
+    width: 52px; height: 52px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    animation: slideUp 0.5s ease 0.25s both;
+  }
+  .locate-btn:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .locate-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 2; }
+  .locate-btn:hover svg { stroke: var(--accent); }
+  .locate-btn.active svg { stroke: var(--accent); }
+
+  /* ── Chat Bar ── */
+  .chat-bar-container {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 0 12px 20px;
+    animation: slideUp 0.5s ease 0.35s both;
+  }
+  .chat-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--chat-bg);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 6px 8px 6px 6px;
+    transition: all 0.25s ease;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .chat-bar:focus-within {
+    border-color: rgba(245,197,24,0.35);
+    box-shadow: 0 0 30px rgba(245,197,24,0.08), 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .info-btn {
+    width: 40px; height: 40px; min-width: 40px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .info-btn:hover { background: rgba(245,197,24,0.15); border-color: var(--accent); }
+  .info-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--text-muted); stroke-width: 2; }
+  .info-btn:hover svg { stroke: var(--accent); }
+
+  .chat-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 400;
+    padding: 10px 4px;
+    caret-color: var(--accent);
+    transition: opacity 0.4s ease;
+  }
+  .chat-input::placeholder { 
+    color: var(--text-muted);
+    transition: opacity 0.4s ease;
+  }
+  .chat-input.fading {
+    opacity: 0.4;
+  }
+
+  .send-btn {
+    width: 40px; height: 40px; min-width: 40px;
+    background: var(--accent); border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s ease; opacity: 0.4;
+  }
+  .send-btn.active { opacity: 1; }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
+  .send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--bg-dark); stroke-width: 2.5; }
+
+  /* ── Chat Overlay ── */
+  .chat-overlay {
+    position: fixed;
+    bottom: 90px; left: 12px; right: 12px;
+    z-index: 999;
+    max-width: 600px; margin: 0 auto;
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 8px 0;
+    scrollbar-width: none;
+    pointer-events: none;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s ease;
+  }
+  .chat-overlay.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .chat-overlay::-webkit-scrollbar { display: none; }
+
+  .chat-msg {
+    padding: 12px 16px; border-radius: 18px;
+    font-size: 14px; line-height: 1.5; max-width: 85%;
+    animation: msgIn 0.3s ease both;
+  }
+  .chat-msg.user {
+    background: var(--accent); color: var(--bg-dark);
+    align-self: flex-end; border-bottom-right-radius: 6px; font-weight: 500;
+  }
+  .chat-msg.ai {
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    align-self: flex-start; border-bottom-left-radius: 6px;
+  }
+  .chat-msg.ai .ai-label {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+  .typing-indicator span {
+    width: 6px; height: 6px; background: var(--text-muted);
+    border-radius: 50%; animation: typingBounce 1.2s ease infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+  /* ── Map Markers ── */
+  .metro-marker { display: flex; align-items: center; justify-content: center; }
+  .metro-marker-inner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,0.6);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+  .metro-marker:hover .metro-marker-inner { transform: scale(1.3); }
+
+  .user-marker {
+    width: 18px; height: 18px;
+    background: #4A90FF; border: 3px solid #fff; border-radius: 50%;
+    box-shadow: 0 0 16px rgba(74,144,255,0.5), 0 0 40px rgba(74,144,255,0.2);
+    animation: userPulse 2s ease infinite;
+  }
+  .user-marker-ring {
+    position: absolute; top: -10px; left: -10px;
+    width: 38px; height: 38px;
+    border: 2px solid rgba(74,144,255,0.3);
+    border-radius: 50%;
+    animation: ringPulse 2s ease infinite;
+  }
+
+  /* Leaflet popup */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  }
+  .leaflet-popup-content {
+    color: var(--text-primary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    margin: 12px 16px !important;
+  }
+  .leaflet-popup-content .popup-title { font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+  .leaflet-popup-content .popup-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .leaflet-popup-content .popup-badge {
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+  }
+  .popup-rating { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .popup-rating-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .popup-rating-stars { display: flex; gap: 2px; align-items: center; }
+  .popup-rating-stars .star { color: var(--text-muted); font-size: 14px; line-height: 1; }
+  .popup-rating-stars .star.filled { color: var(--accent); }
+  .popup-rating-value { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .popup-rating-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; line-height: 1.4; }
+  .popup-rating-item:last-child { margin-bottom: 0; }
+  .popup-rating-item .rating-stars-inline { display: inline-flex; gap: 1px; align-items: center; }
+  .popup-rating-item .rating-stars-inline .star { font-size: 11px; line-height: 1; }
+  .popup-rating-btn { margin-top: 8px; padding: 6px 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
+  .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+  
+  /* Rating Modal */
+  .rating-modal {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .rating-modal.active { opacity: 1; pointer-events: auto; }
+  .rating-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+  }
+  .rating-modal.active .rating-modal-content { transform: scale(1); }
+  .rating-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .rating-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .rating-modal-close { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
+  .rating-modal-close:hover { color: var(--text-primary); }
+  .rating-category { margin-bottom: 24px; }
+  .rating-category-label { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+  .rating-stars-input { display: flex; gap: 6px; justify-content: flex-start; }
+  .rating-star-btn { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; padding: 2px; }
+  .rating-star-btn:hover, .rating-star-btn.active { color: var(--accent); transform: scale(1.1); }
+  .rating-thumbs { display: flex; gap: 12px; }
+  .rating-thumb-btn { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px 20px; font-size: 18px; cursor: pointer; transition: all 0.2s; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; }
+  .rating-thumb-btn:hover { border-color: var(--accent); transform: scale(1.02); }
+  .rating-thumb-btn.active.thumb-up { border-color: var(--accent); background: rgba(245, 197, 24, 0.2); }
+  .rating-thumb-btn.active.thumb-down { border-color: var(--danger); background: rgba(255, 59, 48, 0.2); }
+  .rating-overall-display { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .rating-overall-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+  .rating-overall-stars { display: flex; gap: 4px; justify-content: center; }
+  .rating-overall-stars .star { font-size: 20px; color: var(--text-muted); }
+  .rating-overall-stars .star.filled { color: var(--accent); }
+  .rating-description-input { width: 100%; padding: 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; resize: vertical; min-height: 60px; }
+  .rating-description-input:focus { outline: none; border-color: var(--accent); }
+  .rating-photo-upload { display: flex; flex-direction: column; gap: 10px; }
+  .rating-photo-btn { padding: 8px 16px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .rating-photo-btn:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .rating-photo-preview { display: none; }
+  .rating-photo-preview.has-image { display: block; margin-top: 8px; }
+  .rating-photo-preview img { width: 100%; max-width: 300px; border-radius: 6px; border: 1px solid var(--border); }
+  .rating-photo-preview .remove-photo { margin-top: 6px; padding: 4px 8px; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
+  .rating-submit { width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s; }
+  .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
+  .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  /* View All Ratings Modal */
+  .ratings-view-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+  .ratings-view-modal.active { opacity: 1; visibility: visible; }
+  .ratings-view-modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); transform: translateY(-20px) scale(0.95); opacity: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .ratings-view-modal.active .ratings-view-modal-content { transform: translateY(0) scale(1); opacity: 1; }
+  .ratings-view-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: none; }
+  .ratings-view-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .ratings-view-modal-close { background: none; border: none; font-size: 28px; color: var(--text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .ratings-view-modal-close:hover { color: var(--text-primary); }
+  .ratings-view-filters { padding: 12px 20px; border-bottom: none; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: transparent; }
+  .ratings-view-filter-group { display: flex; align-items: center; gap: 8px; }
+  .ratings-view-filter-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ratings-view-filter-select { padding: 8px 12px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .ratings-view-filter-select:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .ratings-view-filter-select:focus { outline: none; border-color: var(--accent); }
+  .ratings-view-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s ease forwards; }
+  .rating-item-card:last-child { margin-bottom: 0; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .rating-item-card:nth-child(1) { animation-delay: 0.1s; }
+  .rating-item-card:nth-child(2) { animation-delay: 0.15s; }
+  .rating-item-card:nth-child(3) { animation-delay: 0.2s; }
+  .rating-item-card:nth-child(4) { animation-delay: 0.25s; }
+  .rating-item-card:nth-child(5) { animation-delay: 0.3s; }
+  .rating-item-card:nth-child(n+6) { animation-delay: 0.35s; }
+  .rating-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .rating-item-user { display: flex; align-items: center; gap: 10px; }
+  .rating-item-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: 700; font-size: 16px; }
+  .rating-item-info h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .rating-item-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .rating-item-stars { display: flex; gap: 2px; margin-top: 4px; }
+  .rating-item-stars .star { font-size: 14px; color: var(--text-muted); }
+  .rating-item-stars .star.filled { color: var(--accent); }
+  .rating-item-details { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+  .rating-item-description { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+  .rating-item-photo { margin-top: 12px; }
+  .rating-item-photo img { width: 100%; max-width: 400px; border-radius: 6px; border: 1px solid var(--border); }
+  .no-ratings-message { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  
+  .station-rating-display { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .station-rating-stars { display: flex; gap: 1px; }
+  .station-rating-stars .star { color: var(--text-muted); font-size: 11px; }
+  .station-rating-stars .star.filled { color: var(--accent); }
+  .station-rating-count { font-size: 10px; color: var(--text-muted); }
+  .leaflet-popup-tip { background: var(--surface) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+  .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 18px !important; }
+
+  /* Panel backdrop */
+  .panel-backdrop {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .panel-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes userPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(74,144,255,0.5), 0 0 40px rgba(74,144,255,0.2); }
+    50% { box-shadow: 0 0 24px rgba(74,144,255,0.7), 0 0 60px rgba(74,144,255,0.3); }
+  }
+  @keyframes ringPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.2); opacity: 0; } }
+  @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  @media (max-width: 480px) {
+    .coords-display { top: 66px; padding: 8px 12px; }
+    .coords-display .coord-text { font-size: 11px; }
+    .station-pill { top: 12px; left: 12px; }
+    .profile-btn { top: 12px; right: 12px; }
+    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Station Pill -->
+<div class="station-pill" id="stationPill">
+  <div class="dot"></div>
+  <span>Stations</span>
+  <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+
+<!-- Station Panel -->
+<div class="panel-backdrop" id="panelBackdrop"></div>
+<div class="station-panel" id="stationPanel">
+  <div class="panel-header">
+    <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+    <input class="panel-search" id="stationSearch" type="text" placeholder="Search stations..." autocomplete="off" />
+  </div>
+  <div class="line-filters" id="lineFilters"></div>
+  <div class="station-count" id="stationCount"></div>
+  <div class="station-list" id="stationList"></div>
+</div>
+
+<!-- Coordinates -->
+<div class="coords-display">
+  <svg class="coord-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+  <div class="coord-text" id="coordsText"><strong>Locating...</strong></div>
+</div>
+
+<!-- Profile -->
+<div class="profile-btn" id="profileBtn">
+  <img class="profile-avatar-img" id="profileAvatarImg" style="display:none;" alt="Profile">
+  <svg viewBox="0 0 24 24" id="profileBtnIcon"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+</div>
+<div class="profile-dropdown" id="profileDropdown">
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+    <span>My Profile</span>
+  </div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>My Ratings</span>
+  </div>
+  <div class="profile-dropdown-divider"></div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
+    <span>Settings</span>
+  </div>
+  <div class="profile-dropdown-item">
+    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span>Sign Out</span>
+  </div>
+</div>
+
+<!-- Locate -->
+<div class="locate-btn" id="locateBtn">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+</div>
+
+<!-- Compass -->
+<div class="compass" id="compass">
+  <div class="compass-needle" id="compassNeedle">
+    <svg viewBox="0 0 40 40">
+      <polygon points="20,4 24,22 20,19 16,22" fill="#ff3b30" opacity="0.9"/>
+      <polygon points="20,36 16,22 20,25 24,22" fill="rgba(255,255,255,0.5)"/>
+      <circle cx="20" cy="20" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    </svg>
+  </div>
+</div>
+
+<!-- Rating Modal -->
+<div class="rating-modal" id="ratingModal">
+  <div class="rating-modal-content">
+    <div class="rating-modal-header">
+      <div class="rating-modal-title" id="ratingModalTitle">Rate Station</div>
+      <button class="rating-modal-close" id="ratingModalClose">&times;</button>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">🛡️ Safety — Did you feel safe?</div>
+      <div class="rating-stars-input" data-category="safety">
+        <button class="rating-star-btn" data-rating="1">★</button>
+        <button class="rating-star-btn" data-rating="2">★</button>
+        <button class="rating-star-btn" data-rating="3">★</button>
+        <button class="rating-star-btn" data-rating="4">★</button>
+        <button class="rating-star-btn" data-rating="5">★</button>
+      </div>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">🧹 Cleanliness — Was it clean?</div>
+      <div class="rating-stars-input" data-category="cleanliness">
+        <button class="rating-star-btn" data-rating="1">★</button>
+        <button class="rating-star-btn" data-rating="2">★</button>
+        <button class="rating-star-btn" data-rating="3">★</button>
+        <button class="rating-star-btn" data-rating="4">★</button>
+        <button class="rating-star-btn" data-rating="5">★</button>
+      </div>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">👮 Staff Present — Did you see staff?</div>
+      <div class="rating-thumbs" data-category="staff">
+        <button class="rating-thumb-btn thumb-up" data-value="yes">👍 Yes</button>
+        <button class="rating-thumb-btn thumb-down" data-value="no">👎 No</button>
+      </div>
+    </div>
+    
+    <div class="rating-overall-display">
+      <div class="rating-overall-label">Overall Rating</div>
+      <div class="rating-overall-stars" id="overallRatingDisplay">
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-align: center;">Calculated from Safety & Cleanliness</div>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">📝 Description (Optional)</div>
+      <textarea id="ratingDescription" class="rating-description-input" placeholder="Share your experience at this station..." rows="3"></textarea>
+    </div>
+    
+    <div class="rating-category">
+      <div class="rating-category-label">📷 Photo (Optional)</div>
+      <div class="rating-photo-upload">
+        <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
+        <button type="button" class="rating-photo-btn" id="ratingPhotoBtn">Choose Photo</button>
+        <div class="rating-photo-preview" id="ratingPhotoPreview"></div>
+      </div>
+    </div>
+    
+    <button class="rating-submit" id="ratingSubmit" disabled>Submit Rating</button>
+  </div>
+</div>
+
+<!-- View All Ratings Modal -->
+<div class="ratings-view-modal" id="ratingsViewModal">
+  <div class="ratings-view-modal-content">
+    <div class="ratings-view-modal-header">
+      <div class="ratings-view-modal-title" id="ratingsViewModalTitle">All Ratings</div>
+      <button class="ratings-view-modal-close" id="ratingsViewModalClose">&times;</button>
+    </div>
+    <div class="ratings-view-filters">
+      <div class="ratings-view-filter-group">
+        <label class="ratings-view-filter-label">Sort by:</label>
+        <select class="ratings-view-filter-select" id="filterSort">
+          <option value="newest">Newest to Oldest</option>
+          <option value="oldest">Oldest to Newest</option>
+        </select>
+      </div>
+    </div>
+    <div class="ratings-view-body" id="ratingsViewBody">
+      <!-- Ratings will be dynamically inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Chat -->
+<div class="chat-overlay" id="chatOverlay"></div>
+<div class="chat-bar-container">
+  <div class="chat-bar">
+    <div class="info-btn" id="infoBtn" title="Station Info">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    </div>
+    <input class="chat-input" id="chatInput" type="text" placeholder="Ask about station safety..." autocomplete="off" />
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
+
+{% csrf_token %}
+<script>
+// Django URLs injected for JavaScript
+const DJANGO_URLS = {
+  map: '{% url "ratemetroapp:map" %}',
+  profile: '{% url "ratemetroapp:profile" %}',
+  myRatings: '{% url "ratemetroapp:my_ratings" %}',
+  settings: '{% url "ratemetroapp:settings" %}',
+  signIn: '{% url "ratemetroapp:sign_in" %}',
+  updateLocation: '{% url "ratemetroapp:update_location" %}',
+};
+
+// Get CSRF token from meta tag or cookie
+function getCSRFToken() {
+  const token = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (token) return token.value;
+  return getCookie('csrftoken');
+}
+// ── Metro Lines ──
+const metroLines = {
+  A: { name: 'A Line (Blue)',   color: '#0072bc', text: '#fff' },
+  B: { name: 'B Line (Red)',    color: '#e3242b', text: '#fff' },
+  C: { name: 'C Line (Green)',  color: '#58a738', text: '#fff' },
+  D: { name: 'D Line (Purple)', color: '#a05da5', text: '#fff' },
+  E: { name: 'E Line (Expo)',   color: '#fdb913', text: '#000' },
+  G: { name: 'G Line (Orange)', color: '#f58220', text: '#fff' },
+  J: { name: 'J Line (Silver)', color: '#b5a07e', text: '#fff' },
+  K: { name: 'K Line (Crenshaw)', color: '#e96bb0', text: '#fff' },
+  L: { name: 'L Line (Gold)',   color: '#c4a73f', text: '#fff' },
+};
+
+// ── Stations ──
+const metroStations = [
+  // A Line (Blue)
+  { name: "7th St/Metro Center", lines: ["A","B","D","E"], lat: 34.0486, lng: -118.2588 },
+  { name: "Pico", lines: ["A","E"], lat: 34.0408, lng: -118.2660 },
+  { name: "Grand/LATTC", lines: ["A"], lat: 34.0335, lng: -118.2689 },
+  { name: "San Pedro Street", lines: ["A"], lat: 34.0290, lng: -118.2540 },
+  { name: "Washington", lines: ["A"], lat: 34.0181, lng: -118.2580 },
+  { name: "Slauson", lines: ["A"], lat: 33.9893, lng: -118.2671 },
+  { name: "Florence", lines: ["A"], lat: 33.9764, lng: -118.2680 },
+  { name: "Firestone", lines: ["A"], lat: 33.9677, lng: -118.2685 },
+  { name: "103rd St/Watts Towers", lines: ["A"], lat: 33.9429, lng: -118.2690 },
+  { name: "Willowbrook/Rosa Parks", lines: ["A","C"], lat: 33.9286, lng: -118.2380 },
+  { name: "Compton", lines: ["A"], lat: 33.8972, lng: -118.2231 },
+  { name: "Artesia", lines: ["A"], lat: 33.8758, lng: -118.2282 },
+  { name: "Del Amo", lines: ["A"], lat: 33.8489, lng: -118.2119 },
+  { name: "Wardlow", lines: ["A"], lat: 33.8388, lng: -118.2087 },
+  { name: "Willow Street", lines: ["A"], lat: 33.8082, lng: -118.1893 },
+  { name: "Pacific Coast Hwy", lines: ["A"], lat: 33.7902, lng: -118.1868 },
+  { name: "Anaheim Street", lines: ["A"], lat: 33.7819, lng: -118.1950 },
+  { name: "5th Street", lines: ["A"], lat: 33.7751, lng: -118.1886 },
+  { name: "Downtown Long Beach", lines: ["A"], lat: 33.7684, lng: -118.1896 },
+  // B Line (Red)
+  { name: "Union Station", lines: ["B","D","L"], lat: 34.0561, lng: -118.2365 },
+  { name: "Civic Center/Grand Park", lines: ["B","D"], lat: 34.0558, lng: -118.2461 },
+  { name: "Pershing Square", lines: ["B","D"], lat: 34.0494, lng: -118.2517 },
+  { name: "Westlake/MacArthur Park", lines: ["B","D"], lat: 34.0560, lng: -118.2745 },
+  { name: "Wilshire/Vermont", lines: ["B","D"], lat: 34.0628, lng: -118.2911 },
+  { name: "Vermont/Beverly", lines: ["B"], lat: 34.0762, lng: -118.2913 },
+  { name: "Vermont/Santa Monica", lines: ["B"], lat: 34.0909, lng: -118.2919 },
+  { name: "Vermont/Sunset", lines: ["B"], lat: 34.0976, lng: -118.2919 },
+  { name: "Hollywood/Western", lines: ["B"], lat: 34.1016, lng: -118.3069 },
+  { name: "Hollywood/Vine", lines: ["B"], lat: 34.1017, lng: -118.3260 },
+  { name: "Hollywood/Highland", lines: ["B"], lat: 34.1016, lng: -118.3385 },
+  { name: "Universal City/Studio City", lines: ["B"], lat: 34.1382, lng: -118.3621 },
+  { name: "North Hollywood", lines: ["B","G"], lat: 34.1684, lng: -118.3766 },
+  // C Line (Green)
+  { name: "Redondo Beach", lines: ["C"], lat: 33.8994, lng: -118.2778 },
+  { name: "Douglas", lines: ["C"], lat: 33.9073, lng: -118.2940 },
+  { name: "El Segundo", lines: ["C"], lat: 33.9164, lng: -118.3037 },
+  { name: "Mariposa", lines: ["C"], lat: 33.9189, lng: -118.3288 },
+  { name: "Aviation/LAX", lines: ["C","K"], lat: 33.9342, lng: -118.3789 },
+  { name: "Hawthorne/Lennox", lines: ["C"], lat: 33.9214, lng: -118.3520 },
+  { name: "Vermont/Athens", lines: ["C"], lat: 33.9292, lng: -118.2881 },
+  { name: "Harbor Freeway", lines: ["C"], lat: 33.9292, lng: -118.2575 },
+  { name: "Avalon", lines: ["C"], lat: 33.9294, lng: -118.2443 },
+  { name: "Long Beach Blvd", lines: ["C"], lat: 33.9099, lng: -118.2108 },
+  { name: "Lakewood Blvd", lines: ["C"], lat: 33.9099, lng: -118.1329 },
+  { name: "Norwalk", lines: ["C"], lat: 33.9144, lng: -118.1050 },
+  // D Line (Purple)
+  { name: "Wilshire/Normandie", lines: ["D"], lat: 34.0618, lng: -118.3012 },
+  { name: "Wilshire/Western", lines: ["D"], lat: 34.0626, lng: -118.3089 },
+  { name: "Wilshire/La Brea", lines: ["D"], lat: 34.0620, lng: -118.3443 },
+  { name: "Wilshire/Fairfax", lines: ["D"], lat: 34.0622, lng: -118.3612 },
+  { name: "Wilshire/La Cienega", lines: ["D"], lat: 34.0624, lng: -118.3784 },
+  { name: "Wilshire/Rodeo", lines: ["D"], lat: 34.0606, lng: -118.3975 },
+  { name: "Century City/Constellation", lines: ["D"], lat: 34.0555, lng: -118.4170 },
+  { name: "Westwood/VA Hospital", lines: ["D"], lat: 34.0478, lng: -118.4406 },
+  // E Line (Expo)
+  { name: "Jefferson/USC", lines: ["E"], lat: 34.0216, lng: -118.2789 },
+  { name: "Expo Park/USC", lines: ["E"], lat: 34.0180, lng: -118.2857 },
+  { name: "Expo/Vermont", lines: ["E"], lat: 34.0181, lng: -118.2914 },
+  { name: "Expo/Western", lines: ["E"], lat: 34.0184, lng: -118.3087 },
+  { name: "Farmdale", lines: ["E"], lat: 34.0166, lng: -118.3259 },
+  { name: "Expo/Crenshaw", lines: ["E","K"], lat: 34.0229, lng: -118.3382 },
+  { name: "Expo/La Brea", lines: ["E"], lat: 34.0233, lng: -118.3519 },
+  { name: "La Cienega/Jefferson", lines: ["E"], lat: 34.0250, lng: -118.3729 },
+  { name: "Culver City", lines: ["E"], lat: 34.0283, lng: -118.3863 },
+  { name: "Palms", lines: ["E"], lat: 34.0289, lng: -118.4047 },
+  { name: "Westwood/Rancho Park", lines: ["E"], lat: 34.0365, lng: -118.4225 },
+  { name: "Expo/Sepulveda", lines: ["E"], lat: 34.0340, lng: -118.4335 },
+  { name: "Expo/Bundy", lines: ["E"], lat: 34.0266, lng: -118.4525 },
+  { name: "26th St/Bergamot", lines: ["E"], lat: 34.0299, lng: -118.4665 },
+  { name: "17th St/SMC", lines: ["E"], lat: 34.0151, lng: -118.4792 },
+  { name: "Downtown Santa Monica", lines: ["E"], lat: 34.0115, lng: -118.4916 },
+  // K Line (Crenshaw/LAX)
+  { name: "Westchester/Veterans", lines: ["K"], lat: 33.9590, lng: -118.3782 },
+  { name: "Downtown Inglewood", lines: ["K"], lat: 33.9613, lng: -118.3531 },
+  { name: "Fairview Heights", lines: ["K"], lat: 33.9723, lng: -118.3443 },
+  { name: "Hyde Park", lines: ["K"], lat: 33.9918, lng: -118.3312 },
+  { name: "Leimert Park", lines: ["K"], lat: 34.0082, lng: -118.3325 },
+  { name: "Martin Luther King Jr", lines: ["K"], lat: 34.0110, lng: -118.3360 },
+  // L Line (Gold)
+  { name: "Chinatown", lines: ["L"], lat: 34.0637, lng: -118.2358 },
+  { name: "Lincoln/Cypress", lines: ["L"], lat: 34.0688, lng: -118.2258 },
+  { name: "Heritage Square/Arroyo", lines: ["L"], lat: 34.0813, lng: -118.2149 },
+  { name: "Southwest Museum", lines: ["L"], lat: 34.0942, lng: -118.2129 },
+  { name: "Highland Park", lines: ["L"], lat: 34.1111, lng: -118.1960 },
+  { name: "South Pasadena", lines: ["L"], lat: 34.1154, lng: -118.1576 },
+  { name: "Fillmore", lines: ["L"], lat: 34.1262, lng: -118.1488 },
+  { name: "Del Mar", lines: ["L"], lat: 34.1380, lng: -118.1484 },
+  { name: "Memorial Park", lines: ["L"], lat: 34.1436, lng: -118.1485 },
+  { name: "Lake", lines: ["L"], lat: 34.1519, lng: -118.1318 },
+  { name: "Allen", lines: ["L"], lat: 34.1519, lng: -118.1132 },
+  { name: "Sierra Madre Villa", lines: ["L"], lat: 34.1481, lng: -118.0811 },
+  { name: "Arcadia", lines: ["L"], lat: 34.1419, lng: -118.0530 },
+  { name: "Monrovia", lines: ["L"], lat: 34.1482, lng: -118.0019 },
+  { name: "Duarte/City of Hope", lines: ["L"], lat: 34.1546, lng: -117.9752 },
+  { name: "Irwindale", lines: ["L"], lat: 34.1267, lng: -117.9441 },
+  { name: "Azusa Downtown", lines: ["L"], lat: 34.1350, lng: -117.9091 },
+  { name: "APU/Citrus College", lines: ["L"], lat: 34.1378, lng: -117.8862 },
+  // G Line (Orange)
+  { name: "Chatsworth", lines: ["G"], lat: 34.2583, lng: -118.6010 },
+  { name: "Nordhoff", lines: ["G"], lat: 34.2342, lng: -118.5871 },
+  { name: "Roscoe", lines: ["G"], lat: 34.2194, lng: -118.5700 },
+  { name: "De Soto", lines: ["G"], lat: 34.2002, lng: -118.5595 },
+  { name: "Pierce College", lines: ["G"], lat: 34.1874, lng: -118.5501 },
+  { name: "Tampa", lines: ["G"], lat: 34.1732, lng: -118.5340 },
+  { name: "Reseda", lines: ["G"], lat: 34.1725, lng: -118.5117 },
+  { name: "Balboa", lines: ["G"], lat: 34.1732, lng: -118.4970 },
+  { name: "Woodley", lines: ["G"], lat: 34.1672, lng: -118.4690 },
+  { name: "Sepulveda", lines: ["G"], lat: 34.1610, lng: -118.4487 },
+  { name: "Van Nuys", lines: ["G"], lat: 34.1486, lng: -118.4494 },
+  { name: "Valley College", lines: ["G"], lat: 34.1646, lng: -118.4155 },
+  { name: "Laurel Canyon", lines: ["G"], lat: 34.1665, lng: -118.3920 },
+  { name: "Woodman", lines: ["G"], lat: 34.1668, lng: -118.3841 },
+];
+
+// ── Ratings Storage ──
+let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || {};
+
+function getStationRating(stationName) {
+  const ratings = stationRatings[stationName] || [];
+  if (ratings.length === 0) return { avg: 0, count: 0, safety: 0, cleanliness: 0, staff: null };
+  
+  // Calculate averages for Safety and Cleanliness (star ratings 1-5)
+  const safetyRatings = ratings.filter(r => r.safety && r.safety > 0);
+  const cleanlinessRatings = ratings.filter(r => r.cleanliness && r.cleanliness > 0);
+  const staffRatings = ratings.filter(r => r.staff !== null && r.staff !== undefined);
+  
+  const safetyAvg = safetyRatings.length > 0 
+    ? safetyRatings.reduce((sum, r) => sum + r.safety, 0) / safetyRatings.length 
+    : 0;
+  const cleanlinessAvg = cleanlinessRatings.length > 0
+    ? cleanlinessRatings.reduce((sum, r) => sum + r.cleanliness, 0) / cleanlinessRatings.length
+    : 0;
+  
+  // Overall rating: average of Safety and Cleanliness
+  const overallAvg = (safetyAvg > 0 && cleanlinessAvg > 0) 
+    ? (safetyAvg + cleanlinessAvg) / 2 
+    : (safetyAvg > 0 ? safetyAvg : cleanlinessAvg);
+  
+  // Staff percentage
+  const staffYes = staffRatings.filter(r => r.staff === 'yes').length;
+  const staffPercent = staffRatings.length > 0 ? staffYes / staffRatings.length : null;
+  
+  return { 
+    avg: Math.round(overallAvg).toString(), 
+    count: ratings.length,
+    safety: safetyAvg > 0 ? Math.round(safetyAvg).toString() : 0,
+    cleanliness: cleanlinessAvg > 0 ? Math.round(cleanlinessAvg).toString() : 0,
+    staff: staffPercent !== null ? (staffPercent * 100).toFixed(0) + '%' : null
+  };
+}
+
+function saveRating(stationName, ratingData) {
+  if (!stationRatings[stationName]) stationRatings[stationName] = [];
+  const ratingToSave = {
+    safety: ratingData.safety,
+    cleanliness: ratingData.cleanliness,
+    staff: ratingData.staff,
+    description: ratingData.description || '',
+    photo: ratingData.photo || null,
+    timestamp: Date.now()
+  };
+  stationRatings[stationName].push(ratingToSave);
+  localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+}
+
+function renderStars(rating, size = '14px') {
+  const full = Math.floor(rating);
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    if (i < full) {
+      html += `<span class="star filled" style="font-size:${size}; color: var(--accent);">★</span>`;
+    } else {
+      html += `<span class="star" style="font-size:${size}; color: var(--text-muted);">★</span>`;
+    }
+  }
+  return html;
+}
+
+// ── Map ──
+const defaultLat = 34.0522, defaultLng = -118.2437;
+let userLat = defaultLat, userLng = defaultLng;
+let userMarker = null, stationMarkers = [], activeFilter = 'all';
+
+const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
+
+function createMarkers(filterLine = 'all') {
+  stationMarkers.forEach(m => map.removeLayer(m));
+  stationMarkers = [];
+  const filtered = filterLine === 'all' ? metroStations : metroStations.filter(s => s.lines.includes(filterLine));
+  filtered.forEach(station => {
+    const color = getStationColor(station);
+    const icon = L.divIcon({
+      className: 'metro-marker',
+      html: `<div class="metro-marker-inner" style="background:${color};box-shadow:0 0 10px ${color}55;"></div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    });
+    const badges = station.lines.map(l => {
+      const line = metroLines[l];
+      return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
+    }).join('');
+    const rating = getStationRating(station.name);
+    let ratingHTML = '';
+    if (rating.count > 0) {
+      ratingHTML = `<div class="popup-rating">
+        <div class="popup-rating-header">
+          <div class="popup-rating-stars">${renderStars(parseInt(rating.avg))}</div>
+          <div class="popup-rating-value">${rating.avg}/5 (${rating.count})</div>
+        </div>`;
+      if (rating.safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(parseInt(rating.safety), '11px')}</span> ${rating.safety}/5</div>`;
+      if (rating.cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(parseInt(rating.cleanliness), '11px')}</span> ${rating.cleanliness}/5</div>`;
+      if (rating.staff) ratingHTML += `<div class="popup-rating-item">👮 Staff: ${rating.staff}</div>`;
+      ratingHTML += `</div>`;
+    } else {
+      ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
+    }
+    const stationNameEscaped = station.name.replace(/'/g, "\\'");
+    const viewRatingsBtn = rating.count > 0 ? `<button class="popup-rating-btn" onclick="openRatingsViewModal('${stationNameEscaped}')" style="margin-top: 6px;">View All Ratings (${rating.count})</button>` : '';
+    const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
+    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 300 });
+    marker.stationData = station;
+    stationMarkers.push(marker);
+  });
+}
+createMarkers();
+
+// ── Filters ──
+function buildFilters() {
+  const c = document.getElementById('lineFilters');
+  let html = `<div class="line-chip all-chip active" data-line="all"><div class="chip-dot" style="background:var(--accent)"></div>All</div>`;
+  Object.entries(metroLines).forEach(([key, line]) => {
+    html += `<div class="line-chip" data-line="${key}"><div class="chip-dot" style="background:${line.color}"></div>${key}</div>`;
+  });
+  c.innerHTML = html;
+
+  c.querySelectorAll('.line-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const line = chip.dataset.line;
+      activeFilter = line;
+      c.querySelectorAll('.line-chip').forEach(ch => { ch.classList.remove('active'); ch.style.borderColor = 'transparent'; ch.style.background = 'rgba(255,255,255,0.05)'; });
+      chip.classList.add('active');
+      if (line !== 'all') {
+        chip.style.borderColor = metroLines[line].color;
+        chip.style.background = metroLines[line].color + '18';
+      }
+      document.getElementById('stationSearch').value = '';
+      createMarkers(line);
+      renderStationList();
+      if (stationMarkers.length > 0) {
+        map.fitBounds(new L.featureGroup(stationMarkers).getBounds().pad(0.1), { animate: true, duration: 0.5 });
+      }
+    });
+  });
+}
+buildFilters();
+
+// ── Station List ──
+function renderStationList(searchQuery = '') {
+  const listEl = document.getElementById('stationList');
+  const countEl = document.getElementById('stationCount');
+  const q = searchQuery.toLowerCase();
+  let filtered = activeFilter === 'all' ? [...metroStations] : metroStations.filter(s => s.lines.includes(activeFilter));
+  if (q) filtered = filtered.filter(s => s.name.toLowerCase().includes(q));
+  filtered.sort((a, b) => a.name.localeCompare(b.name));
+  countEl.textContent = `${filtered.length} station${filtered.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) { listEl.innerHTML = '<div class="no-results">No stations found</div>'; return; }
+
+  listEl.innerHTML = filtered.map(station => {
+    const badges = station.lines.map(l => `<span class="station-line-badge" style="background:${metroLines[l].color}22;color:${metroLines[l].color}">${l}</span>`).join('');
+    const rating = getStationRating(station.name);
+    const ratingDisplay = rating.count > 0 
+      ? `<div class="station-rating-display"><div class="station-rating-stars">${renderStars(parseFloat(rating.avg), '11px')}</div><div class="station-rating-count">${rating.avg}</div></div>`
+      : '';
+    return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}" data-name="${station.name}">
+      <div class="station-color-bar" style="background:${getStationColor(station)}"></div>
+      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div>${ratingDisplay}</div>
+      <svg class="station-arrow" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.station-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      // Don't trigger if clicking on rating (allow separate click handler)
+      if (e.target.closest('.station-rating-display')) return;
+      
+      const lat = +item.dataset.lat, lng = +item.dataset.lng;
+      map.setView([lat, lng], 16, { animate: true, duration: 0.6 });
+      stationMarkers.forEach(m => {
+        const p = m.getLatLng();
+        if (Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001) m.openPopup();
+      });
+      closePanel();
+    });
+    
+    // Add rating button to station items
+    const stationName = item.dataset.name;
+    const ratingDisplay = item.querySelector('.station-rating-display');
+    if (ratingDisplay) {
+      ratingDisplay.style.cursor = 'pointer';
+      ratingDisplay.title = 'Click to rate';
+      ratingDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openRatingModal(stationName);
+      });
+    }
+  });
+}
+renderStationList();
+
+// ── Panel Toggle ──
+const stationPill = document.getElementById('stationPill');
+const stationPanel = document.getElementById('stationPanel');
+const panelBackdrop = document.getElementById('panelBackdrop');
+const stationSearch = document.getElementById('stationSearch');
+
+function openPanel() { stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible'); stationSearch.focus(); }
+function closePanel() { stationPill.classList.remove('active'); stationPanel.classList.remove('open'); panelBackdrop.classList.remove('visible'); }
+stationPill.addEventListener('click', () => stationPanel.classList.contains('open') ? closePanel() : openPanel());
+panelBackdrop.addEventListener('click', closePanel);
+stationSearch.addEventListener('input', e => renderStationList(e.target.value));
+
+// ── User Location ──
+function updateCoords(lat, lng) {
+  document.getElementById('coordsText').innerHTML =
+    `<strong>${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}</strong> &nbsp; <strong>${Math.abs(lng).toFixed(4)}°${lng >= 0 ? 'E' : 'W'}</strong>`;
+}
+function setUserLocation(lat, lng) {
+  userLat = lat; userLng = lng;
+  updateCoords(lat, lng);
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;"><div class="user-marker-ring"></div><div class="user-marker"></div></div>`,
+      iconSize: [18, 18], iconAnchor: [9, 9],
+    }), zIndexOffset: 1000
+  }).addTo(map);
+  map.setView([lat, lng], 14, { animate: true, duration: 1 });
+  document.getElementById('locateBtn').classList.add('active');
+  
+  // Send location to Django backend
+  sendLocationToServer(lat, lng);
+}
+
+function sendLocationToServer(lat, lng) {
+  fetch(DJANGO_URLS.updateLocation, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken()
+    },
+    body: JSON.stringify({
+      latitude: lat,
+      longitude: lng
+    })
+  }).then(response => {
+    if (response.ok) {
+      console.log('Location sent to server successfully');
+    }
+  }).catch(err => {
+    console.log('Location update failed:', err);
+  });
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(p => setUserLocation(p.coords.latitude, p.coords.longitude), () => updateCoords(defaultLat, defaultLng), { enableHighAccuracy: true, timeout: 8000 });
+} else { updateCoords(defaultLat, defaultLng); }
+
+document.getElementById('locateBtn').addEventListener('click', () => {
+  navigator.geolocation?.getCurrentPosition(p => setUserLocation(p.coords.latitude, p.coords.longitude), () => alert('Could not get location'));
+});
+
+// ── Compass ──
+const needleEl = document.getElementById('compassNeedle');
+if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', e => { if (e.alpha !== null) needleEl.style.transform = `rotate(${-e.alpha}deg)`; });
+document.getElementById('compass').addEventListener('click', () => { map.setView([userLat, userLng], map.getZoom(), { animate: true }); needleEl.style.transform = 'rotate(0deg)'; });
+
+// ── Chat ──
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const chatOverlay = document.getElementById('chatOverlay');
+
+// Rotating questions for chat placeholder
+const rotatingQuestions = [
+  "Need help with directions?",
+  "How can I help?",
+  "Safest route to your destination?",
+  "Ask about station safety...",
+  "Looking for the nearest station?"
+];
+
+let currentQuestionIndex = 0;
+function rotateChatPlaceholder() {
+  // Only rotate if input is empty and not focused
+  if (chatInput.value.trim() || document.activeElement === chatInput) return;
+  
+  // Fade out
+  chatInput.classList.add('fading');
+  
+  setTimeout(() => {
+    chatInput.placeholder = rotatingQuestions[currentQuestionIndex];
+    currentQuestionIndex = (currentQuestionIndex + 1) % rotatingQuestions.length;
+    
+    // Fade in
+    setTimeout(() => {
+      chatInput.classList.remove('fading');
+    }, 50);
+  }, 400);
+}
+
+// Rotate every 5.5 seconds
+rotateChatPlaceholder();
+setInterval(rotateChatPlaceholder, 5500);
+
+chatInput.addEventListener('input', () => sendBtn.classList.toggle('active', chatInput.value.trim().length > 0));
+
+const aiR = {
+  safety: ["Based on recent reports, this area has moderate foot traffic. Stay aware of surroundings during late hours.","Current advisory: well-lit areas and cameras are active. Avoid isolated platforms off-peak.","Community patrols are active here. Report concerns through the app or to station personnel."],
+  station: ["The nearest station is ~0.3 mi away. Trains run every 10-12 min during peak.","This station has recent safety upgrades including improved lighting and extra cameras.","Peak hours: 7-9 AM, 5-7 PM. Off-peak travel is less crowded."],
+  general: ["I help you navigate Metro safely. Ask about station conditions, safety tips, or report an incident.","I monitor transit data and community reports across all LA Metro stations.","For emergencies call 911. Non-emergency Metro safety: 1-888-950-7233."]
+};
+function getAI(msg) {
+  const l = msg.toLowerCase();
+  if (/safe|danger|crime|report/.test(l)) return aiR.safety[Math.random()*3|0];
+  if (/station|train|line|metro/.test(l)) return aiR.station[Math.random()*3|0];
+  return aiR.general[Math.random()*3|0];
+}
+function addMsg(text, type) {
+  const m = document.createElement('div'); m.className = `chat-msg ${type}`;
+  m.innerHTML = type === 'ai' ? `<div class="ai-label">Metro Safe AI</div>${text}` : text;
+  if (type === 'user') m.textContent = text;
+  chatOverlay.appendChild(m); chatOverlay.classList.add('visible');
+  chatOverlay.scrollTop = chatOverlay.scrollHeight;
+}
+function showTyping() {
+  const t = document.createElement('div'); t.className = 'chat-msg ai'; t.id = 'typingMsg';
+  t.innerHTML = `<div class="ai-label">Metro Safe AI</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  chatOverlay.appendChild(t); chatOverlay.scrollTop = chatOverlay.scrollHeight;
+}
+function sendMessage() {
+  const text = chatInput.value.trim(); if (!text) return;
+  addMsg(text, 'user'); chatInput.value = ''; sendBtn.classList.remove('active');
+  showTyping();
+  setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg(getAI(text), 'ai'); }, 1200 + Math.random() * 800);
+}
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+document.getElementById('infoBtn').addEventListener('click', () => {
+  chatOverlay.classList.add('visible'); showTyping();
+  setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
+});
+
+// Load and display user profile image
+function loadProfileImage() {
+  const savedAvatar = localStorage.getItem('userAvatar');
+  const profileBtn = document.getElementById('profileBtn');
+  const profileAvatarImg = document.getElementById('profileAvatarImg');
+  const profileBtnIcon = document.getElementById('profileBtnIcon');
+  
+  if (savedAvatar && profileAvatarImg) {
+    profileAvatarImg.src = savedAvatar;
+    profileAvatarImg.style.display = 'block';
+    if (profileBtnIcon) profileBtnIcon.style.display = 'none';
+    if (profileBtn) profileBtn.classList.add('has-avatar');
+  } else {
+    if (profileAvatarImg) profileAvatarImg.style.display = 'none';
+    if (profileBtnIcon) profileBtnIcon.style.display = 'block';
+    if (profileBtn) profileBtn.classList.remove('has-avatar');
+  }
+}
+
+// Load profile image on page load
+loadProfileImage();
+
+// Listen for storage changes (in case avatar is updated in another tab/window)
+window.addEventListener('storage', function(e) {
+  if (e.key === 'userAvatar') {
+    loadProfileImage();
+  }
+});
+
+// Profile dropdown
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+
+if (profileBtn && profileDropdown) {
+  profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileBtn.classList.toggle('active');
+    profileDropdown.classList.toggle('active');
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+      profileBtn.classList.remove('active');
+      profileDropdown.classList.remove('active');
+    }
+  });
+  
+  // Handle dropdown item clicks
+  const dropdownItems = profileDropdown.querySelectorAll('.profile-dropdown-item');
+  dropdownItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const text = item.querySelector('span')?.textContent;
+      if (text === 'My Profile') {
+        window.location.href = DJANGO_URLS.profile;
+        return;
+      } else if (text === 'My Ratings') {
+        window.location.href = DJANGO_URLS.myRatings;
+        return;
+      } else if (text === 'Settings') {
+        window.location.href = DJANGO_URLS.settings;
+        return;
+      } else if (text === 'Sign Out') {
+        chatOverlay.classList.add('visible');
+        addMsg("Sign out feature coming soon!", 'ai');
+      }
+      profileBtn.classList.remove('active');
+      profileDropdown.classList.remove('active');
+    });
+  });
+}
+
+map.on('click', () => {
+  if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
+});
+map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map.getCenter().lng); });
+
+// ── Rating Modal ──
+let currentRatingStation = null;
+let ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+
+function updateOverallRating() {
+  const overallRatingDisplay = document.getElementById('overallRatingDisplay');
+  if (!overallRatingDisplay) return;
+  
+  if (ratingData.safety > 0 && ratingData.cleanliness > 0) {
+    const overall = Math.round((ratingData.safety + ratingData.cleanliness) / 2);
+    overallRatingDisplay.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.style.fontSize = '20px';
+      star.style.color = i < overall ? 'var(--accent)' : 'var(--text-muted)';
+      if (i < overall) star.classList.add('filled');
+      star.textContent = '★';
+      overallRatingDisplay.appendChild(star);
+    }
+  } else {
+    overallRatingDisplay.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.style.fontSize = '20px';
+      star.style.color = 'var(--text-muted)';
+      star.textContent = '★';
+      overallRatingDisplay.appendChild(star);
+    }
+  }
+}
+
+function updateSubmitButton() {
+  const ratingSubmit = document.getElementById('ratingSubmit');
+  if (ratingSubmit) {
+    // Enable if Safety and Cleanliness are rated (both > 0)
+    ratingSubmit.disabled = !(ratingData.safety > 0 && ratingData.cleanliness > 0);
+  }
+}
+
+function openRatingModal(stationName) {
+  const ratingModal = document.getElementById('ratingModal');
+  const ratingModalTitle = document.getElementById('ratingModalTitle');
+  
+  if (!ratingModal || !ratingModalTitle) {
+    console.error('Rating modal elements not found');
+    return;
+  }
+  
+  currentRatingStation = stationName;
+  ratingModalTitle.textContent = `Rate ${stationName}`;
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+  
+  // Reset description and photo
+  const descriptionInput = document.getElementById('ratingDescription');
+  const photoInput = document.getElementById('ratingPhotoInput');
+  const photoPreview = document.getElementById('ratingPhotoPreview');
+  if (descriptionInput) descriptionInput.value = '';
+  if (photoInput) photoInput.value = '';
+  if (photoPreview) {
+    photoPreview.innerHTML = '';
+    photoPreview.classList.remove('has-image');
+  }
+  
+  // Reset Safety stars
+  document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((btn, i) => {
+    btn.classList.remove('active');
+    btn.onclick = function() {
+      ratingData.safety = i + 1;
+      document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx < ratingData.safety);
+      });
+      updateOverallRating();
+      updateSubmitButton();
+    };
+  });
+  
+  // Reset Cleanliness stars
+  document.querySelectorAll('[data-category="cleanliness"] .rating-star-btn').forEach((btn, i) => {
+    btn.classList.remove('active');
+    btn.onclick = function() {
+      ratingData.cleanliness = i + 1;
+      document.querySelectorAll('[data-category="cleanliness"] .rating-star-btn').forEach((b, idx) => {
+        b.classList.toggle('active', idx < ratingData.cleanliness);
+      });
+      updateOverallRating();
+      updateSubmitButton();
+    };
+  });
+  
+  // Reset Staff thumbs
+  document.querySelectorAll('[data-category="staff"] .rating-thumb-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.onclick = function() {
+      document.querySelectorAll('[data-category="staff"] .rating-thumb-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      ratingData.staff = this.dataset.value;
+    };
+  });
+  
+  updateOverallRating();
+  updateSubmitButton();
+  ratingModal.classList.add('active');
+}
+
+function closeRatingModal() {
+  const ratingModal = document.getElementById('ratingModal');
+  if (ratingModal) {
+    ratingModal.classList.remove('active');
+  }
+  currentRatingStation = null;
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+}
+
+// Initialize rating modal event listeners (script is at end of body, so elements exist)
+const ratingModal = document.getElementById('ratingModal');
+const ratingModalClose = document.getElementById('ratingModalClose');
+const ratingSubmit = document.getElementById('ratingSubmit');
+
+if (ratingModalClose) {
+  ratingModalClose.addEventListener('click', closeRatingModal);
+}
+
+if (ratingModal) {
+  ratingModal.addEventListener('click', (e) => {
+    if (e.target === ratingModal) closeRatingModal();
+  });
+}
+
+// Photo upload handling
+const ratingPhotoBtn = document.getElementById('ratingPhotoBtn');
+const ratingPhotoInput = document.getElementById('ratingPhotoInput');
+const ratingPhotoPreview = document.getElementById('ratingPhotoPreview');
+const ratingDescription = document.getElementById('ratingDescription');
+
+if (ratingPhotoBtn && ratingPhotoInput) {
+  ratingPhotoBtn.addEventListener('click', () => {
+    ratingPhotoInput.click();
+  });
+  
+  ratingPhotoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        ratingData.photo = event.target.result;
+        if (ratingPhotoPreview) {
+          ratingPhotoPreview.innerHTML = `
+            <img src="${event.target.result}" alt="Rating photo">
+            <button type="button" class="remove-photo" onclick="removeRatingPhoto()">Remove Photo</button>
+          `;
+          ratingPhotoPreview.classList.add('has-image');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+if (ratingDescription) {
+  ratingDescription.addEventListener('input', (e) => {
+    ratingData.description = e.target.value;
+  });
+}
+
+window.removeRatingPhoto = function() {
+  ratingData.photo = null;
+  if (ratingPhotoInput) ratingPhotoInput.value = '';
+  if (ratingPhotoPreview) {
+    ratingPhotoPreview.innerHTML = '';
+    ratingPhotoPreview.classList.remove('has-image');
+  }
+};
+
+if (ratingSubmit) {
+  ratingSubmit.addEventListener('click', () => {
+    if (!currentRatingStation || ratingData.safety === 0 || ratingData.cleanliness === 0) {
+      alert('Please rate Safety and Cleanliness');
+      return;
+    }
+    // Get description
+    if (ratingDescription) {
+      ratingData.description = ratingDescription.value.trim();
+    }
+    saveRating(currentRatingStation, ratingData);
+    closeRatingModal();
+    // Refresh markers and list to show updated ratings
+    createMarkers(activeFilter);
+    const searchInput = document.getElementById('stationSearch');
+    renderStationList(searchInput ? searchInput.value : '');
+    alert(`Thank you for rating ${currentRatingStation}!`);
+  });
+}
+
+// ── View All Ratings Modal ──
+let currentRatingsViewStation = null;
+
+window.openRatingsViewModal = function(stationName) {
+  const ratingsViewModal = document.getElementById('ratingsViewModal');
+  const ratingsViewModalTitle = document.getElementById('ratingsViewModalTitle');
+  const ratingsViewBody = document.getElementById('ratingsViewBody');
+  
+  if (!ratingsViewModal || !ratingsViewModalTitle || !ratingsViewBody) {
+    console.error('Ratings view modal elements not found');
+    return;
+  }
+  
+  currentRatingsViewStation = stationName;
+  ratingsViewModalTitle.textContent = `All Ratings - ${stationName}`;
+  
+  // Reset filter
+  const filterSortEl = document.getElementById('filterSort');
+  if (filterSortEl) filterSortEl.value = 'newest';
+  
+  renderAllRatings(stationName, ratingsViewBody);
+  
+  // Trigger smooth animation
+  requestAnimationFrame(() => {
+    ratingsViewModal.classList.add('active');
+  });
+};
+
+function closeRatingsViewModal() {
+  const ratingsViewModal = document.getElementById('ratingsViewModal');
+  if (ratingsViewModal) {
+    ratingsViewModal.classList.remove('active');
+    // Clear content after animation completes
+    setTimeout(() => {
+      const ratingsViewBody = document.getElementById('ratingsViewBody');
+      if (ratingsViewBody) {
+        ratingsViewBody.innerHTML = '';
+      }
+    }, 300);
+  }
+}
+
+function renderAllRatings(stationName, container, filters = {}) {
+  const ratings = stationRatings[stationName] || [];
+  
+  // Clear container first
+  container.innerHTML = '';
+  
+  if (ratings.length === 0) {
+    container.innerHTML = '<div class="no-ratings-message">No ratings yet for this station.</div>';
+    return;
+  }
+  
+  // Sort ratings
+  let sortedRatings = [...ratings];
+  const sortBy = filters.sort || 'newest';
+  if (sortBy === 'newest') {
+    sortedRatings.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  } else if (sortBy === 'oldest') {
+    sortedRatings.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }
+  
+  // Create rating cards with staggered animation
+  sortedRatings.forEach((rating, index) => {
+    const date = new Date(rating.timestamp);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const overall = rating.safety > 0 && rating.cleanliness > 0 
+      ? Math.round((rating.safety + rating.cleanliness) / 2) 
+      : (rating.safety > 0 ? rating.safety : rating.cleanliness);
+    
+    // Generate user avatar initial
+    const userInitial = String.fromCharCode(65 + (index % 26)); // A-Z
+    
+    const card = document.createElement('div');
+    card.className = 'rating-item-card';
+    card.style.animationDelay = `${0.1 + (index * 0.05)}s`;
+    card.innerHTML = `
+      <div class="rating-item-header">
+        <div class="rating-item-user">
+          <div class="rating-item-avatar">${userInitial}</div>
+          <div class="rating-item-info">
+            <h4>User ${index + 1}</h4>
+            <div class="rating-item-date">${dateStr}</div>
+          </div>
+        </div>
+        <div class="rating-item-stars">
+          ${renderStars(overall, '14px')}
+        </div>
+      </div>
+      <div class="rating-item-details">
+        <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
+        <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
+        ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+      </div>
+      ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
+      ${rating.photo ? `<div class="rating-item-photo"><img src="${rating.photo}" alt="Rating photo"></div>` : ''}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Filter change handler
+function applyRatingsFilters() {
+  if (!currentRatingsViewStation) return;
+  
+  const filters = {
+    sort: document.getElementById('filterSort').value
+  };
+  
+  const ratingsViewBody = document.getElementById('ratingsViewBody');
+  if (ratingsViewBody) {
+    renderAllRatings(currentRatingsViewStation, ratingsViewBody, filters);
+  }
+}
+
+// Initialize ratings view modal event listeners
+const ratingsViewModal = document.getElementById('ratingsViewModal');
+const ratingsViewModalClose = document.getElementById('ratingsViewModalClose');
+const filterSort = document.getElementById('filterSort');
+
+if (ratingsViewModalClose) {
+  ratingsViewModalClose.addEventListener('click', closeRatingsViewModal);
+}
+
+if (ratingsViewModal) {
+  ratingsViewModal.addEventListener('click', (e) => {
+    if (e.target === ratingsViewModal) closeRatingsViewModal();
+  });
+}
+
+// Add filter event listener
+if (filterSort) filterSort.addEventListener('change', applyRatingsFilters);
+
+// Make functions globally accessible
+window.openRatingModal = openRatingModal;
+window.openRatingsViewModal = openRatingsViewModal;
+</script>
+</body>
+</html>

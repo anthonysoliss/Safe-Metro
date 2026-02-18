@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Settings — Ratemetro.com</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --surface: rgba(18, 18, 28, 0.92);
+    --surface-light: rgba(30, 30, 45, 0.85);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; }
+  .nav-back:hover svg { stroke: var(--accent); }
+  .nav-title { font-size: 15px; font-weight: 700; }
+  .nav-version {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 10px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Page ── */
+  .page {
+    padding-top: 72px;
+    padding-bottom: 48px;
+    max-width: 560px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Search Bar ── */
+  .search-wrap {
+    padding: 16px 16px 8px;
+    animation: slideDown 0.5s ease 0.05s both;
+  }
+  .search-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    width: 15px; height: 15px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 14px 11px 40px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    caret-color: var(--accent);
+    backdrop-filter: blur(12px);
+  }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-input:focus { border-color: rgba(245,197,24,0.35); box-shadow: 0 0 0 3px rgba(245,197,24,0.07); }
+  .search-clear {
+    position: absolute;
+    right: 12px;
+    width: 20px; height: 20px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .search-clear.visible { display: flex; }
+  .search-clear:hover { background: rgba(255,255,255,0.18); color: var(--text-primary); }
+
+  /* ── Section ── */
+  .section {
+    margin: 12px 16px 0;
+    animation: slideUp 0.5s ease both;
+  }
+  .section:nth-child(2) { animation-delay: 0.08s; }
+  .section:nth-child(3) { animation-delay: 0.13s; }
+  .section:nth-child(4) { animation-delay: 0.18s; }
+  .section:nth-child(5) { animation-delay: 0.23s; }
+  .section:nth-child(6) { animation-delay: 0.28s; }
+  .section:nth-child(7) { animation-delay: 0.33s; }
+  .section:nth-child(8) { animation-delay: 0.38s; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0 4px;
+    margin-bottom: 8px;
+  }
+
+  .section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+  }
+
+  /* ── Rows ── */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+    cursor: pointer;
+    min-height: 54px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: rgba(255,255,255,0.035); }
+  .row:active { background: rgba(255,255,255,0.06); }
+  .row.danger:hover { background: rgba(255,59,48,0.05); }
+  .row.no-tap { cursor: default; }
+  .row.no-tap:hover { background: transparent; }
+
+  .row-icon {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+  .row-icon svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .row-icon.blue   { background: rgba(74,144,255,0.12); color: #4a90ff; border: 1px solid rgba(74,144,255,0.2); }
+  .row-icon.yellow { background: rgba(245,197,24,0.1); color: var(--accent); border: 1px solid rgba(245,197,24,0.2); }
+  .row-icon.green  { background: rgba(48,209,88,0.1); color: #30d158; border: 1px solid rgba(48,209,88,0.2); }
+  .row-icon.purple { background: rgba(160,93,165,0.12); color: #bf5af2; border: 1px solid rgba(160,93,165,0.2); }
+  .row-icon.orange { background: rgba(255,149,0,0.1); color: #ff9500; border: 1px solid rgba(255,149,0,0.2); }
+  .row-icon.pink   { background: rgba(255,55,95,0.1); color: #ff375f; border: 1px solid rgba(255,55,95,0.2); }
+  .row-icon.red    { background: rgba(255,59,48,0.1); color: var(--danger); border: 1px solid rgba(255,59,48,0.2); }
+  .row-icon.gray   { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); }
+  .row-icon.teal   { background: rgba(90,200,250,0.1); color: #5ac8fa; border: 1px solid rgba(90,200,250,0.2); }
+
+  .row-body { flex: 1; min-width: 0; }
+  .row-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row.danger .row-label { color: var(--danger); }
+  .row-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .row-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .row-value {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-chevron {
+    width: 14px; height: 14px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+  .row:hover .row-chevron { opacity: 0.9; }
+
+  /* ── Toggle ── */
+  .toggle {
+    width: 46px; height: 27px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 14px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.25s ease;
+    border: none;
+    outline: none;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 21px; height: 21px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(19px); }
+
+  /* ── Badge ── */
+  .badge {
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .badge.new { background: rgba(245,197,24,0.15); color: var(--accent); border: 1px solid rgba(245,197,24,0.25); }
+  .badge.beta { background: rgba(74,144,255,0.12); color: #4a90ff; border: 1px solid rgba(74,144,255,0.2); }
+
+  /* ── Slider Row ── */
+  .slider-wrap { padding: 12px 16px 14px; border-bottom: 1px solid var(--border); }
+  .slider-wrap:last-child { border-bottom: none; }
+  .slider-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .slider-label { font-size: 14px; font-weight: 600; flex: 1; }
+  .slider-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 28px;
+    text-align: right;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(245,197,24,0.4);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+  /* ── Color Picker Row ── */
+  .color-row {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .color-row:last-child { border-bottom: none; }
+  .color-swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .swatch.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+  .swatch:hover { transform: scale(1.1); }
+
+  /* ── App Version Footer ── */
+  .app-footer {
+    margin: 20px 16px 0;
+    text-align: center;
+    animation: slideUp 0.5s ease 0.4s both;
+  }
+  .app-footer-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  .app-footer-logo svg { width: 22px; height: 22px; }
+  .app-footer-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .app-footer-name span { color: var(--accent); }
+  .app-footer-ver {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  .footer-link {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    transition: color 0.2s;
+  }
+  .footer-link:hover { color: var(--accent); }
+
+  /* ── Sheet Modal ── */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 201;
+    background: #12121e;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 32px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+    margin: 12px auto 20px;
+  }
+  .sheet-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 16px;
+    padding: 0 16px;
+  }
+  .sheet-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .sheet-option:hover { background: rgba(255,255,255,0.04); }
+  .sheet-option-label { font-size: 14px; font-weight: 600; flex: 1; }
+  .sheet-option-check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .sheet-option.selected .sheet-option-check { background: var(--accent); border-color: var(--accent); }
+  .sheet-option.selected .sheet-option-check::after { content: '✓'; font-size: 11px; color: #0a0a0f; font-weight: 700; }
+  .sheet-cancel {
+    margin: 8px 16px 0;
+    width: calc(100% - 32px);
+    padding: 13px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sheet-cancel:hover { background: rgba(255,255,255,0.09); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    z-index: 300;
+    background: #1e1e2e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-icon { font-size: 15px; }
+
+  /* ── No results ── */
+  .no-results {
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    display: none;
+  }
+  .no-results.visible { display: block; }
+
+  /* Highlight match */
+  .highlight { color: var(--accent); font-weight: 700; }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 480px) {
+    .search-wrap { padding: 12px 12px 6px; }
+    .section { margin: 10px 12px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-back" onclick="history.back()">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </div>
+  <div class="nav-title">Settings</div>
+  <div class="nav-version">v1.0.4</div>
+</nav>
+
+<!-- Sheet -->
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheetTitle">Choose Option</div>
+  <div id="sheetOptions"></div>
+  <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastMsg">Saved</span>
+</div>
+
+<div class="page">
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-inner">
+      <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search settings..." autocomplete="off" oninput="filterSettings(this.value)" />
+      <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
+  <div class="no-results" id="noResults">No settings found for "<span id="noResultsQuery"></span>"</div>
+
+  <!-- ── ACCOUNT ── -->
+  <div class="section" data-section="account">
+    <div class="section-label">Account</div>
+    <div class="section-card">
+      <div class="row" onclick="openSheet('Theme', ['System Default','Light','Dark'], 'theme')" data-search="account theme appearance">
+        <div class="row-icon yellow">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Appearance</div>
+          <div class="row-sub">Map and app theme</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-theme">Dark</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="openSheet('Language', ['English','Spanish','Mandarin','Korean','Armenian'], 'language')" data-search="account language region locale">
+        <div class="row-icon blue">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Language</div>
+          <div class="row-sub">App display language</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-language">English</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="openSheet('Distance Units', ['Miles','Kilometers'], 'units')" data-search="account units distance miles kilometers">
+        <div class="row-icon green">
+          <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Distance Units</div>
+          <div class="row-sub">Shown on the map</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-units">Miles</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NOTIFICATIONS ── -->
+  <div class="section" data-section="notifications">
+    <div class="section-label">Notifications</div>
+    <div class="section-card">
+      <div class="row no-tap" data-search="notifications push alerts">
+        <div class="row-icon blue">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Push Notifications</div>
+          <div class="row-sub">Station alerts & updates</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle on" onclick="toggleSetting(this, 'push-notifications')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="notifications safety alerts nearby warning">
+        <div class="row-icon red">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Safety Alerts</div>
+          <div class="row-sub">Incidents near your location</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle on" onclick="toggleSetting(this, 'safety-alerts')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="notifications rating reminder weekly">
+        <div class="row-icon yellow">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Rating Reminders</div>
+          <div class="row-sub">Weekly nudge to rate stations</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'rating-reminders')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="notifications new features product updates">
+        <div class="row-icon purple">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Product Updates</div>
+          <div class="row-sub">New features and improvements</div>
+        </div>
+        <div class="row-right">
+          <span class="badge new">New</span>
+          <button class="toggle on" onclick="toggleSetting(this, 'product-updates')"></button>
+        </div>
+      </div>
+      <div class="row" onclick="openSheet('Alert Radius', ['0.25 miles','0.5 miles','1 mile','2 miles','5 miles'], 'alert-radius')" data-search="notifications alert radius distance proximity">
+        <div class="row-icon teal">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Alert Radius</div>
+          <div class="row-sub">Distance for nearby alerts</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-alert-radius">1 mile</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAP ── -->
+  <div class="section" data-section="map">
+    <div class="section-label">Map</div>
+    <div class="section-card">
+      <div class="row" onclick="openSheet('Default Line', ['All Lines','A Line (Blue)','B Line (Red)','C Line (Green)','D Line (Purple)','E Line (Expo)','K Line (Crenshaw)','L Line (Gold)'], 'default-line')" data-search="map default line filter metro">
+        <div class="row-icon blue">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Default Line</div>
+          <div class="row-sub">Shown when app opens</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-default-line">All Lines</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="openSheet('Map Style', ['Dark (Default)','Satellite','High Contrast','Minimal'], 'map-style')" data-search="map style satellite terrain dark minimal">
+        <div class="row-icon gray">
+          <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Map Style</div>
+          <div class="row-sub">Background tile style</div>
+        </div>
+        <div class="row-right">
+          <span class="row-value" id="val-map-style">Dark (Default)</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="map auto center location follow">
+        <div class="row-icon green">
+          <svg viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Auto-Center on Me</div>
+          <div class="row-sub">Keep map centered on location</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'auto-center')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="map show ratings marker station overlay">
+        <div class="row-icon yellow">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Show Ratings on Map</div>
+          <div class="row-sub">Display star overlays on markers</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle on" onclick="toggleSetting(this, 'show-ratings-map')"></button>
+        </div>
+      </div>
+
+      <!-- Marker Size Slider -->
+      <div class="slider-wrap" data-search="map marker size scale zoom">
+        <div class="slider-header">
+          <div class="row-icon gray" style="width:34px;height:34px;border-radius:9px;margin-right:2px;">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--text-secondary);fill:none;stroke-width:2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <span class="slider-label">Marker Size</span>
+          <span class="slider-val" id="markerVal">M</span>
+        </div>
+        <input type="range" min="1" max="3" value="2" oninput="updateSlider(this,'markerVal',['S','M','L'])">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRIVACY ── -->
+  <div class="section" data-section="privacy">
+    <div class="section-label">Privacy</div>
+    <div class="section-card">
+      <div class="row no-tap" data-search="privacy anonymous ratings hidden identity">
+        <div class="row-icon gray">
+          <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Anonymous Ratings</div>
+          <div class="row-sub">Hide your name from public ratings</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'anonymous')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="privacy location sharing gps share">
+        <div class="row-icon green">
+          <svg viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Share Location</div>
+          <div class="row-sub">Used for nearest station lookup</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle on" onclick="toggleSetting(this, 'share-location')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="privacy analytics usage data improve">
+        <div class="row-icon purple">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Analytics</div>
+          <div class="row-sub">Help improve the app anonymously</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle on" onclick="toggleSetting(this, 'analytics')"></button>
+        </div>
+      </div>
+      <div class="row" onclick="showToast('Data export coming soon')" data-search="privacy export data download">
+        <div class="row-icon teal">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Export My Data</div>
+          <div class="row-sub">Download all your ratings & info</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACCESSIBILITY ── -->
+  <div class="section" data-section="accessibility">
+    <div class="section-label">Accessibility</div>
+    <div class="section-card">
+      <div class="row no-tap" data-search="accessibility reduce motion animation">
+        <div class="row-icon orange">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Reduce Motion</div>
+          <div class="row-sub">Limit animations and transitions</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'reduce-motion')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="accessibility high contrast bold text readability">
+        <div class="row-icon gray">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">High Contrast</div>
+          <div class="row-sub">Increase border and text contrast</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'high-contrast')"></button>
+        </div>
+      </div>
+      <div class="row no-tap" data-search="accessibility large text font size bigger">
+        <div class="row-icon blue">
+          <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Larger Text</div>
+          <div class="row-sub">Increase font size throughout app</div>
+        </div>
+        <div class="row-right">
+          <button class="toggle" onclick="toggleSetting(this, 'large-text')"></button>
+        </div>
+      </div>
+
+      <!-- Text Size Slider -->
+      <div class="slider-wrap" data-search="accessibility text size font slider">
+        <div class="slider-header">
+          <div class="row-icon gray" style="width:34px;height:34px;border-radius:9px;margin-right:2px;">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--text-secondary);fill:none;stroke-width:2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          </div>
+          <span class="slider-label">Text Size</span>
+          <span class="slider-val" id="textSizeVal">100%</span>
+        </div>
+        <input type="range" min="80" max="140" value="100" step="10" oninput="updateSliderRaw(this,'textSizeVal','%')">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SUPPORT ── -->
+  <div class="section" data-section="support">
+    <div class="section-label">Support</div>
+    <div class="section-card">
+      <div class="row" onclick="showToast('Opening Help Center...')" data-search="support help center faq documentation">
+        <div class="row-icon blue">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Help Center</div>
+          <div class="row-sub">FAQs and how-to guides</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="showToast('Opening feedback form...')" data-search="support feedback report bug contact">
+        <div class="row-icon orange">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Send Feedback</div>
+          <div class="row-sub">Report issues or suggest features</div>
+        </div>
+        <div class="row-right">
+          <span class="badge beta">Beta</span>
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="showToast('Opening privacy policy...')" data-search="support privacy policy legal">
+        <div class="row-icon gray">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Privacy Policy</div>
+          <div class="row-sub">How we handle your data</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="showToast('Opening terms of service...')" data-search="support terms service legal agreement">
+        <div class="row-icon gray">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label">Terms of Service</div>
+          <div class="row-sub">Usage agreement</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DANGER ZONE ── -->
+  <div class="section" data-section="danger">
+    <div class="section-label">Account</div>
+    <div class="section-card">
+      <div class="row" onclick="confirmAction('Sign out of ratemetro.com?', 'sign-out')" data-search="sign out log out account session">
+        <div class="row-icon red">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </div>
+        <div class="row-body danger">
+          <div class="row-label" style="color:var(--danger)">Sign Out</div>
+          <div class="row-sub">You'll need to sign back in</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24" style="stroke:rgba(255,59,48,0.4)"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="confirmAction('Delete your account permanently?', 'delete-account')" data-search="delete account remove data permanent">
+        <div class="row-icon red">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-label" style="color:var(--danger)">Delete Account</div>
+          <div class="row-sub">Permanently remove all your data</div>
+        </div>
+        <div class="row-right">
+          <svg class="row-chevron" viewBox="0 0 24 24" style="stroke:rgba(255,59,48,0.4)"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="app-footer">
+    <div class="app-footer-logo">
+      <svg viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="19" stroke="#f5c518" stroke-width="1.5" stroke-opacity="0.4"/>
+        <path d="M9 28V14l7.5 9L24 14v14M24 14l7 14" stroke="#f5c518" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="2.5" fill="#f5c518" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="app-footer-name">rate<span>metro</span>.com</div>
+    <div class="app-footer-ver">Version 1.0.4 · Build 42 · © 2025</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showToast('Opening privacy policy...')">Privacy</a>
+      <a class="footer-link" onclick="showToast('Opening terms...')">Terms</a>
+      <a class="footer-link" onclick="showToast('Opening licenses...')">Licenses</a>
+      <a class="footer-link" onclick="showToast('Opening feedback...')">Feedback</a>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// Django URLs injected for JavaScript
+const DJANGO_URLS = {
+  map: '{% url "ratemetroapp:map" %}',
+  profile: '{% url "ratemetroapp:profile" %}',
+  myRatings: '{% url "ratemetroapp:my_ratings" %}',
+  settings: '{% url "ratemetroapp:settings" %}',
+  signIn: '{% url "ratemetroapp:sign_in" %}',
+};
+// ── Settings state ──
+const state = {};
+
+// ── Toggle ──
+function toggleSetting(btn, key) {
+  btn.classList.toggle('on');
+  state[key] = btn.classList.contains('on');
+  showToast(btn.classList.contains('on') ? 'Enabled' : 'Disabled');
+}
+
+// ── Sliders ──
+function updateSlider(input, valId, labels) {
+  document.getElementById(valId).textContent = labels[input.value - 1];
+  const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
+  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+}
+function updateSliderRaw(input, valId, suffix) {
+  document.getElementById(valId).textContent = input.value + suffix;
+  const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
+  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+}
+
+// Init slider tracks
+document.querySelectorAll('input[type=range]').forEach(r => {
+  const pct = ((r.value - r.min) / (r.max - r.min)) * 100;
+  r.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+});
+
+// ── Sheet ──
+let activeSheetKey = null;
+let sheetOptions = {};
+
+function openSheet(title, options, key) {
+  activeSheetKey = key;
+  sheetOptions = options;
+  document.getElementById('sheetTitle').textContent = title;
+  const container = document.getElementById('sheetOptions');
+  const current = document.getElementById(`val-${key}`)?.textContent || options[0];
+  container.innerHTML = options.map(opt => `
+    <div class="sheet-option ${opt === current ? 'selected' : ''}" onclick="selectOption('${key}','${opt}',this)">
+      <span class="sheet-option-label">${opt}</span>
+      <div class="sheet-option-check"></div>
+    </div>
+  `).join('');
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+
+function selectOption(key, value, el) {
+  document.querySelectorAll('.sheet-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  const valEl = document.getElementById(`val-${key}`);
+  if (valEl) valEl.textContent = value;
+  state[key] = value;
+  setTimeout(closeSheet, 260);
+  showToast('Saved');
+}
+
+function closeSheet() {
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ── Confirm ──
+function confirmAction(msg, action) {
+  if (confirm(msg)) {
+    if (action === 'sign-out') showToast('Signed out');
+    else if (action === 'delete-account') showToast('Account deleted (demo)');
+  }
+}
+
+// ── Search ──
+function filterSettings(query) {
+  const q = query.toLowerCase().trim();
+  const clearBtn = document.getElementById('searchClear');
+  const noResults = document.getElementById('noResults');
+  clearBtn.classList.toggle('visible', q.length > 0);
+
+  if (!q) {
+    document.querySelectorAll('.section').forEach(s => s.style.display = '');
+    noResults.classList.remove('visible');
+    return;
+  }
+
+  let anyVisible = false;
+  document.querySelectorAll('.section').forEach(section => {
+    const rows = section.querySelectorAll('[data-search], .slider-wrap');
+    let sectionHasMatch = false;
+    rows.forEach(row => {
+      const searchText = (row.dataset.search || '') + ' ' + (row.querySelector('.row-label')?.textContent || '') + ' ' + (row.querySelector('.row-sub')?.textContent || '') + ' ' + (row.querySelector('.slider-label')?.textContent || '');
+      const matches = searchText.toLowerCase().includes(q);
+      row.style.display = matches ? '' : 'none';
+      if (matches) sectionHasMatch = true;
+    });
+    section.style.display = sectionHasMatch ? '' : 'none';
+    if (sectionHasMatch) anyVisible = true;
+  });
+
+  noResults.classList.toggle('visible', !anyVisible);
+  document.getElementById('noResultsQuery').textContent = query;
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  filterSettings('');
+  document.getElementById('searchInput').focus();
+}
+</script>
+</body>
+</html>
