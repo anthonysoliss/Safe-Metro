@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Settings — Ratemetro.com</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -18,6 +21,20 @@
     --text-secondary: rgba(255, 255, 255, 0.6);
     --text-muted: rgba(255, 255, 255, 0.35);
     --border: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -41,6 +58,11 @@
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
+  }
+  [data-theme="light"] body::before {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
   }
 
   /* ── Nav ── */
@@ -522,6 +544,157 @@
     .search-wrap { padding: 12px 12px 6px; }
     .section { margin: 10px 12px 0; }
   }
+
+  /* ── Confirmation Modal ── */
+  .confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  .confirm-modal.active {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: auto;
+    opacity: 1;
+  }
+  .confirm-modal-content {
+    width: 90%;
+    max-width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px 20px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    transform: scale(0.92) translateY(12px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .confirm-modal.active .confirm-modal-content {
+    transform: scale(1) translateY(0);
+  }
+  .confirm-modal-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .confirm-modal-header h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+  }
+  .confirm-modal-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .confirm-modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .confirm-modal-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .confirm-modal-btn.cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .confirm-modal-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+  }
+  .confirm-modal-btn.confirm {
+    background: var(--accent);
+    color: #0a0a0f;
+  }
+  .confirm-modal-btn.confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+  }
+  .confirm-modal-btn.confirm.danger {
+    background: var(--danger);
+    color: #fff;
+  }
+  .confirm-modal-btn.confirm.danger:hover {
+    box-shadow: 0 6px 20px rgba(255, 59, 48, 0.35);
+  }
+
+  /* ── Light Mode Overrides ── */
+  [data-theme="light"] .nav {
+    background: rgba(242, 242, 247, 0.9);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  [data-theme="light"] .nav-back {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+  [data-theme="light"] .nav-back svg { stroke: rgba(0, 0, 0, 0.5); }
+  [data-theme="light"] .nav-back:hover svg { stroke: var(--accent); }
+  [data-theme="light"] .section-card {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+  [data-theme="light"] .row:hover { background: rgba(0, 0, 0, 0.03); }
+  [data-theme="light"] .row:active { background: rgba(0, 0, 0, 0.06); }
+  [data-theme="light"] .row.danger:hover { background: rgba(255, 59, 48, 0.04); }
+  [data-theme="light"] .row-icon.yellow { background: rgba(212, 160, 23, 0.12); }
+  [data-theme="light"] .row-icon.blue { background: rgba(0, 122, 255, 0.1); }
+  [data-theme="light"] .row-icon.green { background: rgba(48, 209, 88, 0.1); }
+  [data-theme="light"] .row-icon.red { background: rgba(255, 59, 48, 0.1); }
+  [data-theme="light"] .row-icon.purple { background: rgba(175, 82, 222, 0.1); }
+  [data-theme="light"] .row-icon.gray { background: rgba(0, 0, 0, 0.06); }
+  [data-theme="light"] .row-icon.teal { background: rgba(90, 200, 250, 0.1); }
+  [data-theme="light"] .row-icon.orange { background: rgba(255, 149, 0, 0.1); }
+  [data-theme="light"] .toggle { background: rgba(0, 0, 0, 0.15); }
+  [data-theme="light"] .toggle.on { background: var(--accent); }
+  [data-theme="light"] .toggle::after { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+  [data-theme="light"] .search-wrap { background: rgba(242, 242, 247, 0.9); }
+  [data-theme="light"] .search-inner { background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.1); }
+  [data-theme="light"] .search-input { color: var(--text-primary); }
+  [data-theme="light"] .search-input::placeholder { color: var(--text-muted); }
+  [data-theme="light"] .search-icon { stroke: var(--text-muted); }
+  [data-theme="light"] .search-clear { background: rgba(0, 0, 0, 0.08); color: var(--text-secondary); }
+  [data-theme="light"] .search-clear:hover { background: rgba(0, 0, 0, 0.15); }
+  [data-theme="light"] .row-chevron { stroke: var(--text-muted); }
+  [data-theme="light"] .row-icon.gray { background: rgba(0, 0, 0, 0.06); color: var(--text-secondary); border-color: rgba(0, 0, 0, 0.08); }
+  [data-theme="light"] .sheet { background: var(--surface); border-color: var(--border); }
+  [data-theme="light"] .sheet-backdrop.open { background: rgba(0, 0, 0, 0.3); }
+  [data-theme="light"] .sheet-option:hover { background: rgba(0, 0, 0, 0.04); }
+  [data-theme="light"] .sheet-option.selected .sheet-option-check { background: var(--accent); }
+  [data-theme="light"] .sheet-option.selected .sheet-option-check::after { color: #fff; }
+  [data-theme="light"] .sheet-cancel { background: rgba(0, 0, 0, 0.04); color: var(--text-secondary); border-color: var(--border); }
+  [data-theme="light"] .sheet-cancel:hover { background: rgba(0, 0, 0, 0.08); }
+  [data-theme="light"] .toast { background: rgba(0, 0, 0, 0.8); color: #fff; }
+  [data-theme="light"] .confirm-modal-content {
+    background: var(--surface);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+  [data-theme="light"] .confirm-modal-btn.cancel { background: rgba(0, 0, 0, 0.05); color: var(--text-secondary); border-color: var(--border); }
+  [data-theme="light"] .confirm-modal-btn.confirm { color: #fff; }
+  [data-theme="light"] .app-footer-name span { color: var(--accent); }
+  [data-theme="light"] input[type="range"] { background: linear-gradient(to right, var(--accent) 50%, rgba(0,0,0,0.1) 50%) !important; }
+  [data-theme="light"] .badge { background: rgba(0, 0, 0, 0.06); color: var(--text-secondary); }
+  [data-theme="light"] .badge.new { background: rgba(48, 209, 88, 0.12); color: #1b8a3a; }
+  [data-theme="light"] .badge.beta { background: rgba(0, 122, 255, 0.1); color: #0066cc; }
 </style>
 </head>
 <body>
@@ -1018,22 +1191,32 @@ function toggleSetting(btn, key) {
 }
 
 // ── Sliders ──
+function getTrackBg() {
+  return document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)';
+}
 function updateSlider(input, valId, labels) {
   document.getElementById(valId).textContent = labels[input.value - 1];
   const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
-  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, ${getTrackBg()} ${pct}%)`;
 }
 function updateSliderRaw(input, valId, suffix) {
   document.getElementById(valId).textContent = input.value + suffix;
   const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
-  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+  input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, ${getTrackBg()} ${pct}%)`;
 }
 
 // Init slider tracks
 document.querySelectorAll('input[type=range]').forEach(r => {
   const pct = ((r.value - r.min) / (r.max - r.min)) * 100;
-  r.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+  r.style.background = `linear-gradient(to right, var(--accent) ${pct}%, ${getTrackBg()} ${pct}%)`;
 });
+
+// Load saved theme preference into UI
+(function() {
+  const savedPref = localStorage.getItem('ratemetro-theme-pref') || 'Dark';
+  const themeVal = document.getElementById('val-theme');
+  if (themeVal) themeVal.textContent = savedPref;
+})();
 
 // ── Sheet ──
 let activeSheetKey = null;
@@ -1061,8 +1244,32 @@ function selectOption(key, value, el) {
   const valEl = document.getElementById(`val-${key}`);
   if (valEl) valEl.textContent = value;
   state[key] = value;
+  
+  if (key === 'theme') {
+    applyTheme(value);
+  }
+  
   setTimeout(closeSheet, 260);
   showToast('Saved');
+}
+
+function applyTheme(value) {
+  let theme = 'dark';
+  if (value === 'Light') {
+    theme = 'light';
+  } else if (value === 'Dark') {
+    theme = 'dark';
+  } else {
+    theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('ratemetro-theme', theme);
+  localStorage.setItem('ratemetro-theme-pref', value);
+  
+  document.querySelectorAll('input[type=range]').forEach(r => {
+    const pct = ((r.value - r.min) / (r.max - r.min)) * 100;
+    r.style.background = `linear-gradient(to right, var(--accent) ${pct}%, ${getTrackBg()} ${pct}%)`;
+  });
 }
 
 function closeSheet() {
@@ -1166,12 +1373,14 @@ async function handleSignOut() {
     const data = await response.json();
     
     if (data.status === 'success') {
-      // Clear any client-side data
+      const theme = localStorage.getItem('ratemetro-theme');
+      const themePref = localStorage.getItem('ratemetro-theme-pref');
       localStorage.clear();
+      if (theme) localStorage.setItem('ratemetro-theme', theme);
+      if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
       sessionStorage.clear();
       
       showToast('Signed out successfully');
-      // Redirect to sign-in page after a short delay
       setTimeout(() => {
         window.location.href = DJANGO_URLS.signIn;
       }, 1000);
@@ -1181,9 +1390,12 @@ async function handleSignOut() {
   } catch (error) {
     console.error('Sign out error:', error);
     showToast('Error signing out');
-    // Even if API fails, try to redirect
     setTimeout(() => {
+      const theme = localStorage.getItem('ratemetro-theme');
+      const themePref = localStorage.getItem('ratemetro-theme-pref');
       localStorage.clear();
+      if (theme) localStorage.setItem('ratemetro-theme', theme);
+      if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
       sessionStorage.clear();
       window.location.href = DJANGO_URLS.signIn;
     }, 1000);
@@ -1216,8 +1428,11 @@ async function handleDeleteAccount() {
     const data = await response.json();
     
     if (data.status === 'success') {
-      // Clear any client-side data
+      const theme = localStorage.getItem('ratemetro-theme');
+      const themePref = localStorage.getItem('ratemetro-theme-pref');
       localStorage.clear();
+      if (theme) localStorage.setItem('ratemetro-theme', theme);
+      if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
       sessionStorage.clear();
       
       showToast('Account deleted successfully');

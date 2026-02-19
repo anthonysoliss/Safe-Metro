@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Rate Metro</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -20,6 +23,20 @@
     --text-muted: rgba(255, 255, 255, 0.35);
     --border: rgba(255, 255, 255, 0.08);
     --chat-bg: rgba(12, 12, 20, 0.88);
+  }
+
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
+    --chat-bg: rgba(255, 255, 255, 0.95);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -78,7 +95,7 @@
     letter-spacing: 0.8px;
     text-transform: uppercase;
   }
-  .station-pill .chevron { transition: transform 0.3s ease; }
+  .station-pill .chevron { transition: transform 0.3s ease; stroke: var(--text-muted); }
   .station-pill.active .chevron { transform: rotate(180deg); }
 
   /* ── Station Panel ── */
@@ -406,6 +423,8 @@
   .compass:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
   .compass-needle { width: 28px; height: 28px; transition: transform 0.5s ease; }
   .compass-needle svg { width: 100%; height: 100%; }
+  .compass-south { fill: rgba(255,255,255,0.5); }
+  .compass-center { stroke: rgba(255,255,255,0.3); }
 
   /* ── Locate ── */
   .locate-btn {
@@ -839,7 +858,7 @@
   /* View All Ratings Modal */
   .ratings-view-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
   .ratings-view-modal.active { opacity: 1; visibility: visible; }
-  .ratings-view-modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); transform: translateY(-20px) scale(0.95); opacity: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .ratings-view-modal-content { background: var(--surface); border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; margin: 20px auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); transform: translateY(-20px) scale(0.95); opacity: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   .ratings-view-modal.active .ratings-view-modal-content { transform: translateY(0) scale(1); opacity: 1; }
   .ratings-view-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: none; }
   .ratings-view-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
@@ -911,6 +930,90 @@
     .profile-btn { top: 12px; right: 12px; }
     .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); }
   }
+
+  /* ── Light Mode Overrides ── */
+  [data-theme="light"] .leaflet-container { background: #e8e8ed; }
+  [data-theme="light"] .coords-display { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .station-pill { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .profile-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .profile-btn svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .profile-dropdown { background: var(--surface); border-color: var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  [data-theme="light"] .profile-dropdown-item:hover { background: rgba(0,0,0,0.04); }
+  [data-theme="light"] .profile-dropdown-item svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .profile-dropdown-divider { background: var(--border); }
+  [data-theme="light"] .locate-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .locate-btn svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .sidebar-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .sidebar-btn svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .sidebar { background: rgba(255,255,255,0.96); border-color: var(--border); }
+  [data-theme="light"] .sidebar-header { border-color: var(--border); }
+  [data-theme="light"] .sidebar-close svg { stroke: var(--text-muted); }
+  [data-theme="light"] .line-filter-btn { background: rgba(0,0,0,0.04); border-color: var(--border); color: var(--text-secondary); }
+  [data-theme="light"] .line-filter-btn:hover { background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .station-item { border-color: var(--border); }
+  [data-theme="light"] .station-item:hover { background: rgba(0,0,0,0.03); }
+  [data-theme="light"] .station-panel { background: var(--surface); border-color: var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+  [data-theme="light"] .station-panel-close svg { stroke: var(--text-muted); }
+  [data-theme="light"] .tab-btn { color: var(--text-muted); }
+  [data-theme="light"] .tab-btn.active { color: var(--text-primary); border-color: var(--accent); }
+  [data-theme="light"] .info-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .info-btn svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .chat-overlay { background: var(--chat-bg); }
+  [data-theme="light"] .chat-input-wrap { background: rgba(0,0,0,0.04); border-color: var(--border); }
+  [data-theme="light"] .chat-input { color: var(--text-primary); }
+  [data-theme="light"] .chat-msg.ai { background: rgba(0,0,0,0.04); }
+  [data-theme="light"] .modal-overlay .modal-content { background: var(--surface); border-color: var(--border); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .sign-in-prompt-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .confirm-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .rating-form select,
+  [data-theme="light"] .rating-form textarea,
+  [data-theme="light"] .rating-form input[type="file"] { background: rgba(0,0,0,0.04); border-color: var(--border); color: var(--text-primary); }
+  [data-theme="light"] .rating-submit { color: #fff; }
+  [data-theme="light"] .popup-rating-btn { color: #fff; }
+  [data-theme="light"] .signin-prompt-btn.primary { color: #fff; }
+  [data-theme="light"] .confirm-modal-btn.confirm { color: #fff; }
+  [data-theme="light"] .chat-msg.user { color: #fff; }
+  [data-theme="light"] .rating-item-avatar { color: #fff; }
+
+  /* Compass */
+  [data-theme="light"] .compass { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .compass-south { fill: rgba(0,0,0,0.3); }
+  [data-theme="light"] .compass-center { stroke: rgba(0,0,0,0.2); }
+
+  /* Send button icon */
+  [data-theme="light"] .send-btn svg { stroke: #fff; }
+
+  /* Line chips */
+  [data-theme="light"] .line-chip { background: rgba(0,0,0,0.04); }
+  [data-theme="light"] .line-chip:hover { background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .line-chip.active { background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .line-chip.all-chip.active { background: rgba(212,160,23,0.12); }
+
+  /* Chat bar */
+  [data-theme="light"] .chat-bar { background: var(--chat-bg); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .chat-bar:focus-within { box-shadow: 0 0 30px rgba(212,160,23,0.12), 0 8px 32px rgba(0,0,0,0.1); }
+
+  /* Panel search */
+  [data-theme="light"] .panel-search { color: var(--text-primary); }
+  [data-theme="light"] .panel-search::placeholder { color: var(--text-muted); }
+  [data-theme="light"] .search-icon { stroke: var(--text-muted); }
+  [data-theme="light"] .station-count { color: var(--text-muted); }
+  [data-theme="light"] .station-arrow { stroke: var(--text-muted); }
+
+  /* Rating modals */
+  [data-theme="light"] .rating-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .rating-modal-close { color: var(--text-muted); }
+  [data-theme="light"] .rating-modal-close:hover { color: var(--text-primary); }
+  [data-theme="light"] .ratings-view-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .ratings-view-modal-close { color: var(--text-muted); }
+  [data-theme="light"] .ratings-view-modal-close:hover { color: var(--text-primary); }
+  [data-theme="light"] .rating-item-card { background: rgba(0,0,0,0.03); border-color: var(--border); }
+  [data-theme="light"] .ratings-view-filter-select { background: rgba(0,0,0,0.04); border-color: var(--border); }
+
+  /* Sign-in prompt close icon */
+  [data-theme="light"] .signin-prompt-close svg { stroke: var(--text-muted); }
+  [data-theme="light"] .signin-prompt-close:hover svg { stroke: var(--text-primary); }
+  [data-theme="light"] .signin-prompt-content { background: var(--surface); }
 </style>
 </head>
 <body>
@@ -921,7 +1024,7 @@
 <div class="station-pill" id="stationPill">
   <div class="dot"></div>
   <span>Stations</span>
-  <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
 </div>
 
 <!-- Station Panel -->
@@ -988,8 +1091,8 @@
   <div class="compass-needle" id="compassNeedle">
     <svg viewBox="0 0 40 40">
       <polygon points="20,4 24,22 20,19 16,22" fill="#ff3b30" opacity="0.9"/>
-      <polygon points="20,36 16,22 20,25 24,22" fill="rgba(255,255,255,0.5)"/>
-      <circle cx="20" cy="20" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <polygon class="compass-south" points="20,36 16,22 20,25 24,22"/>
+      <circle class="compass-center" cx="20" cy="20" r="3" fill="none" stroke-width="1"/>
     </svg>
   </div>
 </div>
@@ -1268,8 +1371,11 @@ async function handleSignOut() {
     const data = await response.json();
     
     if (data.status === 'success') {
-      // Clear any client-side data
+      const theme = localStorage.getItem('ratemetro-theme');
+      const themePref = localStorage.getItem('ratemetro-theme-pref');
       localStorage.clear();
+      if (theme) localStorage.setItem('ratemetro-theme', theme);
+      if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
       sessionStorage.clear();
       
       // Redirect to sign-in page
@@ -1279,8 +1385,11 @@ async function handleSignOut() {
     }
   } catch (error) {
     console.error('Sign out error:', error);
-    // Even if API fails, try to redirect
+    const theme = localStorage.getItem('ratemetro-theme');
+    const themePref = localStorage.getItem('ratemetro-theme-pref');
     localStorage.clear();
+    if (theme) localStorage.setItem('ratemetro-theme', theme);
+    if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
     sessionStorage.clear();
     window.location.href = DJANGO_URLS.signIn;
   }
@@ -1582,7 +1691,20 @@ let userLat = defaultLat, userLng = defaultLng;
 let userMarker = null, stationMarkers = [], activeFilter = 'all';
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+let tileLayer = L.tileLayer(currentTheme === 'light' ? lightTileUrl : darkTileUrl, { maxZoom: 19 }).addTo(map);
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'ratemetro-theme') {
+    const newTheme = e.newValue || 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    map.removeLayer(tileLayer);
+    tileLayer = L.tileLayer(newTheme === 'light' ? lightTileUrl : darkTileUrl, { maxZoom: 19 }).addTo(map);
+  }
+});
 
 function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
 
@@ -1639,7 +1761,8 @@ function buildFilters() {
     chip.addEventListener('click', () => {
       const line = chip.dataset.line;
       activeFilter = line;
-      c.querySelectorAll('.line-chip').forEach(ch => { ch.classList.remove('active'); ch.style.borderColor = 'transparent'; ch.style.background = 'rgba(255,255,255,0.05)'; });
+      const chipBg = document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)';
+      c.querySelectorAll('.line-chip').forEach(ch => { ch.classList.remove('active'); ch.style.borderColor = 'transparent'; ch.style.background = chipBg; });
       chip.classList.add('active');
       if (line !== 'all') {
         chip.style.borderColor = metroLines[line].color;

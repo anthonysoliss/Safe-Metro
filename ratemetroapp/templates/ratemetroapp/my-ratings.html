@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>My Ratings — Metro Safe LA</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -17,6 +20,19 @@
     --text-secondary: rgba(255, 255, 255, 0.6);
     --text-muted: rgba(255, 255, 255, 0.35);
     --border: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -543,6 +559,44 @@
   @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes cardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Light Mode Overrides ── */
+  [data-theme="light"] body::before {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  }
+  [data-theme="light"] .nav {
+    background: rgba(242,242,247,0.92);
+    border-bottom-color: rgba(0,0,0,0.08);
+  }
+  [data-theme="light"] .nav-back { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
+  [data-theme="light"] .nav-back svg { stroke: rgba(0,0,0,0.5); }
+  [data-theme="light"] .summary-card { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  [data-theme="light"] .summary-card:hover { border-color: rgba(212,160,23,0.25); background: var(--surface-light); }
+  [data-theme="light"] .filter-chip { background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  [data-theme="light"] .filter-chip:hover { background: var(--surface-light); }
+  [data-theme="light"] .filter-chip.active { background: rgba(212,160,23,0.1); border-color: var(--accent); }
+  [data-theme="light"] .sort-select {
+    background-color: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.35)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+  [data-theme="light"] .sort-select option { background: #fff; color: #1c1c1e; }
+  [data-theme="light"] .rating-card { background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  [data-theme="light"] .rating-card:hover { border-color: rgba(212,160,23,0.25); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  [data-theme="light"] .score-bar-wrap { background: rgba(0,0,0,0.06); }
+  [data-theme="light"] .card-action-btn:hover { background: rgba(0,0,0,0.04); }
+  [data-theme="light"] .card-action-btn.delete:hover { background: rgba(255,59,48,0.06); }
+  [data-theme="light"] .empty-cta { color: #fff; }
+  [data-theme="light"] .toast { background: #fff; border-color: rgba(0,0,0,0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  [data-theme="light"] .toast-btn.cancel { background: rgba(0,0,0,0.06); color: var(--text-secondary); }
+  [data-theme="light"] .toast-btn.cancel:hover { background: rgba(0,0,0,0.1); }
+  [data-theme="light"] .confirm-modal { background: rgba(0,0,0,0.3); }
+  [data-theme="light"] .confirm-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .confirm-modal-btn.cancel { background: rgba(0,0,0,0.05); color: var(--text-secondary); border-color: var(--border); }
+  [data-theme="light"] .confirm-modal-btn.cancel:hover { background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .confirm-modal-btn.confirm { color: #fff; }
+  [data-theme="light"] .confirm-modal-btn.danger { color: #fff; }
 </style>
 </head>
 <body>
