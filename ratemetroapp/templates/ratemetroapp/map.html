@@ -870,8 +870,9 @@
   .rating-modal.active .rating-modal-content { transform: scale(1); }
   .rating-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .rating-modal-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-  .rating-modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; line-height: 1; }
-  .rating-modal-close:hover { color: var(--text-primary); }
+  .rating-modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; padding: 0; transition: background 0.2s, color 0.2s; }
+  .rating-modal-close svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; pointer-events: none; }
+  .rating-modal-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
   .rating-category { margin-bottom: 14px; }
   .rating-category-label { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
   .rating-stars-input { display: flex; gap: 4px; justify-content: flex-start; }
@@ -1247,7 +1248,9 @@
   <div class="rating-modal-content">
     <div class="rating-modal-header">
       <div class="rating-modal-title" id="ratingModalTitle">Rate Station</div>
-      <button class="rating-modal-close" id="ratingModalClose">&times;</button>
+      <button class="rating-modal-close" id="ratingModalClose">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     
     <div class="rating-form">
