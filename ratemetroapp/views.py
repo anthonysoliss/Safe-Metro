@@ -171,11 +171,29 @@ def my_ratings_view(request):
 @login_required
 def settings_view(request):
     """Settings page view"""
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
     context = {
         'is_authenticated': True,
         'user': request.user,
+        'anonymous_ratings': profile.anonymous_ratings,
     }
     return render(request, 'ratemetroapp/settings.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_update_settings(request):
+    """API endpoint to update user settings (e.g. anonymous_ratings)"""
+    try:
+        data = json.loads(request.body)
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        if 'anonymous_ratings' in data:
+            profile.anonymous_ratings = bool(data['anonymous_ratings'])
+        profile.save()
+        return JsonResponse({'status': 'success'})
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -287,13 +305,23 @@ def submit_rating(request):
         except (UserProfile.DoesNotExist, ValueError):
             pass
 
+        # Respect anonymous_ratings setting
+        display_username = request.user.username
+        display_avatar = avatar_url
+        try:
+            if request.user.profile.anonymous_ratings:
+                display_username = 'Anonymous'
+                display_avatar = ''
+        except (UserProfile.DoesNotExist, AttributeError):
+            pass
+
         return JsonResponse({
             'status': 'success',
             'message': 'Rating submitted successfully',
             'rating_id': rating.id,
             'timestamp': int(rating.created_at.timestamp() * 1000),
-            'username': request.user.username,
-            'avatar_url': avatar_url,
+            'username': display_username,
+            'avatar_url': display_avatar,
         })
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -322,15 +350,20 @@ def get_station_ratings(request):
     safety_vals, clean_vals, staff_vals = [], [], []
 
     for r in ratings_qs:
-        # Username + avatar
-        username = r.user.username if r.user else 'Anonymous'
+        # Username + avatar — respect anonymous_ratings setting
+        username = 'Anonymous'
         avatar_url = ''
         if r.user:
             try:
-                if r.user.profile.avatar and hasattr(r.user.profile.avatar, 'url'):
-                    avatar_url = r.user.profile.avatar.url
-            except (UserProfile.DoesNotExist, ValueError):
-                pass
+                if r.user.profile.anonymous_ratings:
+                    username = 'Anonymous'
+                    avatar_url = ''
+                else:
+                    username = r.user.username
+                    if r.user.profile.avatar and hasattr(r.user.profile.avatar, 'url'):
+                        avatar_url = r.user.profile.avatar.url
+            except (UserProfile.DoesNotExist, AttributeError, ValueError):
+                username = r.user.username
 
         ratings_list.append({
             'id': r.id,

@@ -900,30 +900,67 @@
   .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
   .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* Rating Modal — responsive */
-  @media (max-width: 480px) {
+  /* Rating Modal — bottom sheet on mobile */
+  @media (max-width: 768px) {
+    .rating-modal {
+      align-items: flex-end;
+      padding: 0;
+    }
     .rating-modal-content {
-      max-width: calc(100vw - 24px);
+      max-width: 100%;
       width: 100%;
-      padding: 14px;
-      max-height: 88vh;
-      border-radius: 12px;
+      max-height: 92dvh;
+      border-radius: 20px 20px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
     }
-    .rating-modal-title { font-size: 14px; }
-    .rating-category { margin-bottom: 12px; }
-    .rating-category-label { font-size: 11px; margin-bottom: 6px; }
-    .rating-star-btn { font-size: 22px; }
-    .rating-thumb-btn { padding: 7px 10px; font-size: 13px; }
-    .rating-overall-stars .star { font-size: 18px; }
-    .rating-description-input { font-size: 13px; min-height: 48px; }
-    .rating-submit { font-size: 13px; padding: 10px; }
-  }
-
-  @media (min-width: 481px) and (max-width: 768px) {
-    .rating-modal-content {
-      max-width: min(380px, calc(100vw - 32px));
-      padding: 18px;
+    .rating-modal.active .rating-modal-content {
+      transform: translateY(0);
     }
+    /* Drag handle */
+    .rating-modal-content::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      flex-shrink: 0;
+    }
+    .rating-modal-header {
+      padding: 4px 16px 12px;
+      flex-shrink: 0;
+    }
+    /* Scrollable form body */
+    .rating-form {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      flex: 1;
+      padding: 0 16px 12px;
+    }
+    /* Sticky submit always visible */
+    .rating-submit {
+      position: sticky;
+      bottom: 0;
+      margin: 0;
+      border-radius: 0;
+      padding: 14px 16px;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .rating-modal-title { font-size: 15px; }
+    .rating-category { margin-bottom: 14px; }
+    .rating-category-label { font-size: 12px; }
+    .rating-star-btn { font-size: 24px; }
+    .rating-thumb-btn { padding: 8px 10px; font-size: 13px; }
+    .rating-overall-stars .star { font-size: 20px; }
+    .rating-description-input { font-size: 14px; min-height: 60px; }
   }
 
   
@@ -956,6 +993,45 @@
     border-color: rgba(0,0,0,0.10) !important;
     color: #111 !important;
     box-shadow: 0 4px 14px rgba(0,0,0,0.15) !important;
+  }
+
+  /* ── Toast notification ── */
+  .map-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: rgba(18, 18, 28, 0.96);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f0f0f5;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: transform 0.38s cubic-bezier(0.16,1,0.3,1), opacity 0.38s ease;
+  }
+  .map-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .map-toast.success .map-toast-icon { color: #30d158; }
+  .map-toast.error   .map-toast-icon { color: #ff3b30; }
+  .map-toast.info    .map-toast-icon { color: #f5c518; }
+  .map-toast-icon { font-size: 16px; flex-shrink: 0; }
+  [data-theme="light"] .map-toast {
+    background: rgba(255,255,255,0.97);
+    border-color: rgba(0,0,0,0.09);
+    color: #1c1c1e;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
   }
 
   /* Panel backdrop */
@@ -1174,62 +1250,64 @@
       <button class="rating-modal-close" id="ratingModalClose">&times;</button>
     </div>
     
-    <div class="rating-category">
-      <div class="rating-category-label">🛡️ Safety — Did you feel safe?</div>
-      <div class="rating-stars-input" data-category="safety">
-        <button class="rating-star-btn" data-rating="1">★</button>
-        <button class="rating-star-btn" data-rating="2">★</button>
-        <button class="rating-star-btn" data-rating="3">★</button>
-        <button class="rating-star-btn" data-rating="4">★</button>
-        <button class="rating-star-btn" data-rating="5">★</button>
+    <div class="rating-form">
+      <div class="rating-category">
+        <div class="rating-category-label">🛡️ Safety — Did you feel safe?</div>
+        <div class="rating-stars-input" data-category="safety">
+          <button class="rating-star-btn" data-rating="1">★</button>
+          <button class="rating-star-btn" data-rating="2">★</button>
+          <button class="rating-star-btn" data-rating="3">★</button>
+          <button class="rating-star-btn" data-rating="4">★</button>
+          <button class="rating-star-btn" data-rating="5">★</button>
+        </div>
+      </div>
+
+      <div class="rating-category">
+        <div class="rating-category-label">🧹 Cleanliness — Was it clean?</div>
+        <div class="rating-stars-input" data-category="cleanliness">
+          <button class="rating-star-btn" data-rating="1">★</button>
+          <button class="rating-star-btn" data-rating="2">★</button>
+          <button class="rating-star-btn" data-rating="3">★</button>
+          <button class="rating-star-btn" data-rating="4">★</button>
+          <button class="rating-star-btn" data-rating="5">★</button>
+        </div>
+      </div>
+
+      <div class="rating-category">
+        <div class="rating-category-label">👮 Staff Present — Did you see staff?</div>
+        <div class="rating-thumbs" data-category="staff">
+          <button class="rating-thumb-btn thumb-up" data-value="yes">👍 Yes</button>
+          <button class="rating-thumb-btn thumb-down" data-value="no">👎 No</button>
+        </div>
+      </div>
+
+      <div class="rating-overall-display">
+        <div class="rating-overall-label">Overall Rating</div>
+        <div class="rating-overall-stars" id="overallRatingDisplay">
+          <span class="star">★</span>
+          <span class="star">★</span>
+          <span class="star">★</span>
+          <span class="star">★</span>
+          <span class="star">★</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-align: center;">Calculated from Safety & Cleanliness</div>
+      </div>
+
+      <div class="rating-category">
+        <div class="rating-category-label">📝 Description (Optional)</div>
+        <textarea id="ratingDescription" class="rating-description-input" placeholder="Share your experience at this station..." rows="3"></textarea>
+      </div>
+
+      <div class="rating-category">
+        <div class="rating-category-label">📷 Photo (Optional)</div>
+        <div class="rating-photo-upload">
+          <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
+          <button type="button" class="rating-photo-btn" id="ratingPhotoBtn">Choose Photo</button>
+          <div class="rating-photo-preview" id="ratingPhotoPreview"></div>
+        </div>
       </div>
     </div>
-    
-    <div class="rating-category">
-      <div class="rating-category-label">🧹 Cleanliness — Was it clean?</div>
-      <div class="rating-stars-input" data-category="cleanliness">
-        <button class="rating-star-btn" data-rating="1">★</button>
-        <button class="rating-star-btn" data-rating="2">★</button>
-        <button class="rating-star-btn" data-rating="3">★</button>
-        <button class="rating-star-btn" data-rating="4">★</button>
-        <button class="rating-star-btn" data-rating="5">★</button>
-      </div>
-    </div>
-    
-    <div class="rating-category">
-      <div class="rating-category-label">👮 Staff Present — Did you see staff?</div>
-      <div class="rating-thumbs" data-category="staff">
-        <button class="rating-thumb-btn thumb-up" data-value="yes">👍 Yes</button>
-        <button class="rating-thumb-btn thumb-down" data-value="no">👎 No</button>
-      </div>
-    </div>
-    
-    <div class="rating-overall-display">
-      <div class="rating-overall-label">Overall Rating</div>
-      <div class="rating-overall-stars" id="overallRatingDisplay">
-        <span class="star">★</span>
-        <span class="star">★</span>
-        <span class="star">★</span>
-        <span class="star">★</span>
-        <span class="star">★</span>
-      </div>
-      <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-align: center;">Calculated from Safety & Cleanliness</div>
-    </div>
-    
-    <div class="rating-category">
-      <div class="rating-category-label">📝 Description (Optional)</div>
-      <textarea id="ratingDescription" class="rating-description-input" placeholder="Share your experience at this station..." rows="3"></textarea>
-    </div>
-    
-    <div class="rating-category">
-      <div class="rating-category-label">📷 Photo (Optional)</div>
-      <div class="rating-photo-upload">
-        <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
-        <button type="button" class="rating-photo-btn" id="ratingPhotoBtn">Choose Photo</button>
-        <div class="rating-photo-preview" id="ratingPhotoPreview"></div>
-      </div>
-    </div>
-    
+
     <button class="rating-submit" id="ratingSubmit" disabled>Submit Rating</button>
   </div>
 </div>
@@ -1294,6 +1372,12 @@
 </div>
 
 {% csrf_token %}
+<!-- Toast notification -->
+<div class="map-toast" id="mapToast">
+  <span class="map-toast-icon" id="mapToastIcon"></span>
+  <span id="mapToastMsg"></span>
+</div>
+
 <script>
 // Django URLs injected for JavaScript
 const DJANGO_URLS = {
@@ -1477,6 +1561,25 @@ function getCSRFToken() {
   if (token) return token.value;
   return getCookie('csrftoken');
 }
+
+// ── Toast ──
+let _mapToastTimer = null;
+function showMapToast(msg, type = 'success', duration = 3000) {
+  const toast   = document.getElementById('mapToast');
+  const msgEl   = document.getElementById('mapToastMsg');
+  const iconEl  = document.getElementById('mapToastIcon');
+  if (!toast) return;
+  const icons = { success: '✓', error: '✕', info: '★' };
+  iconEl.textContent = icons[type] || '✓';
+  msgEl.textContent  = msg;
+  toast.className    = `map-toast ${type}`;
+  // Force reflow so transition fires even if already visible
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  clearTimeout(_mapToastTimer);
+  _mapToastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+}
+
 // ── Metro Lines ──
 const metroLines = {
   A: { name: 'A Line (Blue)',   color: '#0072bc', text: '#fff' },
@@ -1795,7 +1898,7 @@ function createMarkers(filterLine = 'all') {
       ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
     }
     const stationNameEscaped = station.name.replace(/'/g, "\\'");
-    const viewRatingsBtn = rating.count > 0 ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;">View All Ratings (${rating.count})</a>` : '';
+    const viewRatingsBtn = rating.count > 0 ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${rating.count})</a>` : '';
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
     marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
     marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
@@ -1804,6 +1907,20 @@ function createMarkers(filterLine = 'all') {
   });
 }
 createMarkers();
+
+// ── Restore popup after returning from station reviews ──
+const _returnToStation = sessionStorage.getItem('returnToStation');
+if (_returnToStation) {
+  sessionStorage.removeItem('returnToStation');
+  setTimeout(() => {
+    const marker = stationMarkers.find(m => m.stationData && m.stationData.name === _returnToStation);
+    if (marker) {
+      const ll = marker.getLatLng();
+      map.setView([ll.lat, ll.lng], 16, { animate: false });
+      marker.openPopup();
+    }
+  }, 50);
+}
 
 // ── Filters ──
 function buildFilters() {
@@ -1998,8 +2115,10 @@ function requestUserLocation(isUserGesture) {
   );
 }
 
-// Try to get location on load — works on Chrome/Firefox, may be silently blocked on Safari
-requestUserLocation(false);
+// Try to get location on load — skip if returning to a station popup to avoid a flash to user marker
+if (!_returnToStation) {
+  requestUserLocation(false);
+}
 
 document.getElementById('locateBtn').addEventListener('click', () => {
   requestUserLocation(true);
@@ -2398,7 +2517,7 @@ window.removeRatingPhoto = function() {
 if (ratingSubmit) {
   ratingSubmit.addEventListener('click', async () => {
     if (!currentRatingStation || ratingData.safety === 0 || ratingData.cleanliness === 0) {
-      alert('Please rate Safety and Cleanliness');
+      showMapToast('Please rate Safety and Cleanliness', 'error');
       return;
     }
     
@@ -2429,12 +2548,12 @@ if (ratingSubmit) {
       createMarkers(activeFilter);
       const searchInput = document.getElementById('stationSearch');
       renderStationList(searchInput ? searchInput.value : '');
-      alert(`Thank you for rating ${ratedStation}!`);
+      showMapToast(`Rated ${ratedStation}`, 'success');
     } else {
       // Rating not saved - user may have been redirected to sign in
       // Don't close modal if they're coming back
       if (isAuthenticated) {
-        alert('Failed to save rating. Please try again.');
+        showMapToast('Failed to save rating. Please try again.', 'error');
       }
     }
   });

@@ -932,7 +932,7 @@
           <div class="row-sub">Hide your name from public ratings</div>
         </div>
         <div class="row-right">
-          <button class="toggle" onclick="toggleSetting(this, 'anonymous')"></button>
+          <button class="toggle{% if anonymous_ratings %} on{% endif %}" id="toggleAnonymous" onclick="toggleSetting(this, 'anonymous')"></button>
         </div>
       </div>
       <div class="row no-tap" data-search="privacy location sharing gps share">
@@ -1165,6 +1165,7 @@ const DJANGO_URLS = {
   signIn: '{% url "ratemetroapp:sign_in" %}',
   logout: '{% url "ratemetroapp:api_logout" %}',
   deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
+  updateSettings: '{% url "ratemetroapp:api_update_settings" %}',
 };
 
 // Helper function to get CSRF token
@@ -1186,8 +1187,37 @@ const state = {};
 // ── Toggle ──
 function toggleSetting(btn, key) {
   btn.classList.toggle('on');
-  state[key] = btn.classList.contains('on');
-  showToast(btn.classList.contains('on') ? 'Enabled' : 'Disabled');
+  const isOn = btn.classList.contains('on');
+  state[key] = isOn;
+
+  if (key === 'anonymous') {
+    fetch(DJANGO_URLS.updateSettings, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify({ anonymous_ratings: isOn }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          showToast(isOn ? 'Ratings now anonymous' : 'Name visible on ratings');
+        } else {
+          // Roll back toggle on error
+          btn.classList.toggle('on');
+          state[key] = !isOn;
+          showToast('Failed to save — try again');
+        }
+      })
+      .catch(() => {
+        btn.classList.toggle('on');
+        state[key] = !isOn;
+        showToast('Failed to save — try again');
+      });
+  } else {
+    showToast(isOn ? 'Enabled' : 'Disabled');
+  }
 }
 
 // ── Sliders ──
