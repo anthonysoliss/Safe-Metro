@@ -278,7 +278,7 @@ def submit_rating(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_sign_in(request):
-    """API endpoint for user sign in"""
+    """API endpoint for user sign in (accepts email or username)"""
     try:
         data = json.loads(request.body)
         email = data.get('email', '').strip()
@@ -290,13 +290,12 @@ def api_sign_in(request):
                 'message': 'Email and password are required'
             }, status=400)
         
-        # Try to authenticate - first try email as username (for users created via signup)
+        # Try authenticating with input as username first
         user = authenticate(request, username=email, password=password)
         
-        # If that fails, try to find user by email and authenticate with their username
+        # If that fails, look up by email field
         if user is None:
             try:
-                from django.contrib.auth.models import User
                 user_obj = User.objects.get(email=email)
                 user = authenticate(request, username=user_obj.username, password=password)
             except User.DoesNotExist:
@@ -324,13 +323,14 @@ def api_sign_up(request):
     try:
         data = json.loads(request.body)
         name = data.get('name', '').strip()
+        username = data.get('username', '').strip()
         email = data.get('email', '').strip()
         password = data.get('password', '')
         
-        if not name or not email or not password:
+        if not name or not username or not email or not password:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Name, email, and password are required'
+                'message': 'Name, username, email, and password are required'
             }, status=400)
         
         if len(password) < 8:
@@ -339,22 +339,38 @@ def api_sign_up(request):
                 'message': 'Password must be at least 8 characters'
             }, status=400)
         
-        # Check if user already exists
-        if User.objects.filter(username=email).exists() or User.objects.filter(email=email).exists():
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Username can only contain letters, numbers, and underscores'
+            }, status=400)
+        
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'This username is already taken'
+            }, status=400)
+        
+        if User.objects.filter(email=email).exists():
             return JsonResponse({
                 'status': 'error',
                 'message': 'An account with this email already exists'
             }, status=400)
         
-        # Create new user (using email as username)
+        # Split name into first/last
+        name_parts = name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
         user = User.objects.create_user(
-            username=email,
+            username=username,
             email=email,
             password=password,
-            first_name=name
+            first_name=first_name,
+            last_name=last_name
         )
         
-        # Log the user in
         login(request, user)
         
         return JsonResponse({

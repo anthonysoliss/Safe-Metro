@@ -194,6 +194,7 @@
   .field-wrap:nth-child(2) { animation-delay: 0.25s; }
   .field-wrap:nth-child(3) { animation-delay: 0.3s; }
   .field-wrap:nth-child(4) { animation-delay: 0.35s; }
+  .field-wrap:nth-child(5) { animation-delay: 0.4s; }
 
   .field-label {
     display: block;
@@ -551,10 +552,19 @@
       <div class="field-wrap">
         <label class="field-label">Full Name</label>
         <div class="field-inner">
-          <svg class="field-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+          <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <input class="field-input" id="signupName" type="text" placeholder="Your full name" autocomplete="name" />
         </div>
         <div class="field-error" id="signupNameErr">Name is required</div>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label">Username</label>
+        <div class="field-inner">
+          <svg class="field-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <input class="field-input" id="signupUsername" type="text" placeholder="Choose a username" autocomplete="username" />
+        </div>
+        <div class="field-error" id="signupUsernameErr">Username is required</div>
       </div>
 
       <div class="field-wrap">
@@ -777,10 +787,16 @@ async function handleSignIn() {
 async function handleSignUp() {
   clearErrors();
   const name = document.getElementById('signupName').value.trim();
+  const username = document.getElementById('signupUsername').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const pass = document.getElementById('signupPassword').value;
   let valid = true;
   if (!name) { showError('signupName','signupNameErr'); valid = false; }
+  if (!username) { showError('signupUsername','signupUsernameErr'); valid = false; }
+  else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    document.getElementById('signupUsernameErr').textContent = 'Letters, numbers, and underscores only';
+    showError('signupUsername','signupUsernameErr'); valid = false;
+  }
   if (!email || !email.includes('@')) { showError('signupEmail','signupEmailErr'); valid = false; }
   if (pass.length < 8) { showError('signupPassword','signupPassErr'); valid = false; }
   if (!valid) return;
@@ -797,7 +813,7 @@ async function handleSignUp() {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCSRFToken()
       },
-      body: JSON.stringify({ name, email, password: pass })
+      body: JSON.stringify({ name, username, email, password: pass })
     });
     
     const data = await response.json();
