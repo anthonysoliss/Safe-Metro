@@ -705,7 +705,7 @@
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
   </div>
   <div class="nav-title">Settings</div>
-  <div class="nav-version">v1.0.4</div>
+  <div></div>
 </nav>
 
 <!-- Sheet -->
@@ -1144,7 +1144,7 @@
       </svg>
     </div>
     <div class="app-footer-name">rate<span>metro</span>.com</div>
-    <div class="app-footer-ver">Version 1.0.4 · Build 42 · © 2025</div>
+    <div class="app-footer-ver">© 2025 ratemetro</div>
     <div class="footer-links">
       <a class="footer-link" onclick="showToast('Opening privacy policy...')">Privacy</a>
       <a class="footer-link" onclick="showToast('Opening terms...')">Terms</a>
@@ -1193,18 +1193,21 @@ function toggleSetting(btn, key) {
   if (key === 'anonymous') {
     fetch(DJANGO_URLS.updateSettings, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCSRFToken(),
       },
       body: JSON.stringify({ anonymous_ratings: isOn }),
     })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok && r.status !== 400) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(data => {
         if (data.status === 'success') {
           showToast(isOn ? 'Ratings now anonymous' : 'Name visible on ratings');
         } else {
-          // Roll back toggle on error
           btn.classList.toggle('on');
           state[key] = !isOn;
           showToast('Failed to save — try again');

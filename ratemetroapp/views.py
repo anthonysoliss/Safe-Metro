@@ -182,9 +182,10 @@ def settings_view(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@login_required
 def api_update_settings(request):
     """API endpoint to update user settings (e.g. anonymous_ratings)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
     try:
         data = json.loads(request.body)
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
