@@ -1509,11 +1509,13 @@ async function handleSignOut() {
     if (data.status === 'success') {
       const theme = localStorage.getItem('ratemetro-theme');
       const themePref = localStorage.getItem('ratemetro-theme-pref');
+      const ratingsData = localStorage.getItem('metroStationRatings');
       localStorage.clear();
       if (theme) localStorage.setItem('ratemetro-theme', theme);
       if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
+      if (ratingsData) localStorage.setItem('metroStationRatings', ratingsData);
       sessionStorage.clear();
-      
+
       // Redirect to sign-in page
       window.location.href = DJANGO_URLS.signIn;
     } else {
@@ -1523,9 +1525,11 @@ async function handleSignOut() {
     console.error('Sign out error:', error);
     const theme = localStorage.getItem('ratemetro-theme');
     const themePref = localStorage.getItem('ratemetro-theme-pref');
+    const ratingsData = localStorage.getItem('metroStationRatings');
     localStorage.clear();
     if (theme) localStorage.setItem('ratemetro-theme', theme);
     if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
+    if (ratingsData) localStorage.setItem('metroStationRatings', ratingsData);
     sessionStorage.clear();
     window.location.href = DJANGO_URLS.signIn;
   }
@@ -1870,6 +1874,37 @@ window.addEventListener('storage', function(e) {
 
 function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
 
+function buildPopupHTML(station, rating) {
+  const badges = station.lines.map(l => {
+    const line = metroLines[l];
+    return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
+  }).join('');
+  const stationNameEscaped = station.name.replace(/'/g, "\\'");
+  let ratingHTML = '';
+  const count = rating ? rating.count : 0;
+  if (count > 0) {
+    const avg = parseFloat(rating.avg) || 0;
+    const safety = parseFloat(rating.safety) || 0;
+    const cleanliness = parseFloat(rating.cleanliness) || 0;
+    const staff = rating.staff;
+    ratingHTML = `<div class="popup-rating">
+      <div class="popup-rating-header">
+        <div class="popup-rating-stars">${renderStars(Math.round(avg))}</div>
+        <div class="popup-rating-value">${avg.toFixed(1)}/5 (${count})</div>
+      </div>`;
+    if (safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(Math.round(safety), '11px')}</span> ${safety.toFixed(1)}/5</div>`;
+    if (cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(Math.round(cleanliness), '11px')}</span> ${cleanliness.toFixed(1)}/5</div>`;
+    if (staff) ratingHTML += `<div class="popup-rating-item">👮 Staff: ${staff}</div>`;
+    ratingHTML += `</div>`;
+  } else {
+    ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
+  }
+  const viewRatingsBtn = count > 0
+    ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${count})</a>`
+    : '';
+  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`;
+}
+
 function createMarkers(filterLine = 'all') {
   stationMarkers.forEach(m => map.removeLayer(m));
   stationMarkers = [];
@@ -1881,31 +1916,27 @@ function createMarkers(filterLine = 'all') {
       html: `<div class="metro-marker-inner" style="background:${color};box-shadow:0 0 12px ${color}66, 0 0 4px ${color}33;"></div>`,
       iconSize: [14, 14], iconAnchor: [7, 7],
     });
-    const badges = station.lines.map(l => {
-      const line = metroLines[l];
-      return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
-    }).join('');
     const rating = getStationRating(station.name);
-    let ratingHTML = '';
-    if (rating.count > 0) {
-      ratingHTML = `<div class="popup-rating">
-        <div class="popup-rating-header">
-          <div class="popup-rating-stars">${renderStars(parseInt(rating.avg))}</div>
-          <div class="popup-rating-value">${rating.avg}/5 (${rating.count})</div>
-        </div>`;
-      if (rating.safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(parseInt(rating.safety), '11px')}</span> ${rating.safety}/5</div>`;
-      if (rating.cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(parseInt(rating.cleanliness), '11px')}</span> ${rating.cleanliness}/5</div>`;
-      if (rating.staff) ratingHTML += `<div class="popup-rating-item">👮 Staff: ${rating.staff}</div>`;
-      ratingHTML += `</div>`;
-    } else {
-      ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
-    }
-    const stationNameEscaped = station.name.replace(/'/g, "\\'");
-    const viewRatingsBtn = rating.count > 0 ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${rating.count})</a>` : '';
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
+    marker.bindPopup(buildPopupHTML(station, rating), { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
     marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
     marker.stationData = station;
+    // Fetch fresh ratings from backend each time popup opens so ratings always
+    // reflect the DB (fixes disappearing ratings and anonymous ratings setting)
+    marker.on('popupopen', async function() {
+      try {
+        const res = await fetch(DJANGO_URLS.stationRatings + '?station=' + encodeURIComponent(station.name));
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'ok') {
+          stationRatings[station.name] = data.ratings;
+          localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+          if (this.isPopupOpen()) {
+            this.getPopup().setContent(buildPopupHTML(station, data.summary));
+          }
+        }
+      } catch (e) { /* silent — cached data stays */ }
+    });
     stationMarkers.push(marker);
   });
 }

@@ -1155,6 +1155,7 @@
 
 </div><!-- /page -->
 
+{% csrf_token %}
 <script>
 // Django URLs injected for JavaScript
 const DJANGO_URLS = {
@@ -1213,7 +1214,8 @@ function toggleSetting(btn, key) {
           showToast('Failed to save — try again');
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Settings save error:', err);
         btn.classList.toggle('on');
         state[key] = !isOn;
         showToast('Failed to save — try again');
@@ -1408,11 +1410,13 @@ async function handleSignOut() {
     if (data.status === 'success') {
       const theme = localStorage.getItem('ratemetro-theme');
       const themePref = localStorage.getItem('ratemetro-theme-pref');
+      const ratingsData = localStorage.getItem('metroStationRatings');
       localStorage.clear();
       if (theme) localStorage.setItem('ratemetro-theme', theme);
       if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
+      if (ratingsData) localStorage.setItem('metroStationRatings', ratingsData);
       sessionStorage.clear();
-      
+
       showToast('Signed out successfully');
       setTimeout(() => {
         window.location.href = DJANGO_URLS.signIn;
@@ -1426,9 +1430,11 @@ async function handleSignOut() {
     setTimeout(() => {
       const theme = localStorage.getItem('ratemetro-theme');
       const themePref = localStorage.getItem('ratemetro-theme-pref');
+      const ratingsData = localStorage.getItem('metroStationRatings');
       localStorage.clear();
       if (theme) localStorage.setItem('ratemetro-theme', theme);
       if (themePref) localStorage.setItem('ratemetro-theme-pref', themePref);
+      if (ratingsData) localStorage.setItem('metroStationRatings', ratingsData);
       sessionStorage.clear();
       window.location.href = DJANGO_URLS.signIn;
     }, 1000);
