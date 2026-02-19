@@ -936,6 +936,28 @@
   [data-theme="light"] .leaflet-popup-tip { background: rgba(255,255,255,0.96) !important; border-color: rgba(0,0,0,0.08) !important; }
   [data-theme="light"] .metro-marker-inner { border-color: rgba(0,0,0,0.3) !important; }
 
+  /* Station name tooltip on hover */
+  .station-tooltip {
+    background: rgba(18, 18, 28, 0.92) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    border-radius: 6px !important;
+    color: #fff !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 4px 9px !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45) !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+  }
+  .station-tooltip::before { display: none !important; }
+  [data-theme="light"] .station-tooltip {
+    background: rgba(255,255,255,0.96) !important;
+    border-color: rgba(0,0,0,0.10) !important;
+    color: #111 !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15) !important;
+  }
+
   /* Panel backdrop */
   .panel-backdrop {
     position: fixed; inset: 0; z-index: 1000;
@@ -1086,9 +1108,9 @@
 </div>
 
 <!-- Coordinates -->
-<div class="coords-display">
+<div class="coords-display" id="coordsDisplay">
   <svg class="coord-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-  <div class="coord-text" id="coordsText"><strong>Locating...</strong></div>
+  <div class="coord-text" id="coordsText"></div>
 </div>
 
 <!-- Profile -->
@@ -1211,8 +1233,8 @@
   </div>
 </div>
 
-<!-- View All Ratings Modal -->
-<div class="ratings-view-modal" id="ratingsViewModal">
+<!-- Sign In Prompt Modal -->
+<div class="signin-prompt-modal" id="signinPromptModal">
   <div class="signin-prompt-content">
     <button class="signin-prompt-close" id="signinPromptClose" onclick="closeSignInPrompt()">
       <svg viewBox="0 0 24 24" width="20" height="20">
@@ -1775,6 +1797,7 @@ function createMarkers(filterLine = 'all') {
     const viewRatingsBtn = rating.count > 0 ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;">View All Ratings (${rating.count})</a>` : '';
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
     marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
+    marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
     marker.stationData = station;
     stationMarkers.push(marker);
   });
@@ -1886,6 +1909,7 @@ function updateCoords(lat, lng) {
 function setUserLocation(lat, lng) {
   userLat = lat; userLng = lng;
   updateCoords(lat, lng);
+  document.getElementById('coordsDisplay').classList.add('visible');
   if (userMarker) map.removeLayer(userMarker);
   userMarker = L.marker([lat, lng], {
     icon: L.divIcon({
@@ -1896,7 +1920,7 @@ function setUserLocation(lat, lng) {
   }).addTo(map);
   map.setView([lat, lng], 14, { animate: true, duration: 1 });
   document.getElementById('locateBtn').classList.add('active');
-  
+
   // Send location to Django backend
   sendLocationToServer(lat, lng);
 }
@@ -1937,7 +1961,6 @@ function getCookie(name) {
 }
 function requestUserLocation(isUserGesture) {
   if (!navigator.geolocation) {
-    updateCoords(defaultLat, defaultLng);
     if (isUserGesture) {
       showConfirmModal('Location Unavailable', 'Geolocation is not supported by your browser.', 'OK', '', false);
     }
@@ -1954,7 +1977,6 @@ function requestUserLocation(isUserGesture) {
     },
     function(error) {
       if (locateBtn) locateBtn.classList.remove('loading');
-      updateCoords(defaultLat, defaultLng);
 
       if (isUserGesture) {
         let msg = 'Could not get your location.';
@@ -2194,7 +2216,7 @@ if (profileBtn && profileDropdown) {
 map.on('click', () => {
   if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
 });
-map.on('moveend', () => { if (!userMarker) updateCoords(map.getCenter().lat, map.getCenter().lng); });
+map.on('moveend', () => { if (!userMarker && document.getElementById('coordsDisplay').classList.contains('visible')) updateCoords(map.getCenter().lat, map.getCenter().lng); });
 
 // ── Rating Modal ──
 let currentRatingStation = null;
@@ -2416,163 +2438,6 @@ if (ratingSubmit) {
   });
 }
 
-// ── View All Ratings Modal ──
-let currentRatingsViewStation = null;
-let cachedDbRatings = {};  // { stationName: [rating, ...] }
-
-window.openRatingsViewModal = async function(stationName) {
-  const ratingsViewModal = document.getElementById('ratingsViewModal');
-  const ratingsViewModalTitle = document.getElementById('ratingsViewModalTitle');
-  const ratingsViewBody = document.getElementById('ratingsViewBody');
-
-  if (!ratingsViewModal || !ratingsViewModalTitle || !ratingsViewBody) {
-    console.error('Ratings view modal elements not found');
-    return;
-  }
-
-  currentRatingsViewStation = stationName;
-  ratingsViewModalTitle.textContent = `All Ratings — ${stationName}`;
-
-  // Reset filter
-  const filterSortEl = document.getElementById('filterSort');
-  if (filterSortEl) filterSortEl.value = 'newest';
-
-  // Show loading state and open modal immediately
-  ratingsViewBody.innerHTML = '<div class="no-ratings-message">Loading ratings…</div>';
-  requestAnimationFrame(() => { ratingsViewModal.classList.add('active'); });
-
-  // Fetch from DB
-  try {
-    const url = `${DJANGO_URLS.stationRatings}?station=${encodeURIComponent(stationName)}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (data.status === 'ok') {
-      cachedDbRatings[stationName] = data.ratings;
-      // Also update stationRatings summary for popup display
-      if (data.summary && data.summary.count > 0) {
-        stationRatings[stationName] = data.ratings.map(r => ({
-          safety: r.safety,
-          cleanliness: r.cleanliness,
-          staff: r.staff || null,
-          description: r.description,
-          timestamp: r.timestamp,
-          username: r.username,
-          avatar_url: r.avatar_url,
-        }));
-        localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
-      }
-      renderAllRatings(stationName, ratingsViewBody, { sort: 'newest' });
-    } else {
-      renderAllRatings(stationName, ratingsViewBody);
-    }
-  } catch (err) {
-    console.error('Failed to fetch ratings from server:', err);
-    // Fall back to localStorage cache
-    renderAllRatings(stationName, ratingsViewBody);
-  }
-};
-
-function closeRatingsViewModal() {
-  const ratingsViewModal = document.getElementById('ratingsViewModal');
-  if (ratingsViewModal) {
-    ratingsViewModal.classList.remove('active');
-    setTimeout(() => {
-      const ratingsViewBody = document.getElementById('ratingsViewBody');
-      if (ratingsViewBody) ratingsViewBody.innerHTML = '';
-    }, 300);
-  }
-}
-
-function buildRatingCard(rating, index) {
-  const date = new Date(rating.timestamp);
-  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const overall = rating.safety > 0 && rating.cleanliness > 0
-    ? Math.round((rating.safety + rating.cleanliness) / 2)
-    : (rating.safety > 0 ? rating.safety : rating.cleanliness);
-
-  const displayName = rating.username || 'Anonymous';
-  const userInitial = displayName.charAt(0).toUpperCase() || '?';
-  const avatarHtml = rating.avatar_url
-    ? `<img src="${rating.avatar_url}" alt="${displayName}" onerror="this.parentElement.textContent='${userInitial}'">`
-    : userInitial;
-
-  const card = document.createElement('div');
-  card.className = 'rating-item-card';
-  card.style.animationDelay = `${0.05 + (index * 0.05)}s`;
-  card.innerHTML = `
-    <div class="rating-item-header">
-      <div class="rating-item-user">
-        <div class="rating-item-avatar">${avatarHtml}</div>
-        <div class="rating-item-info">
-          <h4>${displayName}</h4>
-          <div class="rating-item-date">${dateStr}</div>
-        </div>
-      </div>
-      <div class="rating-item-stars">${renderStars(overall, '14px')}</div>
-    </div>
-    <div class="rating-item-details">
-      <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
-      <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
-      ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
-    </div>
-    ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
-  `;
-  return card;
-}
-
-function renderAllRatings(stationName, container, filters = {}) {
-  // Prefer DB-fetched data; fall back to localStorage cache
-  const source = cachedDbRatings[stationName] || stationRatings[stationName] || [];
-
-  container.innerHTML = '';
-
-  if (source.length === 0) {
-    container.innerHTML = '<div class="no-ratings-message">No ratings yet for this station.</div>';
-    return;
-  }
-
-  let sorted = [...source];
-  const sortBy = filters.sort || 'newest';
-  if (sortBy === 'newest') {
-    sorted.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  } else if (sortBy === 'oldest') {
-    sorted.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-  }
-
-  sorted.forEach((rating, index) => {
-    container.appendChild(buildRatingCard(rating, index));
-  });
-}
-
-// Filter change handler
-function applyRatingsFilters() {
-  if (!currentRatingsViewStation) return;
-  const filters = { sort: document.getElementById('filterSort').value };
-  const ratingsViewBody = document.getElementById('ratingsViewBody');
-  if (ratingsViewBody) renderAllRatings(currentRatingsViewStation, ratingsViewBody, filters);
-}
-
-// Initialize ratings view modal event listeners
-const ratingsViewModal = document.getElementById('ratingsViewModal');
-const ratingsViewModalClose = document.getElementById('ratingsViewModalClose');
-const filterSort = document.getElementById('filterSort');
-
-if (ratingsViewModalClose) {
-  ratingsViewModalClose.addEventListener('click', closeRatingsViewModal);
-}
-
-if (ratingsViewModal) {
-  ratingsViewModal.addEventListener('click', (e) => {
-    if (e.target === ratingsViewModal) closeRatingsViewModal();
-  });
-}
-
-// Add filter event listener
-if (filterSort) filterSort.addEventListener('change', applyRatingsFilters);
-
-// Make functions globally accessible
-window.openRatingModal = openRatingModal;
-window.openRatingsViewModal = openRatingsViewModal;
 </script>
 </body>
 </html>
