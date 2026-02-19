@@ -11,9 +11,19 @@ from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile
 
 def map_view(request):
     """Main map page view"""
+    avatar_url = ''
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+            if profile.avatar and hasattr(profile.avatar, 'url'):
+                avatar_url = profile.avatar.url
+        except (UserProfile.DoesNotExist, ValueError):
+            pass
+    
     context = {
         'is_authenticated': request.user.is_authenticated,
         'username': request.user.username if request.user.is_authenticated else None,
+        'avatar_url': avatar_url,
     }
     return render(request, 'ratemetroapp/map.html', context)
 
@@ -93,6 +103,14 @@ def profile_view(request):
     if not full_name or full_name == request.user.username:
         full_name = request.user.first_name or request.user.username
     
+    # Get avatar URL
+    avatar_url = ''
+    if user_profile.avatar and hasattr(user_profile.avatar, 'url'):
+        try:
+            avatar_url = user_profile.avatar.url
+        except ValueError:
+            avatar_url = ''
+    
     import json
     context = {
         'is_authenticated': True,
@@ -106,6 +124,7 @@ def profile_view(request):
         'ratings_json': json.dumps(ratings_data),
         'activity_json': json.dumps(activity_data),
         'achievements': achievements,
+        'avatar_url': avatar_url,
     }
     return render(request, 'ratemetroapp/profile.html', context)
 
@@ -187,9 +206,19 @@ def update_location(request):
 @require_http_methods(["GET"])
 def check_auth(request):
     """Check if user is authenticated"""
+    avatar_url = ''
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+            if profile.avatar and hasattr(profile.avatar, 'url'):
+                avatar_url = profile.avatar.url
+        except (UserProfile.DoesNotExist, ValueError):
+            pass
+    
     return JsonResponse({
         'is_authenticated': request.user.is_authenticated,
         'username': request.user.username if request.user.is_authenticated else None,
+        'avatar_url': avatar_url,
     })
 
 @csrf_exempt
@@ -410,6 +439,59 @@ def api_delete_account(request):
             'status': 'error',
             'message': str(e)
         }, status=400)
+
+@login_required
+@require_http_methods(["POST"])
+def api_update_profile(request):
+    """Update user profile including avatar"""
+    try:
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        
+        # Handle avatar upload (sent as a file via multipart form)
+        if 'avatar' in request.FILES:
+            avatar_file = request.FILES['avatar']
+            if avatar_file.size > 5 * 1024 * 1024:
+                return JsonResponse({'status': 'error', 'message': 'Avatar must be less than 5MB'}, status=400)
+            profile.avatar = avatar_file
+        
+        # Handle text fields
+        name = request.POST.get('name', '').strip()
+        if name:
+            parts = name.split(' ', 1)
+            user.first_name = parts[0]
+            user.last_name = parts[1] if len(parts) > 1 else ''
+        
+        email = request.POST.get('email', '').strip()
+        if email:
+            user.email = email
+        
+        username = request.POST.get('username', '').strip().lstrip('@')
+        if username and username != user.username:
+            if User.objects.filter(username=username).exclude(pk=user.pk).exists():
+                return JsonResponse({'status': 'error', 'message': 'Username already taken'}, status=400)
+            user.username = username
+        
+        user.save()
+        profile.save()
+        
+        avatar_url = ''
+        if profile.avatar and hasattr(profile.avatar, 'url'):
+            try:
+                avatar_url = profile.avatar.url
+            except ValueError:
+                avatar_url = ''
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Profile updated',
+            'avatar_url': avatar_url,
+            'full_name': user.get_full_name() or user.username,
+            'username': user.username,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
 
 def get_client_ip(request):
     """Get client IP address"""

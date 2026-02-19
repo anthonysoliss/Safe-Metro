@@ -458,6 +458,87 @@
   .toast-btn.confirm { background: var(--danger); color: #fff; }
   .toast-btn.confirm:hover { box-shadow: 0 0 12px rgba(255,59,48,0.4); }
 
+  /* Confirmation Modal */
+  .confirm-modal {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .confirm-modal.active { opacity: 1; pointer-events: auto; }
+  .confirm-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+  .confirm-modal.active .confirm-modal-content { transform: scale(1); }
+  .confirm-modal-header {
+    margin-bottom: 24px;
+  }
+  .confirm-modal-header h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .confirm-modal-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .confirm-modal-btn {
+    flex: 1;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .confirm-modal-btn.cancel {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+  .confirm-modal-btn.cancel:hover {
+    border-color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .confirm-modal-btn.confirm {
+    background: var(--accent);
+    color: var(--bg-dark);
+    border-color: var(--accent);
+  }
+  .confirm-modal-btn.confirm:hover {
+    background: #f5d030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
+  }
+  .confirm-modal-btn.danger {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+  }
+  .confirm-modal-btn.danger:hover {
+    background: #ff5252;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+  }
+
   /* ── Animations ── */
   @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -519,6 +600,24 @@
 
   <!-- Cards -->
   <div class="ratings-list" id="ratingsList"></div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-modal-content">
+    <div class="confirm-modal-header">
+      <h3 id="confirmModalTitle">Confirm Action</h3>
+      <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+    </div>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-btn cancel" id="confirmModalCancel" onclick="closeConfirmModal()">
+        Cancel
+      </button>
+      <button class="confirm-modal-btn confirm" id="confirmModalConfirm" onclick="executeConfirmAction()">
+        Confirm
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -807,17 +906,73 @@ async function shareRating(btn, station, overall) {
   }
 }
 
+// Confirmation Modal Functions
+let confirmCallback = null;
+
+function showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const messageEl = document.getElementById('confirmModalMessage');
+    const confirmBtn = document.getElementById('confirmModalConfirm');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    confirmBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+    
+    // Set button style
+    confirmBtn.classList.remove('danger');
+    if (isDanger) {
+      confirmBtn.classList.add('danger');
+    }
+    
+    // Store resolve function
+    confirmCallback = resolve;
+    
+    // Show modal
+    modal.classList.add('active');
+  });
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('active');
+  if (confirmCallback) {
+    confirmCallback(false);
+    confirmCallback = null;
+  }
+}
+
+function executeConfirmAction() {
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('active');
+  if (confirmCallback) {
+    confirmCallback(true);
+    confirmCallback = null;
+  }
+}
+
 let deleteCardEl = null;
 async function deleteRating(id, btn) {
   // Extract rating ID from the _id format (rating_123)
   const ratingId = id.replace('rating_', '');
   
   if (!ratingId || !ratingId.match(/^\d+$/)) {
-    alert('Invalid rating ID');
+    await showConfirmModal('Error', 'Invalid rating ID', 'OK', '', false);
     return;
   }
   
-  if (!confirm('Are you sure you want to delete this rating?')) {
+  const confirmed = await showConfirmModal(
+    'Delete Rating',
+    'Are you sure you want to delete this rating? This action cannot be undone.',
+    'Delete',
+    'Cancel',
+    true
+  );
+  
+  if (!confirmed) {
     return;
   }
   
@@ -851,10 +1006,10 @@ async function deleteRating(id, btn) {
         }, 250);
       }
     } else {
-      alert('Failed to delete rating: ' + (data.message || 'Please try again.'));
+      await showConfirmModal('Error', 'Failed to delete rating: ' + (data.message || 'Please try again.'), 'OK', '', false);
     }
   } catch (error) {
-    alert('Failed to delete rating. Please try again.');
+    await showConfirmModal('Error', 'Failed to delete rating. Please try again.', 'OK', '', false);
     console.error('Delete error:', error);
   }
 }

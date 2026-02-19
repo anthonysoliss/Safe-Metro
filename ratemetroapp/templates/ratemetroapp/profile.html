@@ -545,6 +545,87 @@
     .achievements-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .achievement-icon { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
   }
+
+  /* Confirmation Modal */
+  .confirm-modal {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .confirm-modal.active { opacity: 1; pointer-events: auto; }
+  .confirm-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+  .confirm-modal.active .confirm-modal-content { transform: scale(1); }
+  .confirm-modal-header {
+    margin-bottom: 24px;
+  }
+  .confirm-modal-header h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .confirm-modal-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .confirm-modal-btn {
+    flex: 1;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .confirm-modal-btn.cancel {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+  .confirm-modal-btn.cancel:hover {
+    border-color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .confirm-modal-btn.confirm {
+    background: var(--accent);
+    color: var(--bg-dark);
+    border-color: var(--accent);
+  }
+  .confirm-modal-btn.confirm:hover {
+    background: #f5d030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
+  }
+  .confirm-modal-btn.danger {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+  }
+  .confirm-modal-btn.danger:hover {
+    background: #ff5252;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+  }
 </style>
 </head>
 <body>
@@ -718,7 +799,7 @@
   <!-- Account -->
   <div class="section-card">
     <div class="section-header">Account</div>
-    <div class="setting-row" onclick="handleSignOut()">
+    <div class="setting-row" id="signOutBtn" data-action="signout">
       <div class="field-icon" style="border-color: rgba(255,59,48,0.2); background: rgba(255,59,48,0.06);">
         <svg viewBox="0 0 24 24" style="stroke: var(--danger)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </div>
@@ -730,7 +811,7 @@
   <!-- Delete Account -->
   <div class="section-card" style="margin-bottom: 0;">
     <div class="section-header">Delete Account</div>
-    <div class="setting-row danger" onclick="handleDeleteAccount()">
+    <div class="setting-row danger" id="deleteAccountBtn" data-action="deleteaccount">
       <div class="field-icon" style="border-color: rgba(255,59,48,0.2); background: rgba(255,59,48,0.06);">
         <svg viewBox="0 0 24 24" style="stroke: var(--danger)"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
@@ -739,6 +820,24 @@
     </div>
   </div>
 
+</div>
+
+<!-- Confirmation Modal -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-modal-content">
+    <div class="confirm-modal-header">
+      <h3 id="confirmModalTitle">Confirm Action</h3>
+      <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+    </div>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-btn cancel" id="confirmModalCancel" type="button">
+        Cancel
+      </button>
+      <button class="confirm-modal-btn confirm" id="confirmModalConfirm" type="button">
+        Confirm
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -752,6 +851,7 @@ const DJANGO_URLS = {
   checkAuth: '{% url "ratemetroapp:check_auth" %}',
   logout: '{% url "ratemetroapp:api_logout" %}',
   deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
+  updateProfile: '{% url "ratemetroapp:api_update_profile" %}',
 };
 
 // Helper function to get CSRF token
@@ -786,9 +886,114 @@ async function checkAuthentication() {
   }
 }
 
+// Confirmation Modal Functions
+let confirmCallback = null;
+
+function showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const messageEl = document.getElementById('confirmModalMessage');
+    const confirmBtn = document.getElementById('confirmModalConfirm');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    
+    if (!modal || !titleEl || !messageEl || !confirmBtn || !cancelBtn) {
+      console.error('Modal elements not found');
+      resolve(false);
+      return;
+    }
+    
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    confirmBtn.textContent = confirmText;
+    
+    // Show/hide cancel button based on cancelText
+    if (cancelText && cancelText.trim() !== '') {
+      cancelBtn.textContent = cancelText;
+      cancelBtn.style.display = 'flex';
+    } else {
+      cancelBtn.style.display = 'none';
+    }
+    
+    // Set button style
+    confirmBtn.classList.remove('danger');
+    if (isDanger) {
+      confirmBtn.classList.add('danger');
+    }
+    
+    // Store resolve function
+    confirmCallback = resolve;
+    
+    // Show modal
+    modal.classList.add('active');
+  });
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  if (confirmCallback) {
+    confirmCallback(false);
+    confirmCallback = null;
+  }
+}
+
+function executeConfirmAction() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  if (confirmCallback) {
+    confirmCallback(true);
+    confirmCallback = null;
+  }
+}
+
+// Modal functions will be made globally accessible after all handlers are defined
+
+// Add backdrop click to close modal (run immediately — DOM is already loaded since script is at end of body)
+(function() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeConfirmModal();
+      }
+    });
+  }
+  
+  const confirmBtn = document.getElementById('confirmModalConfirm');
+  const cancelBtn = document.getElementById('confirmModalCancel');
+  
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      executeConfirmAction();
+    });
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeConfirmModal();
+    });
+  }
+})();
+
 // Prompt user to sign in
-function promptSignIn(action = 'save your data') {
-  if (confirm(`You need to sign in to ${action}. Would you like to sign in now?`)) {
+async function promptSignIn(action = 'save your data') {
+  const confirmed = await showConfirmModal(
+    'Sign In Required',
+    `You need to sign in to ${action}. Would you like to sign in now?`,
+    'Sign In',
+    'Cancel'
+  );
+  
+  if (confirmed) {
     window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
     return true;
   }
@@ -888,6 +1093,7 @@ let hasUnsavedChanges = false;
 let originalValues = {};
 let originalAvatar = null;
 let newAvatarData = null;
+let newAvatarFile = null;
 const editInputs = ['inputName','inputEmail','inputUsername','inputStation'];
 
 // Store original values when entering edit mode
@@ -905,6 +1111,7 @@ function storeOriginalValues() {
     text: avatarEl.textContent || ''
   };
   newAvatarData = null;
+  newAvatarFile = null;
 }
 
 // Check if values have changed
@@ -917,13 +1124,13 @@ function checkForChanges() {
     }
   });
   // Check avatar changes
-  if (newAvatarData !== null) {
+  if (newAvatarData !== null || newAvatarFile !== null) {
     hasUnsavedChanges = true;
   }
   return hasUnsavedChanges;
 }
 
-function toggleEdit() {
+async function toggleEdit() {
   const btn = document.getElementById('editToggleBtn');
   const saveBtn = document.getElementById('saveBtn');
   const card = document.getElementById('editCard');
@@ -931,7 +1138,13 @@ function toggleEdit() {
   if (editing) {
     // Exiting edit mode - check for unsaved changes
     if (checkForChanges()) {
-      if (!confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+      const confirmed = await showConfirmModal(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to cancel?',
+        'Discard Changes',
+        'Keep Editing'
+      );
+      if (!confirmed) {
         return; // User wants to stay in edit mode
       }
     }
@@ -961,6 +1174,7 @@ function toggleEdit() {
         avatarEl.textContent = originalAvatar.text;
       }
       newAvatarData = null;
+      newAvatarFile = null;
     }
     // Hide avatar edit button
     document.getElementById('avatarEditBtn').style.display = 'none';
@@ -996,11 +1210,11 @@ async function saveProfile() {
   if (!isAuthenticated) {
     const authStatus = await checkAuthentication();
     if (!authStatus) {
-      const wantsToSignIn = promptSignIn('save your profile');
+      const wantsToSignIn = await promptSignIn('save your profile');
       if (wantsToSignIn) {
-        return; // Will redirect to sign in
+        return;
       }
-      return; // User chose not to sign in
+      return;
     }
   }
   
@@ -1009,49 +1223,74 @@ async function saveProfile() {
   const email = document.getElementById('inputEmail').value.trim();
   const station = document.getElementById('inputStation').value.trim();
   
-  // Save name
-  if (name) {
-    document.getElementById('displayName').textContent = name;
-    // Update avatar initials if no image
-    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-    if (!avatarIsImage) {
-      document.getElementById('avatarEl').textContent = initials;
+  // Build FormData for multipart upload (supports file + text)
+  const formData = new FormData();
+  formData.append('name', name);
+  formData.append('username', username);
+  formData.append('email', email);
+  formData.append('station', station);
+  
+  // If avatar was changed, attach the actual file
+  if (newAvatarFile) {
+    formData.append('avatar', newAvatarFile);
+  }
+  
+  try {
+    const response = await fetch(DJANGO_URLS.updateProfile, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Update displayed name
+      if (name) {
+        document.getElementById('displayName').textContent = data.full_name || name;
+        if (!avatarIsImage) {
+          const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+          document.getElementById('avatarEl').textContent = initials;
+        }
+      }
+      
+      // Update displayed username
+      if (data.username) {
+        const displayUsername = data.username.startsWith('@') ? data.username : '@' + data.username;
+        document.getElementById('displayHandle').textContent = displayUsername;
+      }
+      
+      // Update avatar from server URL
+      if (data.avatar_url) {
+        const avatarEl = document.getElementById('avatarEl');
+        avatarIsImage = true;
+        avatarEl.textContent = '';
+        avatarEl.style.backgroundImage = `url(${data.avatar_url})`;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+      }
+      
+      // Update original state
+      const avatarEl = document.getElementById('avatarEl');
+      originalAvatar = {
+        isImage: avatarIsImage,
+        imageUrl: avatarEl.style.backgroundImage,
+        text: avatarEl.textContent
+      };
+      newAvatarData = null;
+      newAvatarFile = null;
+      
+      hasUnsavedChanges = false;
+      toggleEdit();
+    } else {
+      await showConfirmModal('Error', data.message || 'Failed to save profile.', 'OK', '', false);
     }
+  } catch (error) {
+    console.error('Save profile error:', error);
+    await showConfirmModal('Error', 'An error occurred while saving your profile.', 'OK', '', false);
   }
-  
-  // Save username
-  if (username) {
-    // Ensure @ symbol is included
-    const displayUsername = username.startsWith('@') ? username : '@' + username;
-    document.getElementById('displayHandle').textContent = displayUsername;
-  }
-  
-  // Save avatar if changed
-  if (newAvatarData) {
-    // Store the avatar data (base64) - in production, you'd upload this to server
-    localStorage.setItem('userAvatar', newAvatarData);
-    // Update originalAvatar to current state
-    const avatarEl = document.getElementById('avatarEl');
-    originalAvatar = {
-      isImage: true,
-      imageUrl: avatarEl.style.backgroundImage,
-      text: ''
-    };
-    newAvatarData = null;
-  }
-  
-  // Save other profile data to localStorage (in production, send to Django backend)
-  const profileData = {
-    name: name,
-    username: username,
-    email: email,
-    station: station,
-    avatar: newAvatarData || localStorage.getItem('userAvatar')
-  };
-  localStorage.setItem('userProfile', JSON.stringify(profileData));
-  
-  hasUnsavedChanges = false;
-  toggleEdit();
 }
 
 // Warn before leaving page with unsaved changes
@@ -1063,53 +1302,23 @@ window.addEventListener('beforeunload', function(e) {
   }
 });
 
-// Intercept back button and navigation
-const navBackBtn = document.getElementById('navBackBtn');
-if (navBackBtn) {
-  navBackBtn.addEventListener('click', function(e) {
-    if (hasUnsavedChanges && editing) {
-      e.preventDefault();
-      if (confirm('You have unsaved changes. Are you sure you want to go back without saving?')) {
-        hasUnsavedChanges = false;
-        window.location.href = DJANGO_URLS.map;
-      }
-      return false;
-    } else {
-      // Normal navigation
-      window.location.href = DJANGO_URLS.map;
-      return false;
-    }
-  });
-}
-
-// Also intercept browser back button
-window.addEventListener('popstate', function(e) {
-  if (hasUnsavedChanges && editing) {
-    if (confirm('You have unsaved changes. Are you sure you want to leave without saving?')) {
-      hasUnsavedChanges = false;
-      window.history.back();
-    } else {
-      // Push state again to prevent navigation
-      window.history.pushState(null, null, window.location.href);
-    }
-  }
-});
+// Back button and navigation handlers will be set up in DOMContentLoaded
 
 // ── Avatar ──
 let avatarIsImage = false;
 
-// Load saved avatar on page load
-window.addEventListener('DOMContentLoaded', function() {
-  const savedAvatar = localStorage.getItem('userAvatar');
-  if (savedAvatar) {
+// Load avatar from server on page load
+(function() {
+  const serverAvatarUrl = '{{ avatar_url|default:"" }}';
+  if (serverAvatarUrl) {
     const avatarEl = document.getElementById('avatarEl');
     avatarIsImage = true;
     avatarEl.textContent = '';
-    avatarEl.style.backgroundImage = `url(${savedAvatar})`;
+    avatarEl.style.backgroundImage = `url(${serverAvatarUrl})`;
     avatarEl.style.backgroundSize = 'cover';
     avatarEl.style.backgroundPosition = 'center';
   }
-});
+})();
 
 // Setup avatar edit button click handler
 const avatarEditBtn = document.getElementById('avatarEditBtn');
@@ -1137,33 +1346,43 @@ function handleAvatarChange(e) {
   
   // Check file size (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
-    alert('Image size must be less than 5MB');
+    showConfirmModal('File Too Large', 'Image size must be less than 5MB', 'OK', '', false);
     return;
   }
+  
+  // Store the actual file for upload
+  newAvatarFile = file;
   
   const reader = new FileReader();
   reader.onload = (ev) => {
     avatarIsImage = true;
-    newAvatarData = ev.target.result; // Store base64 data
+    newAvatarData = ev.target.result; // For preview only
     const av = document.getElementById('avatarEl');
     av.textContent = '';
     av.style.backgroundImage = `url(${ev.target.result})`;
     av.style.backgroundSize = 'cover';
     av.style.backgroundPosition = 'center';
     
-    // Mark as changed
     checkForChanges();
   };
   reader.readAsDataURL(file);
 }
 
 // ── Handlers ──
+// Define handleSignOut function
 async function handleSignOut() {
-  if (!confirm('Are you sure you want to sign out?')) {
-    return;
-  }
-  
   try {
+    const confirmed = await showConfirmModal(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      'Sign Out',
+      'Cancel'
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+    
     const response = await fetch(DJANGO_URLS.logout, {
       method: 'POST',
       headers: {
@@ -1182,7 +1401,7 @@ async function handleSignOut() {
       // Redirect to sign-in page
       window.location.href = DJANGO_URLS.signIn;
     } else {
-      alert('Failed to sign out. Please try again.');
+      await showConfirmModal('Error', 'Failed to sign out. Please try again.', 'OK', '', false);
     }
   } catch (error) {
     console.error('Sign out error:', error);
@@ -1194,16 +1413,32 @@ async function handleSignOut() {
 }
 
 async function handleDeleteAccount() {
-  if (!confirm('Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.')) {
-    return;
-  }
-  
-  // Double confirmation
-  if (!confirm('This will permanently delete your account and all your ratings. Are you absolutely sure?')) {
-    return;
-  }
-  
   try {
+    const confirmed = await showConfirmModal(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.',
+      'Delete Account',
+      'Cancel',
+      true
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+    
+    // Double confirmation
+    const confirmed2 = await showConfirmModal(
+      'Final Confirmation',
+      'This will permanently delete your account and all your ratings. Are you absolutely sure?',
+      'Yes, Delete Forever',
+      'Cancel',
+      true
+    );
+    
+    if (!confirmed2) {
+      return;
+    }
+    
     const response = await fetch(DJANGO_URLS.deleteAccount, {
       method: 'POST',
       headers: {
@@ -1219,17 +1454,93 @@ async function handleDeleteAccount() {
       localStorage.clear();
       sessionStorage.clear();
       
-      alert('Your account has been deleted successfully.');
-      // Redirect to sign-in page
-      window.location.href = DJANGO_URLS.signIn;
+      await showConfirmModal('Account Deleted', 'Your account has been deleted successfully.', 'OK', '', false);
+      // Redirect to sign-in page after a delay
+      setTimeout(() => {
+        window.location.href = DJANGO_URLS.signIn;
+      }, 1500);
     } else {
-      alert('Failed to delete account: ' + (data.message || 'Please try again.'));
+      await showConfirmModal('Error', 'Failed to delete account: ' + (data.message || 'Please try again.'), 'OK', '', false);
     }
   } catch (error) {
     console.error('Delete account error:', error);
-    alert('An error occurred while deleting your account. Please try again.');
+    await showConfirmModal('Error', 'An error occurred while deleting your account. Please try again.', 'OK', '', false);
   }
 }
+
+// Make all functions globally accessible BEFORE DOMContentLoaded
+// This ensures they're available when event listeners are set up
+window.handleSignOut = handleSignOut;
+window.handleDeleteAccount = handleDeleteAccount;
+window.showConfirmModal = showConfirmModal;
+window.closeConfirmModal = closeConfirmModal;
+window.executeConfirmAction = executeConfirmAction;
+
+// Set up all event listeners (run immediately — DOM is already loaded since script is at end of body)
+(function() {
+  // Back button
+  const navBackBtn = document.getElementById('navBackBtn');
+  if (navBackBtn) {
+    navBackBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (hasUnsavedChanges && editing) {
+        const confirmed = await showConfirmModal(
+          'Unsaved Changes',
+          'You have unsaved changes. Are you sure you want to go back without saving?',
+          'Discard Changes',
+          'Stay on Page'
+        );
+        if (confirmed) {
+          hasUnsavedChanges = false;
+          window.location.href = DJANGO_URLS.map;
+        }
+      } else {
+        window.location.href = DJANGO_URLS.map;
+      }
+    });
+  }
+
+  // Sign out button
+  const signOutBtn = document.getElementById('signOutBtn');
+  if (signOutBtn) {
+    signOutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSignOut();
+    });
+  }
+  
+  // Delete account button
+  const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+  if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDeleteAccount();
+    });
+  }
+})();
+
+// Also intercept browser back button
+window.addEventListener('popstate', async function(e) {
+  if (hasUnsavedChanges && editing) {
+    const confirmed = await showConfirmModal(
+      'Unsaved Changes',
+      'You have unsaved changes. Are you sure you want to leave without saving?',
+      'Leave Page',
+      'Stay on Page'
+    );
+    if (confirmed) {
+      hasUnsavedChanges = false;
+      window.history.back();
+    } else {
+      // Push state again to prevent navigation
+      window.history.pushState(null, null, window.location.href);
+    }
+  }
+});
+
 function toggleSetting(row) { /* row click does nothing, toggle handles itself */ }
 </script>
 </body>

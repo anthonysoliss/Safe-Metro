@@ -943,6 +943,24 @@
     </div>
   </div>
 
+  <!-- Confirmation Modal -->
+  <div class="confirm-modal" id="confirmModal">
+    <div class="confirm-modal-content">
+      <div class="confirm-modal-header">
+        <h3 id="confirmModalTitle">Confirm Action</h3>
+        <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+      </div>
+      <div class="confirm-modal-actions">
+        <button class="confirm-modal-btn cancel" id="confirmModalCancel" onclick="closeConfirmModal()">
+          Cancel
+        </button>
+        <button class="confirm-modal-btn confirm" id="confirmModalConfirm" onclick="executeConfirmAction()">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <div class="app-footer">
     <div class="app-footer-logo">
@@ -1062,9 +1080,69 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
+// Confirmation Modal Functions
+let confirmCallback = null;
+
+function showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const messageEl = document.getElementById('confirmModalMessage');
+    const confirmBtn = document.getElementById('confirmModalConfirm');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    confirmBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+    
+    // Set button style
+    confirmBtn.classList.remove('danger');
+    if (isDanger) {
+      confirmBtn.classList.add('danger');
+    }
+    
+    // Store resolve function
+    confirmCallback = resolve;
+    
+    // Show modal
+    modal.classList.add('active');
+  });
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('active');
+  if (confirmCallback) {
+    confirmCallback(false);
+    confirmCallback = null;
+  }
+}
+
+function executeConfirmAction() {
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('active');
+  if (confirmCallback) {
+    confirmCallback(true);
+    confirmCallback = null;
+  }
+}
+
 // ── Confirm ──
 async function confirmAction(msg, action) {
-  if (!confirm(msg)) {
+  let title = 'Confirm Action';
+  let isDanger = false;
+  
+  if (action === 'sign-out') {
+    title = 'Sign Out';
+  } else if (action === 'delete-account') {
+    title = 'Delete Account';
+    isDanger = true;
+  }
+  
+  const confirmed = await showConfirmModal(title, msg, action === 'delete-account' ? 'Delete Account' : 'Confirm', 'Cancel', isDanger);
+  
+  if (!confirmed) {
     return;
   }
   
@@ -1114,7 +1192,15 @@ async function handleSignOut() {
 
 async function handleDeleteAccount() {
   // Double confirmation
-  if (!confirm('This will permanently delete your account and all your data. Are you absolutely sure?')) {
+  const confirmed2 = await showConfirmModal(
+    'Final Confirmation',
+    'This will permanently delete your account and all your data. Are you absolutely sure?',
+    'Yes, Delete Forever',
+    'Cancel',
+    true
+  );
+  
+  if (!confirmed2) {
     return;
   }
   
