@@ -27,6 +27,10 @@ def map_view(request):
     }
     return render(request, 'ratemetroapp/map.html', context)
 
+def station_reviews_view(request):
+    """Station reviews page — station name passed via ?station= query param"""
+    return render(request, 'ratemetroapp/station-reviews.html')
+
 def sign_in_view(request):
     """Sign in page view"""
     if request.user.is_authenticated:
@@ -231,49 +235,140 @@ def submit_rating(request):
             'message': 'Please sign in to submit ratings',
             'requires_auth': True
         }, status=401)
-    
+
     try:
         data = json.loads(request.body)
-        station_name = data.get('station_name')
-        safety = int(data.get('safety'))
-        cleanliness = int(data.get('cleanliness'))
-        staff_present = data.get('staff_present')
-        description = data.get('description', '')
-        photo_data = data.get('photo')
-        
-        # Get or create station
-        station, created = Station.objects.get_or_create(
-            name=station_name,
-            defaults={'latitude': 0, 'longitude': 0}  # Will need to update with actual coords
-        )
-        
-        # Create rating
+        station_name = data.get('station_name', '').strip()
+        safety = int(data.get('safety', 0))
+        cleanliness = int(data.get('cleanliness', 0))
+        staff_present = data.get('staff_present') or None
+        description = data.get('description', '').strip()
+        lat = data.get('lat')
+        lng = data.get('lng')
+
+        if not station_name:
+            return JsonResponse({'status': 'error', 'message': 'station_name is required'}, status=400)
+        if not (1 <= safety <= 5):
+            return JsonResponse({'status': 'error', 'message': 'safety must be 1–5'}, status=400)
+        if not (1 <= cleanliness <= 5):
+            return JsonResponse({'status': 'error', 'message': 'cleanliness must be 1–5'}, status=400)
+
+        # Look up station by exact name, then case-insensitive fallback
+        try:
+            station = Station.objects.get(name=station_name)
+        except Station.DoesNotExist:
+            try:
+                station = Station.objects.get(name__iexact=station_name)
+            except Station.DoesNotExist:
+                # Create it with coordinates if provided
+                station = Station.objects.create(
+                    name=station_name,
+                    latitude=float(lat) if lat is not None else 0.0,
+                    longitude=float(lng) if lng is not None else 0.0,
+                )
+
+        # Create the rating
         rating = Rating.objects.create(
             station=station,
             user=request.user,
             safety=safety,
             cleanliness=cleanliness,
             staff_present=staff_present,
-            description=description,
-            ip_address=get_client_ip(request)
+            description=description or None,
+            ip_address=get_client_ip(request),
         )
-        
-        # Handle photo if provided
-        if photo_data:
-            # In production, you'd save the file properly
-            # For now, we'll store the base64 data reference
-            RatingPhoto.objects.create(
-                rating=rating,
-                photo=None  # Would need to decode base64 and save as file
-            )
-        
+
+        # Build avatar URL for the response
+        avatar_url = ''
+        try:
+            profile = request.user.profile
+            if profile.avatar and hasattr(profile.avatar, 'url'):
+                avatar_url = profile.avatar.url
+        except (UserProfile.DoesNotExist, ValueError):
+            pass
+
         return JsonResponse({
             'status': 'success',
             'message': 'Rating submitted successfully',
-            'rating_id': rating.id
+            'rating_id': rating.id,
+            'timestamp': int(rating.created_at.timestamp() * 1000),
+            'username': request.user.username,
+            'avatar_url': avatar_url,
         })
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@require_http_methods(["GET"])
+def get_station_ratings(request):
+    """Return all ratings for a station as JSON, newest first."""
+    station_name = request.GET.get('station', '').strip()
+    if not station_name:
+        return JsonResponse({'status': 'error', 'message': 'station param required'}, status=400)
+
+    try:
+        station = Station.objects.get(name__iexact=station_name)
+    except Station.DoesNotExist:
+        return JsonResponse({'status': 'ok', 'ratings': [], 'summary': {'avg': 0, 'count': 0}})
+
+    ratings_qs = (
+        Rating.objects
+        .filter(station=station)
+        .select_related('user', 'user__profile')
+        .order_by('-created_at')
+    )
+
+    ratings_list = []
+    safety_vals, clean_vals, staff_vals = [], [], []
+
+    for r in ratings_qs:
+        # Username + avatar
+        username = r.user.username if r.user else 'Anonymous'
+        avatar_url = ''
+        if r.user:
+            try:
+                if r.user.profile.avatar and hasattr(r.user.profile.avatar, 'url'):
+                    avatar_url = r.user.profile.avatar.url
+            except (UserProfile.DoesNotExist, ValueError):
+                pass
+
+        ratings_list.append({
+            'id': r.id,
+            'username': username,
+            'avatar_url': avatar_url,
+            'safety': r.safety,
+            'cleanliness': r.cleanliness,
+            'staff': r.staff_present or '',
+            'description': r.description or '',
+            'timestamp': int(r.created_at.timestamp() * 1000),
+        })
+
+        safety_vals.append(r.safety)
+        clean_vals.append(r.cleanliness)
+        if r.staff_present:
+            staff_vals.append(r.staff_present)
+
+    # Build summary
+    count = len(ratings_list)
+    safety_avg = round(sum(safety_vals) / count, 1) if count else 0
+    clean_avg  = round(sum(clean_vals)  / count, 1) if count else 0
+    overall    = round((safety_avg + clean_avg) / 2, 1) if count else 0
+    staff_pct  = None
+    if staff_vals:
+        yes_count = sum(1 for s in staff_vals if s == 'yes')
+        staff_pct = f"{round(yes_count / len(staff_vals) * 100)}%"
+
+    return JsonResponse({
+        'status': 'ok',
+        'ratings': ratings_list,
+        'summary': {
+            'avg': overall,
+            'count': count,
+            'safety': safety_avg,
+            'cleanliness': clean_avg,
+            'staff': staff_pct,
+        },
+    })
 
 @csrf_exempt
 @require_http_methods(["POST"])

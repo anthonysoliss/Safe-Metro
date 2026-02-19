@@ -119,7 +119,8 @@
     opacity: 0;
     transform: translateY(-10px) scale(0.97);
     pointer-events: none;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
     box-shadow: 0 16px 48px rgba(0,0,0,0.5);
   }
   .station-panel.open {
@@ -202,6 +203,9 @@
   .station-list {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     padding: 0 8px 12px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.1) transparent;
@@ -289,12 +293,12 @@
   /* ── Coordinates ── */
   .coords-display {
     position: fixed;
-    top: 16px;
-    left: calc(50% - 100px);
-    transform: translateX(-50%);
+    bottom: 268px;
+    right: 76px;
     z-index: 1000;
     background: var(--surface);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 6px 12px;
@@ -302,8 +306,16 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    animation: slideDown 0.5s ease 0.1s both;
     white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .coords-display.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
   }
   .coords-display .coord-icon { 
     width: 14px; 
@@ -399,6 +411,7 @@
   .profile-dropdown-item svg {
     width: 18px;
     height: 18px;
+    fill: none;
     stroke: var(--text-secondary);
     stroke-width: 2;
   }
@@ -686,6 +699,8 @@
     color: var(--text-primary);
     background: var(--surface-light);
   }
+  .signin-prompt-close svg { fill: none; stroke: var(--text-muted); stroke-width: 2; }
+  .signin-prompt-close:hover svg { stroke: var(--text-primary); }
   .signin-prompt-header {
     text-align: center;
     margin-bottom: 24px;
@@ -911,60 +926,6 @@
     }
   }
 
-  /* View All Ratings Modal */
-  .ratings-view-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
-  .ratings-view-modal.active { opacity: 1; visibility: visible; }
-  .ratings-view-modal-content { background: var(--surface); border-radius: 14px; width: 100%; max-width: 680px; height: 88vh; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.5); transform: translateY(-16px) scale(0.97); opacity: 0; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }
-  .ratings-view-modal.active .ratings-view-modal-content { transform: translateY(0) scale(1); opacity: 1; }
-  .ratings-view-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .ratings-view-modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
-  .ratings-view-modal-close { background: none; border: none; font-size: 26px; color: var(--text-muted); cursor: pointer; padding: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border-radius: 50%; flex-shrink: 0; }
-  .ratings-view-modal-close:hover { color: var(--text-primary); background: var(--surface-light); }
-  .ratings-view-filters { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex-shrink: 0; }
-  .ratings-view-filter-group { display: flex; align-items: center; gap: 8px; }
-  .ratings-view-filter-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-  .ratings-view-filter-select { padding: 7px 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
-  .ratings-view-filter-select:hover { border-color: var(--accent); }
-  .ratings-view-filter-select:focus { outline: none; border-color: var(--accent); }
-  .ratings-view-body { padding: 16px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
-  .rating-item-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; opacity: 0; transform: translateY(10px); animation: fadeInUp 0.4s ease forwards; }
-  .rating-item-card:last-child { margin-bottom: 0; }
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .rating-item-card:nth-child(1) { animation-delay: 0.05s; }
-  .rating-item-card:nth-child(2) { animation-delay: 0.1s; }
-  .rating-item-card:nth-child(3) { animation-delay: 0.15s; }
-  .rating-item-card:nth-child(4) { animation-delay: 0.2s; }
-  .rating-item-card:nth-child(5) { animation-delay: 0.25s; }
-  .rating-item-card:nth-child(n+6) { animation-delay: 0.3s; }
-  .rating-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
-  .rating-item-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .rating-item-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: 700; font-size: 15px; flex-shrink: 0; overflow: hidden; }
-  .rating-item-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-  .rating-item-info { min-width: 0; }
-  .rating-item-info h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rating-item-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .rating-item-stars { display: flex; gap: 2px; flex-shrink: 0; }
-  .rating-item-stars .star { font-size: 14px; color: var(--text-muted); }
-  .rating-item-stars .star.filled { color: var(--accent); }
-  .rating-item-details { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
-  .rating-item-description { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-primary); line-height: 1.5; }
-  .rating-item-photo { margin-top: 10px; }
-  .rating-item-photo img { width: 100%; max-width: 400px; border-radius: 6px; border: 1px solid var(--border); display: block; }
-  .no-ratings-message { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-
-  /* Ratings view modal — responsive */
-  @media (max-width: 480px) {
-    .ratings-view-modal { padding: 0; align-items: flex-end; }
-    .ratings-view-modal-content { width: 100%; max-width: 100%; height: 92vh; max-height: 92vh; border-radius: 16px 16px 0 0; }
-    .ratings-view-modal-header { padding: 14px 16px; }
-    .ratings-view-modal-title { font-size: 15px; }
-    .ratings-view-filters { padding: 8px 16px; }
-    .ratings-view-body { padding: 12px; }
-    .rating-item-card { padding: 12px; }
-    .rating-item-info h4 { font-size: 13px; }
-    .rating-item-details { font-size: 11px; gap: 8px; }
-    .rating-item-description { font-size: 12px; }
-  }
   
   .station-rating-display { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   .station-rating-stars { display: flex; gap: 1px; }
@@ -997,11 +958,9 @@
   @keyframes msgIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
   @media (max-width: 480px) {
-    .coords-display { top: 66px; padding: 8px 12px; }
-    .coords-display .coord-text { font-size: 11px; }
     .station-pill { top: 12px; left: 12px; }
     .profile-btn { top: 12px; right: 12px; }
-    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); }
+    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   }
 
   /* ── Light Mode Overrides ── */
@@ -1076,16 +1035,31 @@
   [data-theme="light"] .rating-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
   [data-theme="light"] .rating-modal-close { color: var(--text-muted); }
   [data-theme="light"] .rating-modal-close:hover { color: var(--text-primary); }
-  [data-theme="light"] .ratings-view-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
-  [data-theme="light"] .ratings-view-modal-close { color: var(--text-muted); }
-  [data-theme="light"] .ratings-view-modal-close:hover { color: var(--text-primary); }
-  [data-theme="light"] .rating-item-card { background: rgba(0,0,0,0.03); border-color: var(--border); }
-  [data-theme="light"] .ratings-view-filter-select { background: rgba(0,0,0,0.04); border-color: var(--border); }
 
-  /* Sign-in prompt close icon */
+
+  /* Sign-in prompt close icon — base style now handles both modes; these are kept for specificity */
   [data-theme="light"] .signin-prompt-close svg { stroke: var(--text-muted); }
   [data-theme="light"] .signin-prompt-close:hover svg { stroke: var(--text-primary); }
   [data-theme="light"] .signin-prompt-content { background: var(--surface); }
+
+  /* Station list scrollbar */
+  [data-theme="light"] .station-list { scrollbar-color: rgba(0,0,0,0.1) transparent; }
+  [data-theme="light"] .station-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
+
+  /* Panel search input */
+  [data-theme="light"] .panel-search { background: rgba(0,0,0,0.04); }
+
+  /* Rating thumb buttons */
+  [data-theme="light"] .rating-thumb-btn { color: var(--text-primary); }
+
+  /* Station item active state */
+  [data-theme="light"] .station-item:active { background: rgba(0,0,0,0.06); }
+
+  /* Confirm modal cancel hover */
+  [data-theme="light"] .confirm-modal-btn.cancel:hover { background: rgba(0,0,0,0.05); }
+
+  /* Metro marker hover */
+  [data-theme="light"] .metro-marker:hover .metro-marker-inner { border-color: rgba(0,0,0,0.5); }
 </style>
 </head>
 <body>
@@ -1239,28 +1213,6 @@
 
 <!-- View All Ratings Modal -->
 <div class="ratings-view-modal" id="ratingsViewModal">
-  <div class="ratings-view-modal-content">
-    <div class="ratings-view-modal-header">
-      <div class="ratings-view-modal-title" id="ratingsViewModalTitle">All Ratings</div>
-      <button class="ratings-view-modal-close" id="ratingsViewModalClose">&times;</button>
-    </div>
-    <div class="ratings-view-filters">
-      <div class="ratings-view-filter-group">
-        <label class="ratings-view-filter-label">Sort by:</label>
-        <select class="ratings-view-filter-select" id="filterSort">
-          <option value="newest">Newest to Oldest</option>
-          <option value="oldest">Oldest to Newest</option>
-        </select>
-      </div>
-    </div>
-    <div class="ratings-view-body" id="ratingsViewBody">
-      <!-- Ratings will be dynamically inserted here -->
-    </div>
-  </div>
-</div>
-
-<!-- Sign In Prompt Modal -->
-<div class="signin-prompt-modal" id="signinPromptModal">
   <div class="signin-prompt-content">
     <button class="signin-prompt-close" id="signinPromptClose" onclick="closeSignInPrompt()">
       <svg viewBox="0 0 24 24" width="20" height="20">
@@ -1330,6 +1282,7 @@ const DJANGO_URLS = {
   updateLocation: '{% url "ratemetroapp:update_location" %}',
   checkAuth: '{% url "ratemetroapp:check_auth" %}',
   submitRating: '{% url "ratemetroapp:submit_rating" %}',
+  stationRatings: '{% url "ratemetroapp:station_ratings" %}',
   logout: '{% url "ratemetroapp:api_logout" %}',
   deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
 };
@@ -1681,15 +1634,18 @@ async function saveRating(stationName, ratingData) {
   
   // Try to save to backend first
   try {
+    // Look up station coords from the local array for accurate seeding
+    const stationMeta = metroStations.find(s => s.name === stationName);
     const formData = {
       station_name: stationName,
       safety: ratingData.safety,
       cleanliness: ratingData.cleanliness,
       staff_present: ratingData.staff,
       description: ratingData.description || '',
-      photo: ratingData.photo || null
+      lat: stationMeta ? stationMeta.lat : null,
+      lng: stationMeta ? stationMeta.lng : null,
     };
-    
+
     const response = await fetch(DJANGO_URLS.submitRating, {
       method: 'POST',
       headers: {
@@ -1698,21 +1654,21 @@ async function saveRating(stationName, ratingData) {
       },
       body: JSON.stringify(formData)
     });
-    
+
     const result = await response.json();
-    
+
     if (result.status === 'success') {
-      // Also save to localStorage as backup/cache
+      // Cache locally using server-authoritative values
       if (!stationRatings[stationName]) stationRatings[stationName] = [];
       const ratingToSave = {
+        id: result.rating_id,
         safety: ratingData.safety,
         cleanliness: ratingData.cleanliness,
         staff: ratingData.staff,
         description: ratingData.description || '',
-        photo: ratingData.photo || null,
-        timestamp: Date.now(),
-        username: currentUsername || '',
-        avatar_url: currentAvatarUrl || ''
+        timestamp: result.timestamp || Date.now(),
+        username: result.username || currentUsername || '',
+        avatar_url: result.avatar_url || currentAvatarUrl || ''
       };
       stationRatings[stationName].push(ratingToSave);
       localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
@@ -1816,7 +1772,7 @@ function createMarkers(filterLine = 'all') {
       ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
     }
     const stationNameEscaped = station.name.replace(/'/g, "\\'");
-    const viewRatingsBtn = rating.count > 0 ? `<button class="popup-rating-btn" onclick="openRatingsViewModal('${stationNameEscaped}')" style="margin-top: 6px;">View All Ratings (${rating.count})</button>` : '';
+    const viewRatingsBtn = rating.count > 0 ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;">View All Ratings (${rating.count})</a>` : '';
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
     marker.bindPopup(`<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`, { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
     marker.stationData = station;
@@ -2443,12 +2399,13 @@ if (ratingSubmit) {
     const saved = await saveRating(currentRatingStation, ratingData);
     
     if (saved) {
+      const ratedStation = currentRatingStation;
       closeRatingModal();
       // Refresh markers and list to show updated ratings
       createMarkers(activeFilter);
       const searchInput = document.getElementById('stationSearch');
       renderStationList(searchInput ? searchInput.value : '');
-      alert(`Thank you for rating ${currentRatingStation}!`);
+      alert(`Thank you for rating ${ratedStation}!`);
     } else {
       // Rating not saved - user may have been redirected to sign in
       // Don't close modal if they're coming back
@@ -2461,121 +2418,138 @@ if (ratingSubmit) {
 
 // ── View All Ratings Modal ──
 let currentRatingsViewStation = null;
+let cachedDbRatings = {};  // { stationName: [rating, ...] }
 
-window.openRatingsViewModal = function(stationName) {
+window.openRatingsViewModal = async function(stationName) {
   const ratingsViewModal = document.getElementById('ratingsViewModal');
   const ratingsViewModalTitle = document.getElementById('ratingsViewModalTitle');
   const ratingsViewBody = document.getElementById('ratingsViewBody');
-  
+
   if (!ratingsViewModal || !ratingsViewModalTitle || !ratingsViewBody) {
     console.error('Ratings view modal elements not found');
     return;
   }
-  
+
   currentRatingsViewStation = stationName;
-  ratingsViewModalTitle.textContent = `All Ratings - ${stationName}`;
-  
+  ratingsViewModalTitle.textContent = `All Ratings — ${stationName}`;
+
   // Reset filter
   const filterSortEl = document.getElementById('filterSort');
   if (filterSortEl) filterSortEl.value = 'newest';
-  
-  renderAllRatings(stationName, ratingsViewBody);
-  
-  // Trigger smooth animation
-  requestAnimationFrame(() => {
-    ratingsViewModal.classList.add('active');
-  });
+
+  // Show loading state and open modal immediately
+  ratingsViewBody.innerHTML = '<div class="no-ratings-message">Loading ratings…</div>';
+  requestAnimationFrame(() => { ratingsViewModal.classList.add('active'); });
+
+  // Fetch from DB
+  try {
+    const url = `${DJANGO_URLS.stationRatings}?station=${encodeURIComponent(stationName)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      cachedDbRatings[stationName] = data.ratings;
+      // Also update stationRatings summary for popup display
+      if (data.summary && data.summary.count > 0) {
+        stationRatings[stationName] = data.ratings.map(r => ({
+          safety: r.safety,
+          cleanliness: r.cleanliness,
+          staff: r.staff || null,
+          description: r.description,
+          timestamp: r.timestamp,
+          username: r.username,
+          avatar_url: r.avatar_url,
+        }));
+        localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+      }
+      renderAllRatings(stationName, ratingsViewBody, { sort: 'newest' });
+    } else {
+      renderAllRatings(stationName, ratingsViewBody);
+    }
+  } catch (err) {
+    console.error('Failed to fetch ratings from server:', err);
+    // Fall back to localStorage cache
+    renderAllRatings(stationName, ratingsViewBody);
+  }
 };
 
 function closeRatingsViewModal() {
   const ratingsViewModal = document.getElementById('ratingsViewModal');
   if (ratingsViewModal) {
     ratingsViewModal.classList.remove('active');
-    // Clear content after animation completes
     setTimeout(() => {
       const ratingsViewBody = document.getElementById('ratingsViewBody');
-      if (ratingsViewBody) {
-        ratingsViewBody.innerHTML = '';
-      }
+      if (ratingsViewBody) ratingsViewBody.innerHTML = '';
     }, 300);
   }
 }
 
+function buildRatingCard(rating, index) {
+  const date = new Date(rating.timestamp);
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const overall = rating.safety > 0 && rating.cleanliness > 0
+    ? Math.round((rating.safety + rating.cleanliness) / 2)
+    : (rating.safety > 0 ? rating.safety : rating.cleanliness);
+
+  const displayName = rating.username || 'Anonymous';
+  const userInitial = displayName.charAt(0).toUpperCase() || '?';
+  const avatarHtml = rating.avatar_url
+    ? `<img src="${rating.avatar_url}" alt="${displayName}" onerror="this.parentElement.textContent='${userInitial}'">`
+    : userInitial;
+
+  const card = document.createElement('div');
+  card.className = 'rating-item-card';
+  card.style.animationDelay = `${0.05 + (index * 0.05)}s`;
+  card.innerHTML = `
+    <div class="rating-item-header">
+      <div class="rating-item-user">
+        <div class="rating-item-avatar">${avatarHtml}</div>
+        <div class="rating-item-info">
+          <h4>${displayName}</h4>
+          <div class="rating-item-date">${dateStr}</div>
+        </div>
+      </div>
+      <div class="rating-item-stars">${renderStars(overall, '14px')}</div>
+    </div>
+    <div class="rating-item-details">
+      <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
+      <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
+      ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+    </div>
+    ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
+  `;
+  return card;
+}
+
 function renderAllRatings(stationName, container, filters = {}) {
-  const ratings = stationRatings[stationName] || [];
-  
-  // Clear container first
+  // Prefer DB-fetched data; fall back to localStorage cache
+  const source = cachedDbRatings[stationName] || stationRatings[stationName] || [];
+
   container.innerHTML = '';
-  
-  if (ratings.length === 0) {
+
+  if (source.length === 0) {
     container.innerHTML = '<div class="no-ratings-message">No ratings yet for this station.</div>';
     return;
   }
-  
-  // Sort ratings
-  let sortedRatings = [...ratings];
+
+  let sorted = [...source];
   const sortBy = filters.sort || 'newest';
   if (sortBy === 'newest') {
-    sortedRatings.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    sorted.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   } else if (sortBy === 'oldest') {
-    sortedRatings.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    sorted.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }
-  
-  // Create rating cards with staggered animation
-  sortedRatings.forEach((rating, index) => {
-    const date = new Date(rating.timestamp);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const overall = rating.safety > 0 && rating.cleanliness > 0 
-      ? Math.round((rating.safety + rating.cleanliness) / 2) 
-      : (rating.safety > 0 ? rating.safety : rating.cleanliness);
-    
-    // Build avatar — use saved avatar_url if present, else fall back to username initial
-    const displayName = rating.username || `User ${index + 1}`;
-    const userInitial = displayName.charAt(0).toUpperCase() || '?';
-    const avatarHtml = rating.avatar_url
-      ? `<img src="${rating.avatar_url}" alt="${displayName}" onerror="this.parentElement.innerHTML='${userInitial}'">`
-      : userInitial;
 
-    const card = document.createElement('div');
-    card.className = 'rating-item-card';
-    card.style.animationDelay = `${0.05 + (index * 0.05)}s`;
-    card.innerHTML = `
-      <div class="rating-item-header">
-        <div class="rating-item-user">
-          <div class="rating-item-avatar">${avatarHtml}</div>
-          <div class="rating-item-info">
-            <h4>${displayName}</h4>
-            <div class="rating-item-date">${dateStr}</div>
-          </div>
-        </div>
-        <div class="rating-item-stars">
-          ${renderStars(overall, '14px')}
-        </div>
-      </div>
-      <div class="rating-item-details">
-        <span>🛡️ Safety: ${renderStars(rating.safety || 0, '12px')} ${rating.safety || 0}/5</span>
-        <span>🧹 Cleanliness: ${renderStars(rating.cleanliness || 0, '12px')} ${rating.cleanliness || 0}/5</span>
-        ${rating.staff ? `<span>👮 Staff: ${rating.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
-      </div>
-      ${rating.description ? `<div class="rating-item-description">${rating.description}</div>` : ''}
-      ${rating.photo ? `<div class="rating-item-photo"><img src="${rating.photo}" alt="Rating photo"></div>` : ''}
-    `;
-    container.appendChild(card);
+  sorted.forEach((rating, index) => {
+    container.appendChild(buildRatingCard(rating, index));
   });
 }
 
 // Filter change handler
 function applyRatingsFilters() {
   if (!currentRatingsViewStation) return;
-  
-  const filters = {
-    sort: document.getElementById('filterSort').value
-  };
-  
+  const filters = { sort: document.getElementById('filterSort').value };
   const ratingsViewBody = document.getElementById('ratingsViewBody');
-  if (ratingsViewBody) {
-    renderAllRatings(currentRatingsViewStation, ratingsViewBody, filters);
-  }
+  if (ratingsViewBody) renderAllRatings(currentRatingsViewStation, ratingsViewBody, filters);
 }
 
 // Initialize ratings view modal event listeners
