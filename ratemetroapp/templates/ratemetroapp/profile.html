@@ -1592,7 +1592,7 @@ window.addEventListener('popstate', async function(e) {
     );
     if (confirmed) {
       hasUnsavedChanges = false;
-      window.history.back();
+      window.location.href = '/';
     } else {
       // Push state again to prevent navigation
       window.history.pushState(null, null, window.location.href);

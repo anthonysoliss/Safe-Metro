@@ -2443,9 +2443,14 @@ function updateSubmitButton() {
 }
 
 function openRatingModal(stationName) {
+  if (!isAuthenticated) {
+    promptSignIn('rate this station');
+    return;
+  }
+
   const ratingModal = document.getElementById('ratingModal');
   const ratingModalTitle = document.getElementById('ratingModalTitle');
-  
+
   if (!ratingModal || !ratingModalTitle) {
     console.error('Rating modal elements not found');
     return;
