@@ -2137,6 +2137,8 @@ function requestUserLocation(isUserGesture) {
     function(position) {
       setUserLocation(position.coords.latitude, position.coords.longitude);
       if (locateBtn) locateBtn.classList.remove('loading');
+      // User granted location — re-enable share location setting
+      localStorage.setItem('ratemetro-share-location', 'true');
     },
     function(error) {
       if (locateBtn) locateBtn.classList.remove('loading');
@@ -2160,8 +2162,8 @@ function requestUserLocation(isUserGesture) {
   );
 }
 
-// Try to get location on load — skip if returning to a station popup to avoid a flash to user marker
-if (!_returnToStation) {
+// Try to get location on load — skip if returning to a station popup or location sharing is disabled
+if (!_returnToStation && localStorage.getItem('ratemetro-share-location') !== 'false') {
   requestUserLocation(false);
 }
 

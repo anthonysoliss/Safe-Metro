@@ -1144,7 +1144,7 @@
       </svg>
     </div>
     <div class="app-footer-name">rate<span>metro</span>.com</div>
-    <div class="app-footer-ver">© 2025 ratemetro</div>
+    <div class="app-footer-ver">© 2026 ratemetro</div>
     <div class="footer-links">
       <a class="footer-link" onclick="showToast('Opening privacy policy...')">Privacy</a>
       <a class="footer-link" onclick="showToast('Opening terms...')">Terms</a>
@@ -1220,10 +1220,21 @@ function toggleSetting(btn, key) {
         state[key] = !isOn;
         showToast('Save failed (' + err.message + ')');
       });
+  } else if (key === 'share-location') {
+    localStorage.setItem('ratemetro-share-location', isOn ? 'true' : 'false');
+    showToast(isOn ? 'Location sharing enabled' : 'Location sharing disabled');
   } else {
     showToast(isOn ? 'Enabled' : 'Disabled');
   }
 }
+
+// ── Initialize share-location toggle from localStorage ──
+(function() {
+  const shareBtn = document.querySelector('[onclick="toggleSetting(this, \'share-location\')"]');
+  if (shareBtn && localStorage.getItem('ratemetro-share-location') === 'false') {
+    shareBtn.classList.remove('on');
+  }
+})();
 
 // ── Sliders ──
 function getTrackBg() {
