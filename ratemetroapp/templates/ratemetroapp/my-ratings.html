@@ -366,13 +366,50 @@
   .card-photo {
     padding: 0 16px 14px;
   }
-  .card-photo img {
+  .card-photo img, .card-photo video {
     width: 100%;
     border-radius: 10px;
     border: 1px solid var(--border);
     display: block;
     max-height: 200px;
     object-fit: cover;
+    cursor: pointer;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.92);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox-img {
+    max-width: 100%;
+    max-height: 90dvh;
+    border-radius: 10px;
+    object-fit: contain;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    line-height: 36px;
+    text-align: center;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
   }
 
   /* Card actions */
@@ -719,7 +756,7 @@ function processServerRatings(serverRatings) {
     cleanliness: r.cleanliness,
     staff: r.staff || '',
     description: r.description || '',
-    photo: r.photo || '',
+    media: r.media || [],
     timestamp: r.timestamp,
     _id: `rating_${r.id}`, // Use database ID
   }));
@@ -870,8 +907,8 @@ function renderCards(ratings) {
     const descHTML = r.description
       ? `<div class="card-description">${r.description}</div>` : '';
 
-    const photoHTML = r.photo
-      ? `<div class="card-photo"><img src="${r.photo}" alt="Station photo" loading="lazy"></div>` : '';
+    const photoHTML = (r.media && r.media.length)
+      ? r.media.map(m => `<div class="card-photo">${m.type === 'video' ? `<video src="${m.url}" controls playsinline style="width:100%;border-radius:10px;max-height:200px;"></video>` : `<img src="${m.url}" alt="Station photo" loading="lazy" onclick="openLightbox(this.src)">`}</div>`).join('') : '';
 
     const card = document.createElement('div');
     card.className = 'rating-card';
@@ -1080,6 +1117,25 @@ function confirmDelete() {
 // Init
 buildFilters();
 applyFilters();
+
+// Lightbox
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 </script>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="Full photo">
+</div>
 </body>
 </html>

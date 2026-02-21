@@ -2459,12 +2459,15 @@ function openRatingModal(stationName) {
   const descriptionInput = document.getElementById('ratingDescription');
   const photoInput = document.getElementById('ratingPhotoInput');
   const photoPreview = document.getElementById('ratingPhotoPreview');
+  const photoImgEl = document.getElementById('ratingPhotoImg');
+  const photoVideoEl = document.getElementById('ratingVideoEl');
+  const photoDropZone = document.getElementById('ratingPhotoBtn');
   if (descriptionInput) descriptionInput.value = '';
   if (photoInput) photoInput.value = '';
-  if (photoPreview) {
-    photoPreview.innerHTML = '';
-    photoPreview.classList.remove('has-image');
-  }
+  if (photoImgEl) { photoImgEl.src = ''; photoImgEl.style.display = 'none'; }
+  if (photoVideoEl) { photoVideoEl.src = ''; photoVideoEl.style.display = 'none'; }
+  if (photoPreview) photoPreview.classList.remove('has-media');
+  if (photoDropZone) photoDropZone.style.display = '';
   
   // Reset Safety stars
   document.querySelectorAll('[data-category="safety"] .rating-star-btn').forEach((btn, i) => {
@@ -2518,10 +2521,12 @@ function closeRatingModal() {
   const photoInput = document.getElementById('ratingPhotoInput');
   const photoPreview = document.getElementById('ratingPhotoPreview');
   const photoImg = document.getElementById('ratingPhotoImg');
+  const photoVid = document.getElementById('ratingVideoEl');
   const photoBtn = document.getElementById('ratingPhotoBtn');
   if (photoInput) photoInput.value = '';
-  if (photoImg) photoImg.src = '';
-  if (photoPreview) { photoPreview.classList.remove('has-media'); }
+  if (photoImg) { photoImg.src = ''; photoImg.style.display = 'none'; }
+  if (photoVid) { photoVid.src = ''; photoVid.style.display = 'none'; }
+  if (photoPreview) photoPreview.classList.remove('has-media');
   if (photoBtn) photoBtn.style.display = '';
 }
 

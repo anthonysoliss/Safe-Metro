@@ -7,7 +7,9 @@ from django.views.decorators.cache import never_cache
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.core.files.base import ContentFile
 import json
+import io
 from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile
 
 def map_view(request):
@@ -141,10 +143,24 @@ def my_ratings_view(request):
     
     # Convert ratings to JSON-serializable format
     ratings_data = []
-    for rating in user_ratings:
+    for rating in user_ratings.prefetch_related('photos'):
         # Get station lines
         station_lines = list(rating.station.lines.values_list('code', flat=True))
-        
+
+        # Collect attached media
+        media = []
+        for m in rating.photos.all():
+            if m.media_type == 'video' and m.video:
+                try:
+                    media.append({'type': 'video', 'url': m.video.url})
+                except ValueError:
+                    pass
+            elif m.media_type == 'photo' and m.photo:
+                try:
+                    media.append({'type': 'photo', 'url': m.photo.url})
+                except ValueError:
+                    pass
+
         ratings_data.append({
             'id': rating.id,
             'station': rating.station.name,
@@ -153,8 +169,8 @@ def my_ratings_view(request):
             'cleanliness': rating.cleanliness,
             'staff': rating.staff_present or '',
             'description': rating.description or '',
-            'photo': '',  # Would need to handle photo URLs if stored
-            'timestamp': int(rating.created_at.timestamp() * 1000),  # Convert to milliseconds
+            'media': media,
+            'timestamp': int(rating.created_at.timestamp() * 1000),
         })
     
     # Get user's rating stats
@@ -349,7 +365,24 @@ def submit_rating(request):
                 media_obj = RatingPhoto.objects.create(rating=rating, video=media_file, media_type='video')
                 media_url = media_obj.video.url if media_obj.video else ''
             else:
-                media_obj = RatingPhoto.objects.create(rating=rating, photo=media_file, media_type='photo')
+                # Convert HEIC/HEIF to JPEG so all browsers can display it
+                file_to_save = media_file
+                filename = media_file.name or 'photo.jpg'
+                if filename.lower().endswith(('.heic', '.heif')) or content_type in ('image/heic', 'image/heif'):
+                    try:
+                        import pillow_heif
+                        from PIL import Image
+                        pillow_heif.register_heif_opener()
+                        img = Image.open(media_file)
+                        buf = io.BytesIO()
+                        img.save(buf, format='JPEG', quality=85)
+                        buf.seek(0)
+                        jpeg_name = filename.rsplit('.', 1)[0] + '.jpg'
+                        file_to_save = ContentFile(buf.read(), name=jpeg_name)
+                    except Exception:
+                        media_file.seek(0)
+                        file_to_save = media_file
+                media_obj = RatingPhoto.objects.create(rating=rating, photo=file_to_save, media_type='photo')
                 media_url = media_obj.photo.url if media_obj.photo else ''
 
         # Build avatar URL for the response
@@ -428,12 +461,12 @@ def get_station_ratings(request):
         for m in r.photos.all():
             if m.media_type == 'video' and m.video:
                 try:
-                    media.append({'type': 'video', 'url': request.build_absolute_uri(m.video.url)})
+                    media.append({'type': 'video', 'url': m.video.url})
                 except ValueError:
                     pass
             elif m.media_type == 'photo' and m.photo:
                 try:
-                    media.append({'type': 'photo', 'url': request.build_absolute_uri(m.photo.url)})
+                    media.append({'type': 'photo', 'url': m.photo.url})
                 except ValueError:
                     pass
 
