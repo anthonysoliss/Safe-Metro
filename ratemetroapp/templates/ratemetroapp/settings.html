@@ -705,7 +705,7 @@
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
   </div>
   <div class="nav-title">Settings</div>
-  <div></div>
+  <div class="nav-version">@{{ user.username }}</div>
 </nav>
 
 <!-- Sheet -->
@@ -1194,7 +1194,7 @@ function toggleSetting(btn, key) {
   if (key === 'anonymous') {
     fetch(DJANGO_URLS.updateSettings, {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCSRFToken(),
@@ -1202,7 +1202,7 @@ function toggleSetting(btn, key) {
       body: JSON.stringify({ anonymous_ratings: isOn }),
     })
       .then(r => {
-        if (!r.ok && r.status !== 400) throw new Error('HTTP ' + r.status);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(data => {
@@ -1211,14 +1211,14 @@ function toggleSetting(btn, key) {
         } else {
           btn.classList.toggle('on');
           state[key] = !isOn;
-          showToast('Failed to save — try again');
+          showToast('Error: ' + (data.message || 'try again'));
         }
       })
       .catch((err) => {
         console.error('Settings save error:', err);
         btn.classList.toggle('on');
         state[key] = !isOn;
-        showToast('Failed to save — try again');
+        showToast('Save failed (' + err.message + ')');
       });
   } else {
     showToast(isOn ? 'Enabled' : 'Disabled');

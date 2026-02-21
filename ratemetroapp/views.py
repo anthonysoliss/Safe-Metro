@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -169,6 +170,7 @@ def my_ratings_view(request):
     return render(request, 'ratemetroapp/my-ratings.html', context)
 
 @login_required
+@never_cache
 def settings_view(request):
     """Settings page view"""
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
@@ -286,6 +288,14 @@ def submit_rating(request):
                     longitude=float(lng) if lng is not None else 0.0,
                 )
 
+        # Block duplicate ratings for authenticated users
+        if Rating.objects.filter(station=station, user=request.user).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'You have already rated this station.',
+                'already_rated': True,
+            }, status=409)
+
         # Create the rating
         rating = Rating.objects.create(
             station=station,
@@ -392,9 +402,15 @@ def get_station_ratings(request):
         yes_count = sum(1 for s in staff_vals if s == 'yes')
         staff_pct = f"{round(yes_count / len(staff_vals) * 100)}%"
 
+    user_has_rated = (
+        request.user.is_authenticated and
+        Rating.objects.filter(station=station, user=request.user).exists()
+    )
+
     return JsonResponse({
         'status': 'ok',
         'ratings': ratings_list,
+        'user_has_rated': user_has_rated,
         'summary': {
             'avg': overall,
             'count': count,

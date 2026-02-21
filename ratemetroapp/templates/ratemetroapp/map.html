@@ -642,6 +642,7 @@
   .popup-rating-item .rating-stars-inline .star { font-size: 10px; line-height: 1; }
   .popup-rating-btn { margin-top: 6px; padding: 5px 10px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
   .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+  .popup-rated-badge { margin-top: 6px; padding: 5px 10px; background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; font-size: 10px; font-weight: 600; width: 100%; text-align: center; }
   .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 16px !important; padding: 4px 6px !important; width: 20px !important; height: 20px !important; line-height: 1 !important; }
 
   @media (max-width: 480px) {
@@ -1720,6 +1721,7 @@ const metroStations = [
 
 // ── Ratings Storage ──
 let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || {};
+let userRatedStations = new Set(); // station names the current user has already rated
 
 function getStationRating(stationName) {
   const ratings = stationRatings[stationName] || [];
@@ -1806,6 +1808,11 @@ async function saveRating(stationName, ratingData) {
       stationRatings[stationName].push(ratingToSave);
       localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
       return true;
+    } else if (result.already_rated) {
+      userRatedStations.add(stationName);
+      closeRatingModal();
+      alert('You have already rated this station.');
+      return false;
     } else if (result.requires_auth) {
       // Re-check auth status
       const authStatus = await checkAuthentication();
@@ -1874,12 +1881,12 @@ window.addEventListener('storage', function(e) {
 
 function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
 
-function buildPopupHTML(station, rating) {
+function buildPopupHTML(station, rating, userHasRated = false) {
   const badges = station.lines.map(l => {
     const line = metroLines[l];
     return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
   }).join('');
-  const stationNameEscaped = station.name.replace(/'/g, "\\'");
+  const stationNameEscaped = station.name.replace(/'/g, "\'");
   let ratingHTML = '';
   const count = rating ? rating.count : 0;
   if (count > 0) {
@@ -1899,10 +1906,13 @@ function buildPopupHTML(station, rating) {
   } else {
     ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
   }
+  const rateBtn = userHasRated
+    ? `<div class="popup-rated-badge">✓ You rated this station</div>`
+    : `<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`;
   const viewRatingsBtn = count > 0
     ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${count})</a>`
     : '';
-  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>${viewRatingsBtn}`;
+  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}${rateBtn}${viewRatingsBtn}`;
 }
 
 function createMarkers(filterLine = 'all') {
@@ -1931,8 +1941,9 @@ function createMarkers(filterLine = 'all') {
         if (data.status === 'ok') {
           stationRatings[station.name] = data.ratings;
           localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+          if (data.user_has_rated) userRatedStations.add(station.name);
           if (this.isPopupOpen()) {
-            this.getPopup().setContent(buildPopupHTML(station, data.summary));
+            this.getPopup().setContent(buildPopupHTML(station, data.summary, data.user_has_rated));
           }
         }
       } catch (e) { /* silent — cached data stays */ }

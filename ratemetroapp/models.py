@@ -82,10 +82,12 @@ class Rating(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        unique_together = [('station', 'user')]
         indexes = [
             models.Index(fields=['station', '-created_at']),
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['session_id', '-created_at']),
+            models.Index(fields=['station', 'user'], name='rating_station_user_idx'),
         ]
 
 
