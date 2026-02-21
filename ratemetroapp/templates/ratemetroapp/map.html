@@ -898,8 +898,8 @@
   .photo-drop-zone .drop-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
   .photo-drop-zone .drop-hint { font-size: 10px; color: var(--text-muted); }
   .photo-preview-wrap { display: none; position: relative; border-radius: 10px; overflow: hidden; }
-  .photo-preview-wrap.has-image { display: block; }
-  .photo-preview-wrap img { width: 100%; max-height: 200px; object-fit: cover; display: block; border-radius: 10px; }
+  .photo-preview-wrap.has-media { display: block; }
+  .photo-preview-wrap img, .photo-preview-wrap video { width: 100%; max-height: 200px; object-fit: cover; display: block; border-radius: 10px; }
   .photo-preview-overlay { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 8px; justify-content: center; padding: 10px 12px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); }
   .photo-preview-overlay button { padding: 5px 14px; border: none; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .photo-change-btn { background: rgba(255,255,255,0.9); color: #111; }
@@ -1311,16 +1311,17 @@
       </div>
 
       <div class="rating-category">
-        <div class="rating-category-label">📷 Photo (Optional)</div>
+        <div class="rating-category-label">📷 Photo / Video (Optional)</div>
         <div class="rating-photo-upload">
-          <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
+          <input type="file" id="ratingPhotoInput" accept="image/*,video/*" style="display: none;">
           <div class="photo-drop-zone" id="ratingPhotoBtn">
             <span class="drop-icon">📷</span>
-            <span class="drop-label">Tap to add a photo</span>
-            <span class="drop-hint">JPG, PNG, HEIC supported</span>
+            <span class="drop-label">Tap to add a photo or video</span>
+            <span class="drop-hint">Max 10 MB photo · Max 5 min / 150 MB video</span>
           </div>
           <div class="photo-preview-wrap" id="ratingPhotoPreview">
-            <img id="ratingPhotoImg" src="" alt="Rating photo">
+            <img id="ratingPhotoImg" src="" alt="Rating photo" style="display:none;">
+            <video id="ratingVideoEl" controls playsinline style="display:none;"></video>
             <div class="photo-preview-overlay">
               <button type="button" class="photo-change-btn" onclick="document.getElementById('ratingPhotoInput').click()">Change</button>
               <button type="button" class="photo-remove-btn" onclick="removeRatingPhoto()">Remove</button>
@@ -1789,23 +1790,19 @@ async function saveRating(stationName, ratingData) {
   try {
     // Look up station coords from the local array for accurate seeding
     const stationMeta = metroStations.find(s => s.name === stationName);
-    const formData = {
-      station_name: stationName,
-      safety: ratingData.safety,
-      cleanliness: ratingData.cleanliness,
-      staff_present: ratingData.staff,
-      description: ratingData.description || '',
-      lat: stationMeta ? stationMeta.lat : null,
-      lng: stationMeta ? stationMeta.lng : null,
-    };
+    const fd = new FormData();
+    fd.append('station_name', stationName);
+    fd.append('safety', ratingData.safety);
+    fd.append('cleanliness', ratingData.cleanliness);
+    if (ratingData.staff) fd.append('staff_present', ratingData.staff);
+    fd.append('description', ratingData.description || '');
+    if (stationMeta) { fd.append('lat', stationMeta.lat); fd.append('lng', stationMeta.lng); }
+    if (ratingData.mediaFile) fd.append('media', ratingData.mediaFile);
 
     const response = await fetch(DJANGO_URLS.submitRating, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify(formData)
+      headers: { 'X-CSRFToken': getCSRFToken() },
+      body: fd
     });
 
     const result = await response.json();
@@ -2406,7 +2403,7 @@ map.on('moveend', () => { if (!userMarker && document.getElementById('coordsDisp
 
 // ── Rating Modal ──
 let currentRatingStation = null;
-let ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+let ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null, mediaFile: null };
 
 function updateOverallRating() {
   const overallRatingDisplay = document.getElementById('overallRatingDisplay');
@@ -2456,7 +2453,7 @@ function openRatingModal(stationName) {
   
   currentRatingStation = stationName;
   ratingModalTitle.textContent = `Rate ${stationName}`;
-  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null, mediaFile: null };
   
   // Reset description and photo
   const descriptionInput = document.getElementById('ratingDescription');
@@ -2516,7 +2513,7 @@ function closeRatingModal() {
     ratingModal.classList.remove('active');
   }
   currentRatingStation = null;
-  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+  ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null, mediaFile: null };
   // Reset photo upload UI
   const photoInput = document.getElementById('ratingPhotoInput');
   const photoPreview = document.getElementById('ratingPhotoPreview');
@@ -2524,7 +2521,7 @@ function closeRatingModal() {
   const photoBtn = document.getElementById('ratingPhotoBtn');
   if (photoInput) photoInput.value = '';
   if (photoImg) photoImg.src = '';
-  if (photoPreview) photoPreview.classList.remove('has-image');
+  if (photoPreview) { photoPreview.classList.remove('has-media'); }
   if (photoBtn) photoBtn.style.display = '';
 }
 
@@ -2543,44 +2540,79 @@ if (ratingModal) {
   });
 }
 
-// Photo upload handling
+// Photo / Video upload handling
 const ratingPhotoBtn = document.getElementById('ratingPhotoBtn');
 const ratingPhotoInput = document.getElementById('ratingPhotoInput');
 const ratingPhotoPreview = document.getElementById('ratingPhotoPreview');
 const ratingPhotoImg = document.getElementById('ratingPhotoImg');
+const ratingVideoEl = document.getElementById('ratingVideoEl');
 const ratingDescription = document.getElementById('ratingDescription');
 
+const MAX_VIDEO_DURATION = 300; // 5 minutes
+const MAX_VIDEO_BYTES = 150 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+function showMediaPreview(file) {
+  const isVideo = file.type.startsWith('video/');
+  ratingData.mediaFile = file;
+  ratingData.photo = null;
+  if (ratingPhotoBtn) ratingPhotoBtn.style.display = 'none';
+  if (ratingPhotoPreview) ratingPhotoPreview.classList.add('has-media');
+  if (isVideo) {
+    if (ratingPhotoImg) ratingPhotoImg.style.display = 'none';
+    if (ratingVideoEl) {
+      ratingVideoEl.src = URL.createObjectURL(file);
+      ratingVideoEl.style.display = 'block';
+    }
+  } else {
+    if (ratingVideoEl) { ratingVideoEl.style.display = 'none'; ratingVideoEl.src = ''; }
+    if (ratingPhotoImg) { ratingPhotoImg.src = URL.createObjectURL(file); ratingPhotoImg.style.display = 'block'; }
+  }
+}
+
 if (ratingPhotoBtn && ratingPhotoInput) {
-  ratingPhotoBtn.addEventListener('click', () => {
-    ratingPhotoInput.click();
-  });
+  ratingPhotoBtn.addEventListener('click', () => ratingPhotoInput.click());
 
   ratingPhotoInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        ratingData.photo = event.target.result;
-        if (ratingPhotoImg) ratingPhotoImg.src = event.target.result;
-        if (ratingPhotoBtn) ratingPhotoBtn.style.display = 'none';
-        if (ratingPhotoPreview) ratingPhotoPreview.classList.add('has-image');
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isVideo && !isImage) { showMapToast('Only images and videos are allowed.', 'error'); ratingPhotoInput.value = ''; return; }
+    if (isImage && file.size > MAX_PHOTO_BYTES) { showMapToast('Photo must be under 10 MB.', 'error'); ratingPhotoInput.value = ''; return; }
+    if (isVideo && file.size > MAX_VIDEO_BYTES) { showMapToast('Video must be under 150 MB.', 'error'); ratingPhotoInput.value = ''; return; }
+    if (isVideo) {
+      const tempUrl = URL.createObjectURL(file);
+      const tempVid = document.createElement('video');
+      tempVid.preload = 'metadata';
+      tempVid.src = tempUrl;
+      tempVid.onloadedmetadata = () => {
+        URL.revokeObjectURL(tempUrl);
+        if (tempVid.duration > MAX_VIDEO_DURATION) {
+          showMapToast('Video must be 5 minutes or less.', 'error');
+          ratingPhotoInput.value = '';
+          return;
+        }
+        showMediaPreview(file);
       };
-      reader.readAsDataURL(file);
+      tempVid.onerror = () => { URL.revokeObjectURL(tempUrl); showMapToast('Could not read video file.', 'error'); ratingPhotoInput.value = ''; };
+    } else {
+      showMediaPreview(file);
     }
   });
 }
 
 if (ratingDescription) {
-  ratingDescription.addEventListener('input', (e) => {
-    ratingData.description = e.target.value;
-  });
+  ratingDescription.addEventListener('input', (e) => { ratingData.description = e.target.value; });
 }
 
 window.removeRatingPhoto = function() {
   ratingData.photo = null;
+  ratingData.mediaFile = null;
   if (ratingPhotoInput) ratingPhotoInput.value = '';
-  if (ratingPhotoImg) ratingPhotoImg.src = '';
-  if (ratingPhotoPreview) ratingPhotoPreview.classList.remove('has-image');
+  if (ratingPhotoImg) { ratingPhotoImg.src = ''; ratingPhotoImg.style.display = 'none'; }
+  if (ratingVideoEl) { ratingVideoEl.src = ''; ratingVideoEl.style.display = 'none'; }
+  if (ratingPhotoPreview) ratingPhotoPreview.classList.remove('has-media');
   if (ratingPhotoBtn) ratingPhotoBtn.style.display = '';
 };
 

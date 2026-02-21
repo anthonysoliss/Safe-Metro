@@ -313,7 +313,7 @@
     overflow: hidden;
   }
 
-  .card-photo img {
+  .card-photo img, .card-photo video {
     width: 100%;
     max-height: 200px;
     object-fit: cover;
@@ -481,7 +481,7 @@ function renderCards(ratings) {
         ${r.staff ? `<span class="card-detail">👮 Staff: ${r.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
       </div>
       ${r.description ? `<div class="card-description">${r.description}</div>` : ''}
-      ${r.photo ? `<div class="card-photo"><img src="${r.photo}" alt="Photo"></div>` : ''}
+      ${(r.media && r.media.length) ? r.media.map(m => `<div class="card-photo">${m.type === 'video' ? `<video src="${m.url}" controls playsinline></video>` : `<img src="${m.url}" alt="Photo">`}</div>`).join('') : ''}
     `;
     container.appendChild(card);
   });
