@@ -172,8 +172,19 @@ def my_ratings_view(request):
 @login_required
 @never_cache
 def settings_view(request):
-    """Settings page view"""
+    """Settings page view — also handles AJAX POST to update anonymous_ratings"""
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            if 'anonymous_ratings' in data:
+                profile.anonymous_ratings = bool(data['anonymous_ratings'])
+                profile.save()
+            return JsonResponse({'status': 'success', 'anonymous_ratings': profile.anonymous_ratings})
+        except (ValueError, json.JSONDecodeError) as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
     context = {
         'is_authenticated': True,
         'user': request.user,

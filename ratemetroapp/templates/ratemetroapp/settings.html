@@ -1192,7 +1192,7 @@ function toggleSetting(btn, key) {
   state[key] = isOn;
 
   if (key === 'anonymous') {
-    fetch(DJANGO_URLS.updateSettings, {
+    fetch(DJANGO_URLS.settings, {
       method: 'POST',
       credentials: 'include',
       headers: {
