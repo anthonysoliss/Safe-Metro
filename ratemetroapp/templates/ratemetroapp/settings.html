@@ -821,104 +821,10 @@
           <button class="toggle" onclick="toggleSetting(this, 'rating-reminders')"></button>
         </div>
       </div>
-      <div class="row no-tap" data-search="notifications new features product updates">
-        <div class="row-icon purple">
-          <svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3l1 7h7"/><path d="M13 3l-1 7H5"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Product Updates</div>
-          <div class="row-sub">New features and improvements</div>
-        </div>
-        <div class="row-right">
-          <span class="badge new">New</span>
-          <button class="toggle on" onclick="toggleSetting(this, 'product-updates')"></button>
-        </div>
-      </div>
-      <div class="row" onclick="openSheet('Alert Radius', ['0.25 miles','0.5 miles','1 mile','2 miles','5 miles'], 'alert-radius')" data-search="notifications alert radius distance proximity">
-        <div class="row-icon teal">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Alert Radius</div>
-          <div class="row-sub">Distance for nearby alerts</div>
-        </div>
-        <div class="row-right">
-          <span class="row-value" id="val-alert-radius">1 mile</span>
-          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-        </div>
-      </div>
     </div>
   </div>
 
   <!-- ── MAP ── -->
-  <div class="section" data-section="map">
-    <div class="section-label">Map</div>
-    <div class="section-card">
-      <div class="row" onclick="openSheet('Default Line', ['All Lines','A Line (Blue)','B Line (Red)','C Line (Green)','D Line (Purple)','E Line (Expo)','K Line (Crenshaw)','L Line (Gold)'], 'default-line')" data-search="map default line filter metro">
-        <div class="row-icon blue">
-          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Default Line</div>
-          <div class="row-sub">Shown when app opens</div>
-        </div>
-        <div class="row-right">
-          <span class="row-value" id="val-default-line">All Lines</span>
-          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-        </div>
-      </div>
-      <div class="row" onclick="openSheet('Map Style', ['Dark (Default)','Satellite','High Contrast','Minimal'], 'map-style')" data-search="map style satellite terrain dark minimal">
-        <div class="row-icon gray">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Map Style</div>
-          <div class="row-sub">Background tile style</div>
-        </div>
-        <div class="row-right">
-          <span class="row-value" id="val-map-style">Dark (Default)</span>
-          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-        </div>
-      </div>
-      <div class="row no-tap" data-search="map auto center location follow">
-        <div class="row-icon green">
-          <svg viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Auto-Center on Me</div>
-          <div class="row-sub">Keep map centered on location</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle" onclick="toggleSetting(this, 'auto-center')"></button>
-        </div>
-      </div>
-      <div class="row no-tap" data-search="map show ratings marker station overlay">
-        <div class="row-icon yellow">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Show Ratings on Map</div>
-          <div class="row-sub">Display star overlays on markers</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle on" onclick="toggleSetting(this, 'show-ratings-map')"></button>
-        </div>
-      </div>
-
-      <!-- Marker Size Slider -->
-      <div class="slider-wrap" data-search="map marker size scale zoom">
-        <div class="slider-header">
-          <div class="row-icon gray" style="width:34px;height:34px;border-radius:9px;margin-right:2px;">
-            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--text-secondary);fill:none;stroke-width:2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <span class="slider-label">Marker Size</span>
-          <span class="slider-val" id="markerVal">M</span>
-        </div>
-        <input type="range" min="1" max="3" value="2" oninput="updateSlider(this,'markerVal',['S','M','L'])">
-      </div>
-    </div>
-  </div>
-
   <!-- ── PRIVACY ── -->
   <div class="section" data-section="privacy">
     <div class="section-label">Privacy</div>
@@ -975,60 +881,6 @@
   </div>
 
   <!-- ── ACCESSIBILITY ── -->
-  <div class="section" data-section="accessibility">
-    <div class="section-label">Accessibility</div>
-    <div class="section-card">
-      <div class="row no-tap" data-search="accessibility reduce motion animation">
-        <div class="row-icon orange">
-          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Reduce Motion</div>
-          <div class="row-sub">Limit animations and transitions</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle" onclick="toggleSetting(this, 'reduce-motion')"></button>
-        </div>
-      </div>
-      <div class="row no-tap" data-search="accessibility high contrast bold text readability">
-        <div class="row-icon gray">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">High Contrast</div>
-          <div class="row-sub">Increase border and text contrast</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle" onclick="toggleSetting(this, 'high-contrast')"></button>
-        </div>
-      </div>
-      <div class="row no-tap" data-search="accessibility large text font size bigger">
-        <div class="row-icon blue">
-          <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Larger Text</div>
-          <div class="row-sub">Increase font size throughout app</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle" onclick="toggleSetting(this, 'large-text')"></button>
-        </div>
-      </div>
-
-      <!-- Text Size Slider -->
-      <div class="slider-wrap" data-search="accessibility text size font slider">
-        <div class="slider-header">
-          <div class="row-icon gray" style="width:34px;height:34px;border-radius:9px;margin-right:2px;">
-            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--text-secondary);fill:none;stroke-width:2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-          </div>
-          <span class="slider-label">Text Size</span>
-          <span class="slider-val" id="textSizeVal">100%</span>
-        </div>
-        <input type="range" min="80" max="140" value="100" step="10" oninput="updateSliderRaw(this,'textSizeVal','%')">
-      </div>
-    </div>
-  </div>
-
   <!-- ── SUPPORT ── -->
   <div class="section" data-section="support">
     <div class="section-label">Support</div>
@@ -1508,6 +1360,7 @@ function filterSettings(query) {
 
   if (!q) {
     document.querySelectorAll('.section').forEach(s => s.style.display = '');
+    document.querySelectorAll('[data-search], .slider-wrap').forEach(r => r.style.display = '');
     noResults.classList.remove('visible');
     return;
   }
