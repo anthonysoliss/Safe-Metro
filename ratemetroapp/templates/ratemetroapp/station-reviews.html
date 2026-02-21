@@ -451,7 +451,7 @@ function renderCards(ratings) {
   container.innerHTML = '';
   ratings.forEach((r, i) => {
     const date = new Date(r.timestamp);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
     const overall = r.safety > 0 && r.cleanliness > 0
       ? Math.round((r.safety + r.cleanliness) / 2)
       : (r.safety || r.cleanliness || 0);
