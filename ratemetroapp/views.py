@@ -269,14 +269,24 @@ def submit_rating(request):
         }, status=401)
 
     try:
-        data = json.loads(request.body)
-        station_name = data.get('station_name', '').strip()
-        safety = int(data.get('safety', 0))
-        cleanliness = int(data.get('cleanliness', 0))
-        staff_present = data.get('staff_present') or None
-        description = data.get('description', '').strip()
-        lat = data.get('lat')
-        lng = data.get('lng')
+        # Support both multipart/form-data (with file) and JSON
+        if request.content_type and 'multipart' in request.content_type:
+            station_name = request.POST.get('station_name', '').strip()
+            safety = int(request.POST.get('safety', 0))
+            cleanliness = int(request.POST.get('cleanliness', 0))
+            staff_present = request.POST.get('staff_present') or None
+            description = request.POST.get('description', '').strip()
+            lat = request.POST.get('lat')
+            lng = request.POST.get('lng')
+        else:
+            data = json.loads(request.body)
+            station_name = data.get('station_name', '').strip()
+            safety = int(data.get('safety', 0))
+            cleanliness = int(data.get('cleanliness', 0))
+            staff_present = data.get('staff_present') or None
+            description = data.get('description', '').strip()
+            lat = data.get('lat')
+            lng = data.get('lng')
 
         if not station_name:
             return JsonResponse({'status': 'error', 'message': 'station_name is required'}, status=400)
@@ -285,6 +295,20 @@ def submit_rating(request):
         if not (1 <= cleanliness <= 5):
             return JsonResponse({'status': 'error', 'message': 'cleanliness must be 1–5'}, status=400)
 
+        # Validate media file if provided
+        media_file = request.FILES.get('media')
+        if media_file:
+            content_type = media_file.content_type or ''
+            if content_type.startswith('video/'):
+                max_video_bytes = 150 * 1024 * 1024  # 150 MB ≈ 5 min mobile video
+                if media_file.size > max_video_bytes:
+                    return JsonResponse({'status': 'error', 'message': 'Video must be under 150 MB (approx. 5 minutes).'}, status=400)
+            elif content_type.startswith('image/'):
+                if media_file.size > 10 * 1024 * 1024:
+                    return JsonResponse({'status': 'error', 'message': 'Photo must be under 10 MB.'}, status=400)
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Only images and videos are allowed.'}, status=400)
+
         # Look up station by exact name, then case-insensitive fallback
         try:
             station = Station.objects.get(name=station_name)
@@ -292,7 +316,6 @@ def submit_rating(request):
             try:
                 station = Station.objects.get(name__iexact=station_name)
             except Station.DoesNotExist:
-                # Create it with coordinates if provided
                 station = Station.objects.create(
                     name=station_name,
                     latitude=float(lat) if lat is not None else 0.0,
@@ -317,6 +340,17 @@ def submit_rating(request):
             description=description or None,
             ip_address=get_client_ip(request),
         )
+
+        # Save media file if provided
+        media_url = ''
+        if media_file:
+            content_type = media_file.content_type or ''
+            if content_type.startswith('video/'):
+                media_obj = RatingPhoto.objects.create(rating=rating, video=media_file, media_type='video')
+                media_url = media_obj.video.url if media_obj.video else ''
+            else:
+                media_obj = RatingPhoto.objects.create(rating=rating, photo=media_file, media_type='photo')
+                media_url = media_obj.photo.url if media_obj.photo else ''
 
         # Build avatar URL for the response
         avatar_url = ''
@@ -344,6 +378,7 @@ def submit_rating(request):
             'timestamp': int(rating.created_at.timestamp() * 1000),
             'username': display_username,
             'avatar_url': display_avatar,
+            'media_url': media_url,
         })
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -365,6 +400,7 @@ def get_station_ratings(request):
         Rating.objects
         .filter(station=station)
         .select_related('user', 'user__profile')
+        .prefetch_related('photos')
         .order_by('-created_at')
     )
 
@@ -387,6 +423,20 @@ def get_station_ratings(request):
             except (UserProfile.DoesNotExist, AttributeError, ValueError):
                 username = r.user.username
 
+        # Collect attached media
+        media = []
+        for m in r.photos.all():
+            if m.media_type == 'video' and m.video:
+                try:
+                    media.append({'type': 'video', 'url': request.build_absolute_uri(m.video.url)})
+                except ValueError:
+                    pass
+            elif m.media_type == 'photo' and m.photo:
+                try:
+                    media.append({'type': 'photo', 'url': request.build_absolute_uri(m.photo.url)})
+                except ValueError:
+                    pass
+
         ratings_list.append({
             'id': r.id,
             'username': username,
@@ -396,6 +446,7 @@ def get_station_ratings(request):
             'staff': r.staff_present or '',
             'description': r.description or '',
             'timestamp': int(r.created_at.timestamp() * 1000),
+            'media': media,
         })
 
         safety_vals.append(r.safety)

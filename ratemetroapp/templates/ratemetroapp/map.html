@@ -578,10 +578,10 @@
   .metro-marker { display: flex; align-items: center; justify-content: center; }
   .metro-marker-inner {
     width: 12px; height: 12px;
-    border: 2.5px solid rgba(255,255,255,0.25);
+    border: 2.5px solid #fff;
     border-radius: 50%;
     transition: all 0.2s ease;
-    box-shadow: 0 0 8px currentColor;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.6);
   }
   .metro-marker:hover .metro-marker-inner { transform: scale(1.4); border-color: rgba(255,255,255,0.5); }
 
@@ -891,13 +891,21 @@
   .rating-overall-stars .star.filled { color: var(--accent); }
   .rating-description-input { width: 100%; padding: 8px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; font-family: inherit; resize: vertical; min-height: 50px; box-sizing: border-box; }
   .rating-description-input:focus { outline: none; border-color: var(--accent); }
-  .rating-photo-upload { display: flex; flex-direction: column; gap: 8px; }
-  .rating-photo-btn { padding: 6px 12px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .rating-photo-btn:hover { border-color: var(--accent); background: var(--bg-hover); }
-  .rating-photo-preview { display: none; }
-  .rating-photo-preview.has-image { display: block; margin-top: 6px; }
-  .rating-photo-preview img { width: 100%; max-width: 260px; border-radius: 6px; border: 1px solid var(--border); }
-  .rating-photo-preview .remove-photo { margin-top: 4px; padding: 3px 7px; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; }
+  .rating-photo-upload { display: flex; flex-direction: column; gap: 0; }
+  .photo-drop-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 12px; border: 2px dashed var(--border); border-radius: 10px; cursor: pointer; transition: all 0.2s; background: var(--surface-light); }
+  .photo-drop-zone:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .photo-drop-zone .drop-icon { font-size: 24px; line-height: 1; }
+  .photo-drop-zone .drop-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+  .photo-drop-zone .drop-hint { font-size: 10px; color: var(--text-muted); }
+  .photo-preview-wrap { display: none; position: relative; border-radius: 10px; overflow: hidden; }
+  .photo-preview-wrap.has-image { display: block; }
+  .photo-preview-wrap img { width: 100%; max-height: 200px; object-fit: cover; display: block; border-radius: 10px; }
+  .photo-preview-overlay { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 8px; justify-content: center; padding: 10px 12px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); }
+  .photo-preview-overlay button { padding: 5px 14px; border: none; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .photo-change-btn { background: rgba(255,255,255,0.9); color: #111; }
+  .photo-remove-btn { background: rgba(220,50,50,0.85); color: white; }
+  .photo-change-btn:hover { background: white; }
+  .photo-remove-btn:hover { background: rgba(220,50,50,1); }
   .rating-submit { width: 100%; padding: 9px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: all 0.2s; }
   .rating-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
   .rating-submit:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -973,7 +981,7 @@
   .station-rating-count { font-size: 10px; color: var(--text-muted); }
   .leaflet-popup-tip { background: rgba(22, 22, 34, 0.95) !important; border: 1px solid rgba(255,255,255,0.06) !important; box-shadow: none !important; }
   [data-theme="light"] .leaflet-popup-tip { background: rgba(255,255,255,0.96) !important; border-color: rgba(0,0,0,0.08) !important; }
-  [data-theme="light"] .metro-marker-inner { border-color: rgba(0,0,0,0.3) !important; }
+  [data-theme="light"] .metro-marker-inner { border-color: #fff !important; }
 
   /* Station name tooltip on hover */
   .station-tooltip {
@@ -1306,8 +1314,18 @@
         <div class="rating-category-label">📷 Photo (Optional)</div>
         <div class="rating-photo-upload">
           <input type="file" id="ratingPhotoInput" accept="image/*" style="display: none;">
-          <button type="button" class="rating-photo-btn" id="ratingPhotoBtn">Choose Photo</button>
-          <div class="rating-photo-preview" id="ratingPhotoPreview"></div>
+          <div class="photo-drop-zone" id="ratingPhotoBtn">
+            <span class="drop-icon">📷</span>
+            <span class="drop-label">Tap to add a photo</span>
+            <span class="drop-hint">JPG, PNG, HEIC supported</span>
+          </div>
+          <div class="photo-preview-wrap" id="ratingPhotoPreview">
+            <img id="ratingPhotoImg" src="" alt="Rating photo">
+            <div class="photo-preview-overlay">
+              <button type="button" class="photo-change-btn" onclick="document.getElementById('ratingPhotoInput').click()">Change</button>
+              <button type="button" class="photo-remove-btn" onclick="removeRatingPhoto()">Remove</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1923,7 +1941,7 @@ function createMarkers(filterLine = 'all') {
     const color = getStationColor(station);
     const icon = L.divIcon({
       className: 'metro-marker',
-      html: `<div class="metro-marker-inner" style="background:${color};box-shadow:0 0 12px ${color}66, 0 0 4px ${color}33;"></div>`,
+      html: `<div class="metro-marker-inner" style="background:${color};"></div>`,
       iconSize: [14, 14], iconAnchor: [7, 7],
     });
     const rating = getStationRating(station.name);
@@ -2499,6 +2517,15 @@ function closeRatingModal() {
   }
   currentRatingStation = null;
   ratingData = { safety: 0, cleanliness: 0, staff: null, description: '', photo: null };
+  // Reset photo upload UI
+  const photoInput = document.getElementById('ratingPhotoInput');
+  const photoPreview = document.getElementById('ratingPhotoPreview');
+  const photoImg = document.getElementById('ratingPhotoImg');
+  const photoBtn = document.getElementById('ratingPhotoBtn');
+  if (photoInput) photoInput.value = '';
+  if (photoImg) photoImg.src = '';
+  if (photoPreview) photoPreview.classList.remove('has-image');
+  if (photoBtn) photoBtn.style.display = '';
 }
 
 // Initialize rating modal event listeners (script is at end of body, so elements exist)
@@ -2520,26 +2547,23 @@ if (ratingModal) {
 const ratingPhotoBtn = document.getElementById('ratingPhotoBtn');
 const ratingPhotoInput = document.getElementById('ratingPhotoInput');
 const ratingPhotoPreview = document.getElementById('ratingPhotoPreview');
+const ratingPhotoImg = document.getElementById('ratingPhotoImg');
 const ratingDescription = document.getElementById('ratingDescription');
 
 if (ratingPhotoBtn && ratingPhotoInput) {
   ratingPhotoBtn.addEventListener('click', () => {
     ratingPhotoInput.click();
   });
-  
+
   ratingPhotoInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
         ratingData.photo = event.target.result;
-        if (ratingPhotoPreview) {
-          ratingPhotoPreview.innerHTML = `
-            <img src="${event.target.result}" alt="Rating photo">
-            <button type="button" class="remove-photo" onclick="removeRatingPhoto()">Remove Photo</button>
-          `;
-          ratingPhotoPreview.classList.add('has-image');
-        }
+        if (ratingPhotoImg) ratingPhotoImg.src = event.target.result;
+        if (ratingPhotoBtn) ratingPhotoBtn.style.display = 'none';
+        if (ratingPhotoPreview) ratingPhotoPreview.classList.add('has-image');
       };
       reader.readAsDataURL(file);
     }
@@ -2555,10 +2579,9 @@ if (ratingDescription) {
 window.removeRatingPhoto = function() {
   ratingData.photo = null;
   if (ratingPhotoInput) ratingPhotoInput.value = '';
-  if (ratingPhotoPreview) {
-    ratingPhotoPreview.innerHTML = '';
-    ratingPhotoPreview.classList.remove('has-image');
-  }
+  if (ratingPhotoImg) ratingPhotoImg.src = '';
+  if (ratingPhotoPreview) ratingPhotoPreview.classList.remove('has-image');
+  if (ratingPhotoBtn) ratingPhotoBtn.style.display = '';
 };
 
 if (ratingSubmit) {

@@ -92,14 +92,18 @@ class Rating(models.Model):
 
 
 class RatingPhoto(models.Model):
-    """Photos attached to ratings"""
+    """Photos and videos attached to ratings"""
+    MEDIA_TYPE_CHOICES = [('photo', 'Photo'), ('video', 'Video')]
+
     rating = models.ForeignKey(Rating, on_delete=models.CASCADE, related_name='photos')
-    photo = models.ImageField(upload_to='rating_photos/%Y/%m/%d/')
+    photo = models.ImageField(upload_to='rating_photos/%Y/%m/%d/', null=True, blank=True)
+    video = models.FileField(upload_to='rating_videos/%Y/%m/%d/', null=True, blank=True)
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPE_CHOICES, default='photo')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
-        return f"Photo for {self.rating.station.name} rating"
-    
+        return f"{self.media_type.capitalize()} for {self.rating.station.name} rating"
+
     class Meta:
         ordering = ['-uploaded_at']
 
