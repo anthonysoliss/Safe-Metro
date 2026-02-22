@@ -591,7 +591,7 @@
   }
   .send-btn.active { opacity: 1; }
   .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
-  .send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--bg-dark); stroke-width: 2.5; }
+  .send-btn svg { width: 17px; height: 17px; fill: none; stroke: var(--bg-dark); stroke-width: 2; }
 
   /* ── Chat Backdrop ── */
   .chat-backdrop {
@@ -616,7 +616,7 @@
     bottom: 148px; left: 12px; right: 12px;
     z-index: 5001;
     max-width: 600px; margin: 0 auto;
-    max-height: 45vh;
+    max-height: calc(100vh - 200px);
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 8px;
     padding: 4px 0;
@@ -1493,6 +1493,22 @@
       </button>
     </div>
   </div>
+</div>
+
+<!-- Chat History Panel -->
+<div class="chat-history-backdrop" id="chatHistoryBackdrop"></div>
+<div class="chat-history-panel" id="chatHistoryPanel">
+  <div class="chat-history-header">
+    <span>Chat History</span>
+    <button class="chat-history-close" id="chatHistoryClose">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <button class="chat-history-new-btn" id="chatHistoryNew">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Chat
+  </button>
+  <div class="chat-history-list" id="chatHistoryList"></div>
 </div>
 
 <!-- Chat backdrop -->
