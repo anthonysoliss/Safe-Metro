@@ -490,16 +490,16 @@
 
   .info-btn {
     width: 40px; height: 40px; min-width: 40px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
+    background: rgba(212,160,23,0.12);
+    border: 1px solid rgba(212,160,23,0.35);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
   }
-  .info-btn:hover { background: rgba(245,197,24,0.15); border-color: var(--accent); }
-  .info-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--text-muted); stroke-width: 2; }
-  .info-btn:hover svg { stroke: var(--accent); }
+  .info-btn:hover { background: rgba(212,160,23,0.22); border-color: var(--accent); box-shadow: 0 0 14px rgba(212,160,23,0.25); }
+  .info-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .info-btn:hover svg { filter: drop-shadow(0 0 3px rgba(212,160,23,0.6)); }
 
   .chat-input {
     flex: 1; background: none; border: none; outline: none;
@@ -1121,8 +1121,8 @@
   [data-theme="light"] .station-panel-close svg { stroke: var(--text-muted); }
   [data-theme="light"] .tab-btn { color: var(--text-muted); }
   [data-theme="light"] .tab-btn.active { color: var(--text-primary); border-color: var(--accent); }
-  [data-theme="light"] .info-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-  [data-theme="light"] .info-btn svg { stroke: var(--text-secondary); }
+  [data-theme="light"] .info-btn { background: rgba(212,160,23,0.1); border-color: rgba(212,160,23,0.4); }
+  [data-theme="light"] .info-btn svg { stroke: #b8860b; }
   [data-theme="light"] .chat-input-wrap { background: rgba(0,0,0,0.04); border-color: var(--border); }
   [data-theme="light"] .chat-input { color: var(--text-primary); }
   [data-theme="light"] .chat-msg.ai { background: transparent; color: #fff; }
@@ -1410,8 +1410,11 @@
 <!-- Always-visible bottom bar -->
 <div class="chat-bar-container">
   <div class="chat-bar">
-    <div class="info-btn" id="infoBtn" title="Station Info">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div class="info-btn" id="infoBtn" title="Ask Metro Safe AI">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 3L13.6 8.4L19 10L13.6 11.6L12 17L10.4 11.6L5 10L10.4 8.4L12 3Z"/>
+        <path d="M19 14.5L19.8 17L22 17.8L19.8 18.6L19 21.1L18.2 18.6L16 17.8L18.2 17L19 14.5Z"/>
+      </svg>
     </div>
     <input class="chat-input" id="chatInput" type="text" placeholder="Ask about station safety..." autocomplete="off" />
     <button class="send-btn" id="sendBtn">

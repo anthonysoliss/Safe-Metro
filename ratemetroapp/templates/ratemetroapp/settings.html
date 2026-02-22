@@ -128,8 +128,9 @@
   .search-icon {
     position: absolute;
     left: 14px;
+    z-index: 1;
     width: 15px; height: 15px;
-    stroke: var(--text-muted);
+    stroke: var(--text-secondary);
     fill: none;
     stroke-width: 2;
     pointer-events: none;
@@ -671,7 +672,7 @@
   [data-theme="light"] .search-inner { background: transparent; }
   [data-theme="light"] .search-input { color: var(--text-primary); background: #ffffff; border-color: rgba(0,0,0,0.12); }
   [data-theme="light"] .search-input::placeholder { color: var(--text-muted); }
-  [data-theme="light"] .search-icon { stroke: var(--text-muted); }
+  [data-theme="light"] .search-icon { stroke: var(--text-secondary); }
   [data-theme="light"] .search-clear { background: rgba(0, 0, 0, 0.08); color: var(--text-secondary); }
   [data-theme="light"] .search-clear:hover { background: rgba(0, 0, 0, 0.15); }
   [data-theme="light"] .row-chevron { stroke: var(--text-muted); }
