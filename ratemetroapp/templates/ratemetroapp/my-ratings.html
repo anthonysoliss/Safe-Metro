@@ -981,7 +981,7 @@ function renderCards(ratings) {
 }
 
 function viewOnMap(station) {
-  // Redirect to map page - the station will need to be selected manually or we could add a URL parameter
+  sessionStorage.setItem('returnToStation', station);
   window.location.href = DJANGO_URLS.map;
 }
 
