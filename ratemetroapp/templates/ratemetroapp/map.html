@@ -591,7 +591,7 @@
   }
   .send-btn.active { opacity: 1; }
   .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
-  .send-btn svg { width: 17px; height: 17px; fill: none; stroke: var(--bg-dark); stroke-width: 2; }
+  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--bg-dark); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
   /* ── Chat Backdrop ── */
   .chat-backdrop {
@@ -613,10 +613,9 @@
   /* ── Chat Overlay (messages) ── */
   .chat-overlay {
     position: fixed;
-    bottom: 148px; left: 12px; right: 12px;
+    top: 76px; bottom: 148px; left: 12px; right: 12px;
     z-index: 5001;
     max-width: 600px; margin: 0 auto;
-    max-height: calc(100vh - 200px);
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 8px;
     padding: 4px 0;
@@ -1263,6 +1262,66 @@
 
   /* Metro marker hover */
   [data-theme="light"] .metro-marker:hover .metro-marker-inner { border-color: rgba(0,0,0,0.5); }
+
+  /* ── Chat History Panel ── */
+  .chat-history-backdrop {
+    position: fixed; inset: 0; z-index: 5999;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  }
+  .chat-history-backdrop.visible { opacity: 1; pointer-events: auto; }
+  .chat-history-panel {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 300px;
+    z-index: 6000; background: var(--surface);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 8px 0 40px rgba(0,0,0,0.5);
+  }
+  .chat-history-panel.open { transform: translateX(0); }
+  .chat-history-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 16px 14px; border-bottom: 1px solid var(--border);
+    font-size: 16px; font-weight: 700; color: var(--text-primary); flex-shrink: 0;
+  }
+  .chat-history-close {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: color 0.15s;
+  }
+  .chat-history-close:hover { color: var(--text-primary); }
+  .chat-history-new-btn {
+    display: flex; align-items: center; gap: 8px; margin: 12px 12px 8px;
+    padding: 10px 14px; background: var(--accent); color: var(--bg-dark);
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  }
+  .chat-history-new-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .chat-history-list { flex: 1; overflow-y: auto; padding: 6px 8px 16px; }
+  .chat-history-list::-webkit-scrollbar { width: 4px; }
+  .chat-history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .chat-history-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-muted); padding: 10px 8px 4px;
+  }
+  .chat-history-item {
+    padding: 11px 12px; border-radius: 10px; cursor: pointer;
+    transition: background 0.15s; margin-bottom: 2px; border: 1px solid transparent;
+  }
+  .chat-history-item:hover { background: var(--surface-light); border-color: var(--border); }
+  .chat-history-item.active { background: var(--surface-light); border-color: var(--accent); }
+  .chat-history-item-title {
+    font-size: 13px; font-weight: 500; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
+  }
+  .chat-history-item-preview {
+    font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chat-history-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 32px 16px; }
+  [data-theme="light"] .chat-history-panel { background: rgba(255,255,255,0.96); box-shadow: 8px 0 40px rgba(0,0,0,0.15); }
+  @media (max-width: 480px) { .chat-history-panel { width: 85vw; } }
 </style>
 </head>
 <body>
@@ -1277,7 +1336,11 @@
 </div>
 <div class="nav-drawer" id="navDrawer">
   <div class="nav-drawer-item" id="navChatHistory" style="cursor:pointer;">
-    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <line x1="9" y1="9" x2="15" y2="9"/>
+      <line x1="9" y1="13" x2="13" y2="13"/>
+    </svg>
     Chat History
   </div>
   <a class="nav-drawer-item" href="{% url 'ratemetroapp:my_ratings' %}">
@@ -1526,8 +1589,9 @@
     </div>
     <input class="chat-input" id="chatInput" type="text" placeholder="Ask about station safety..." autocomplete="off" />
     <button class="send-btn" id="sendBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+      <svg viewBox="0 0 24 24">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
       </svg>
     </button>
   </div>
