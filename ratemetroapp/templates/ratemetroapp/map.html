@@ -528,6 +528,23 @@
   .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
   .send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--bg-dark); stroke-width: 2.5; }
 
+  /* ── Chat Backdrop ── */
+  .chat-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .chat-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   /* ── Chat Overlay ── */
   .chat-overlay {
     position: fixed;
@@ -556,15 +573,15 @@
     align-self: flex-end; border-bottom-right-radius: 6px; font-weight: 500;
   }
   .chat-msg.ai {
-    background: var(--surface);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
+    background: transparent;
+    color: #fff;
     align-self: flex-start; border-bottom-left-radius: 6px;
+    padding-left: 0; padding-right: 0;
   }
   .chat-msg.ai .ai-label {
-    font-size: 11px; font-weight: 600; color: var(--accent);
-    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+    opacity: 0.9;
   }
   .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
   .typing-indicator span {
@@ -1098,10 +1115,9 @@
   [data-theme="light"] .tab-btn.active { color: var(--text-primary); border-color: var(--accent); }
   [data-theme="light"] .info-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .info-btn svg { stroke: var(--text-secondary); }
-  [data-theme="light"] .chat-overlay { background: var(--chat-bg); }
   [data-theme="light"] .chat-input-wrap { background: rgba(0,0,0,0.04); border-color: var(--border); }
   [data-theme="light"] .chat-input { color: var(--text-primary); }
-  [data-theme="light"] .chat-msg.ai { background: rgba(0,0,0,0.04); }
+  [data-theme="light"] .chat-msg.ai { background: transparent; color: #fff; }
   [data-theme="light"] .modal-overlay .modal-content { background: var(--surface); border-color: var(--border); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
   [data-theme="light"] .sign-in-prompt-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
   [data-theme="light"] .confirm-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
@@ -1380,6 +1396,8 @@
   </div>
 </div>
 
+<!-- Chat backdrop -->
+<div class="chat-backdrop" id="chatBackdrop"></div>
 <!-- Chat -->
 <div class="chat-overlay" id="chatOverlay"></div>
 <div class="chat-bar-container">
@@ -1763,16 +1781,17 @@ function getStationRating(stationName) {
     ? (safetyAvg + cleanlinessAvg) / 2 
     : (safetyAvg > 0 ? safetyAvg : cleanlinessAvg);
   
-  // Staff percentage
+  // Staff summary
   const staffYes = staffRatings.filter(r => r.staff === 'yes').length;
-  const staffPercent = staffRatings.length > 0 ? staffYes / staffRatings.length : null;
-  
-  return { 
-    avg: Math.round(overallAvg).toString(), 
+  const staffTotal = staffRatings.length;
+  const staffLabel = staffTotal > 0 ? (staffYes >= staffTotal / 2 ? 'Yes' : 'No') : null;
+
+  return {
+    avg: Math.round(overallAvg).toString(),
     count: ratings.length,
     safety: safetyAvg > 0 ? Math.round(safetyAvg).toString() : 0,
     cleanliness: cleanlinessAvg > 0 ? Math.round(cleanlinessAvg).toString() : 0,
-    staff: staffPercent !== null ? (staffPercent * 100).toFixed(0) + '%' : null
+    staff: staffLabel
   };
 }
 
@@ -1876,6 +1895,7 @@ function renderStars(rating, size = '14px') {
 // ── Map ──
 const defaultLat = 34.0522, defaultLng = -118.2437;
 let userLat = defaultLat, userLng = defaultLng;
+let userLocationKnown = false;
 let userMarker = null, stationMarkers = [], activeFilter = 'all';
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
@@ -1916,7 +1936,7 @@ function buildPopupHTML(station, rating, userHasRated = false) {
       </div>`;
     if (safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(Math.round(safety), '11px')}</span> ${safety.toFixed(1)}/5</div>`;
     if (cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(Math.round(cleanliness), '11px')}</span> ${cleanliness.toFixed(1)}/5</div>`;
-    if (staff) ratingHTML += `<div class="popup-rating-item">👮 Staff: ${staff}</div>`;
+    if (staff) ratingHTML += `<div class="popup-rating-item">👮 Staff Present: ${staff}</div>`;
     ratingHTML += `</div>`;
   } else {
     ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
@@ -2020,7 +2040,15 @@ function renderStationList(searchQuery = '') {
   const q = searchQuery.toLowerCase();
   let filtered = activeFilter === 'all' ? [...metroStations] : metroStations.filter(s => s.lines.includes(activeFilter));
   if (q) filtered = filtered.filter(s => s.name.toLowerCase().includes(q));
-  filtered.sort((a, b) => a.name.localeCompare(b.name));
+  if (userLocationKnown) {
+    filtered.sort((a, b) => {
+      const da = (a.lat - userLat) ** 2 + (a.lng - userLng) ** 2;
+      const db = (b.lat - userLat) ** 2 + (b.lng - userLng) ** 2;
+      return da - db;
+    });
+  } else {
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
   countEl.textContent = `${filtered.length} station${filtered.length !== 1 ? 's' : ''}`;
 
   if (!filtered.length) { listEl.innerHTML = '<div class="no-results">No stations found</div>'; return; }
@@ -2073,7 +2101,15 @@ const stationPanel = document.getElementById('stationPanel');
 const panelBackdrop = document.getElementById('panelBackdrop');
 const stationSearch = document.getElementById('stationSearch');
 
-function openPanel() { stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible'); stationSearch.focus(); }
+function openPanel() {
+  stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible'); stationSearch.focus();
+  if (!userLocationKnown && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      userLat = pos.coords.latitude; userLng = pos.coords.longitude; userLocationKnown = true;
+      renderStationList(stationSearch.value);
+    }, () => {});
+  }
+}
 function closePanel() { stationPill.classList.remove('active'); stationPanel.classList.remove('open'); panelBackdrop.classList.remove('visible'); }
 stationPill.addEventListener('click', () => stationPanel.classList.contains('open') ? closePanel() : openPanel());
 panelBackdrop.addEventListener('click', closePanel);
@@ -2085,7 +2121,8 @@ function updateCoords(lat, lng) {
     `<strong>${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}</strong> &nbsp; <strong>${Math.abs(lng).toFixed(4)}°${lng >= 0 ? 'E' : 'W'}</strong>`;
 }
 function setUserLocation(lat, lng) {
-  userLat = lat; userLng = lng;
+  userLat = lat; userLng = lng; userLocationKnown = true;
+  renderStationList(document.getElementById('stationSearch').value);
   updateCoords(lat, lng);
   if (userMarker) map.removeLayer(userMarker);
   userMarker = L.marker([lat, lng], {
@@ -2193,6 +2230,7 @@ document.getElementById('compass').addEventListener('click', () => { map.setView
 
 // ── Chat ──
 const chatInput = document.getElementById('chatInput');
+const chatBackdrop = document.getElementById('chatBackdrop');
 const sendBtn = document.getElementById('sendBtn');
 const chatOverlay = document.getElementById('chatOverlay');
 
@@ -2246,7 +2284,7 @@ function addMsg(text, type) {
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
   m.innerHTML = type === 'ai' ? `<div class="ai-label">Metro Safe AI</div>${text}` : text;
   if (type === 'user') m.textContent = text;
-  chatOverlay.appendChild(m); chatOverlay.classList.add('visible');
+  chatOverlay.appendChild(m); chatOverlay.classList.add('visible'); chatBackdrop.classList.add('visible');
   chatOverlay.scrollTop = chatOverlay.scrollHeight;
 }
 function showTyping() {
@@ -2264,7 +2302,7 @@ sendBtn.addEventListener('click', sendMessage);
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
 document.getElementById('infoBtn').addEventListener('click', () => {
-  chatOverlay.classList.add('visible'); showTyping();
+  chatOverlay.classList.add('visible'); chatBackdrop.classList.add('visible'); showTyping();
   setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
 });
 
@@ -2396,9 +2434,13 @@ if (profileBtn && profileDropdown) {
   });
 }
 
-map.on('click', () => {
-  if (chatOverlay.children.length) { setTimeout(() => { chatOverlay.classList.remove('visible'); setTimeout(() => chatOverlay.innerHTML = '', 300); }, 100); }
-});
+function dismissChat() {
+  chatOverlay.classList.remove('visible');
+  chatBackdrop.classList.remove('visible');
+  setTimeout(() => chatOverlay.innerHTML = '', 300);
+}
+chatBackdrop.addEventListener('click', dismissChat);
+map.on('click', () => { if (chatOverlay.children.length) { setTimeout(dismissChat, 100); } });
 map.on('movestart', () => { document.getElementById('coordsDisplay').classList.remove('visible'); });
 map.on('moveend', () => { if (!userMarker && document.getElementById('coordsDisplay').classList.contains('visible')) updateCoords(map.getCenter().lat, map.getCenter().lng); });
 
