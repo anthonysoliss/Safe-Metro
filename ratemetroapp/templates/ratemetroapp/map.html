@@ -470,7 +470,6 @@
     bottom: 0; left: 0; right: 0;
     z-index: 5002;
     padding: 0 12px 20px;
-    display: flex; flex-direction: column; gap: 8px;
     animation: slideUp 0.5s ease 0.35s both;
   }
   .chat-bar {
@@ -546,78 +545,23 @@
     pointer-events: auto;
   }
 
-  /* ── Chat Container ── */
-  .chat-container {
+  /* ── Chat Overlay (messages) ── */
+  .chat-overlay {
     position: fixed;
     bottom: 148px; left: 12px; right: 12px;
     z-index: 5001;
     max-width: 600px; margin: 0 auto;
-    display: flex; flex-direction: column; gap: 8px;
-    pointer-events: none;
-    opacity: 0; transform: translateY(10px);
-    transition: all 0.3s ease;
-  }
-  .chat-container.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-  /* ── Chat Nav Tabs ── */
-  .chat-nav-tabs {
-    display: flex; gap: 4px; align-items: center;
-    background: rgba(14,14,26,0.88);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border);
-    border-radius: 22px;
-    padding: 4px;
-  }
-  .chat-tab {
-    flex: 1; padding: 7px 14px;
-    border: none; background: transparent;
-    color: var(--text-secondary);
-    border-radius: 18px;
-    font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .chat-tab.active { background: var(--accent); color: var(--bg-dark); }
-  .chat-close-btn {
-    width: 28px; height: 28px; flex-shrink: 0;
-    background: rgba(255,255,255,0.08); border: none; border-radius: 50%;
-    color: var(--text-muted); font-size: 13px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .chat-close-btn:hover { background: rgba(255,255,255,0.14); color: var(--text-primary); }
-
-  /* ── Chat Overlay (messages) ── */
-  .chat-overlay {
     max-height: 45vh;
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 8px;
     padding: 4px 0;
     scrollbar-width: none;
+    pointer-events: none;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s ease;
   }
   .chat-overlay::-webkit-scrollbar { display: none; }
-
-  /* ── Chat History Panel ── */
-  .chat-history-panel {
-    display: none;
-    max-height: 45vh;
-    overflow-y: auto;
-    flex-direction: column; gap: 6px;
-    scrollbar-width: none;
-  }
-  .chat-history-panel.active { display: flex; }
-  .chat-history-panel::-webkit-scrollbar { display: none; }
-  .chat-history-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .chat-history-item:hover { border-color: var(--accent); }
-  .chat-history-time { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
-  .chat-history-preview { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chat-history-empty { text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 13px; }
+  .chat-overlay.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
   .chat-msg {
     padding: 12px 16px; border-radius: 18px;
@@ -1212,12 +1156,7 @@
   /* Chat bar */
   [data-theme="light"] .chat-bar { background: var(--chat-bg); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .chat-bar:focus-within { box-shadow: 0 0 30px rgba(212,160,23,0.12), 0 8px 32px rgba(0,0,0,0.1); }
-  [data-theme="light"] .chat-nav-tabs { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.1); }
-  [data-theme="light"] .chat-close-btn { background: rgba(0,0,0,0.06); }
-  [data-theme="light"] .chat-history-item { background: rgba(255,255,255,0.95); }
-  [data-theme="light"] .chat-tab.active { color: #1c1c1e; }
-
-  /* Panel search */
+/* Panel search */
   [data-theme="light"] .panel-search { color: var(--text-primary); }
   [data-theme="light"] .panel-search::placeholder { color: var(--text-muted); }
   [data-theme="light"] .search-icon { stroke: var(--text-muted); }
@@ -1467,16 +1406,9 @@
 <!-- Chat backdrop -->
 <div class="chat-backdrop" id="chatBackdrop"></div>
 <!-- Chat messages (shown when chat open) -->
-<div class="chat-container" id="chatContainer">
-  <div class="chat-overlay" id="chatOverlay"></div>
-  <div class="chat-history-panel" id="chatHistoryPanel"></div>
-</div>
+<div class="chat-overlay" id="chatOverlay"></div>
 <!-- Always-visible bottom bar -->
 <div class="chat-bar-container">
-  <div class="chat-nav-tabs">
-    <button class="chat-tab active" id="tabChat" onclick="switchChatTab('chat')">💬 Chat</button>
-    <button class="chat-tab" id="tabHistory" onclick="switchChatTab('history')">🕐 History</button>
-  </div>
   <div class="chat-bar">
     <div class="info-btn" id="infoBtn" title="Station Info">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -2386,11 +2318,8 @@ document.getElementById('compass').addEventListener('click', () => { map.setView
 // ── Chat ──
 const chatInput = document.getElementById('chatInput');
 const chatBackdrop = document.getElementById('chatBackdrop');
-const chatContainer = document.getElementById('chatContainer');
 const sendBtn = document.getElementById('sendBtn');
 const chatOverlay = document.getElementById('chatOverlay');
-const chatHistoryPanel = document.getElementById('chatHistoryPanel');
-let currentSessionMsgs = [];
 
 // Rotating questions for chat placeholder
 const rotatingQuestions = [
@@ -2438,17 +2367,13 @@ function getAI(msg) {
   if (/station|train|line|metro/.test(l)) return aiR.station[Math.random()*3|0];
   return aiR.general[Math.random()*3|0];
 }
-function openChat() {
-  chatContainer.classList.add('visible');
-  chatBackdrop.classList.add('visible');
-}
 function addMsg(text, type) {
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
   m.innerHTML = type === 'ai' ? `<div class="ai-label">Metro Safe AI</div>${text}` : text;
   if (type === 'user') m.textContent = text;
-  currentSessionMsgs.push({ type, text });
   chatOverlay.appendChild(m);
-  openChat();
+  chatOverlay.classList.add('visible');
+  chatBackdrop.classList.add('visible');
   chatOverlay.scrollTop = chatOverlay.scrollHeight;
 }
 function showTyping() {
@@ -2466,65 +2391,12 @@ sendBtn.addEventListener('click', sendMessage);
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
 document.getElementById('infoBtn').addEventListener('click', () => {
-  openChat(); showTyping();
+  chatOverlay.classList.add('visible');
+  chatBackdrop.classList.add('visible');
+  showTyping();
   setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg("Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.", 'ai'); }, 800);
 });
 
-function saveChatToHistory() {
-  if (!currentSessionMsgs.length) return;
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-  history.unshift({ id: Date.now(), timestamp: Date.now(), messages: [...currentSessionMsgs] });
-  if (history.length > 20) history.length = 20; // keep last 20
-  localStorage.setItem('chatHistory', JSON.stringify(history));
-}
-
-function renderHistory() {
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-  chatHistoryPanel.innerHTML = '';
-  if (!history.length) {
-    chatHistoryPanel.innerHTML = '<div class="chat-history-empty">No chat history yet</div>';
-    return;
-  }
-  history.forEach(session => {
-    const firstUser = session.messages.find(m => m.type === 'user');
-    if (!firstUser) return;
-    const date = new Date(session.timestamp);
-    const timeStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
-    const item = document.createElement('div');
-    item.className = 'chat-history-item';
-    item.innerHTML = `<div class="chat-history-time">${timeStr}</div><div class="chat-history-preview">${firstUser.text}</div>`;
-    item.addEventListener('click', () => {
-      chatOverlay.innerHTML = '';
-      session.messages.forEach(msg => {
-        const m = document.createElement('div'); m.className = `chat-msg ${msg.type}`;
-        m.innerHTML = msg.type === 'ai' ? `<div class="ai-label">Metro Safe AI</div>${msg.text}` : msg.text;
-        if (msg.type === 'user') m.textContent = msg.text;
-        chatOverlay.appendChild(m);
-      });
-      switchChatTab('chat');
-    });
-    chatHistoryPanel.appendChild(item);
-  });
-}
-
-function switchChatTab(tab) {
-  document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
-  document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
-  if (tab === 'history') {
-    chatOverlay.style.display = 'none';
-    chatHistoryPanel.classList.add('active');
-    chatContainer.classList.add('visible');
-    chatBackdrop.classList.add('visible');
-    renderHistory();
-  } else {
-    chatHistoryPanel.classList.remove('active');
-    chatOverlay.style.display = '';
-    if (!chatOverlay.children.length) {
-      chatContainer.classList.remove('visible');
-      chatBackdrop.classList.remove('visible');
-    }
-  }
-}
 
 // Load and display user profile image from server
 function loadProfileImage() {
@@ -2655,18 +2527,9 @@ if (profileBtn && profileDropdown) {
 }
 
 function dismissChat() {
-  saveChatToHistory();
-  chatContainer.classList.remove('visible');
+  chatOverlay.classList.remove('visible');
   chatBackdrop.classList.remove('visible');
-  setTimeout(() => {
-    chatOverlay.innerHTML = '';
-    chatHistoryPanel.innerHTML = '';
-    chatHistoryPanel.classList.remove('active');
-    chatOverlay.style.display = '';
-    document.getElementById('tabChat').classList.add('active');
-    document.getElementById('tabHistory').classList.remove('active');
-    currentSessionMsgs = [];
-  }, 300);
+  setTimeout(() => { chatOverlay.innerHTML = ''; }, 300);
 }
 chatBackdrop.addEventListener('click', dismissChat);
 map.on('click', () => { if (chatOverlay.children.length) { setTimeout(dismissChat, 100); } });
