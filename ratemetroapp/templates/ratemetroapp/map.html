@@ -64,10 +64,74 @@
   [data-theme="light"] .leaflet-tile-pane { filter: none; }
   .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
 
+  /* ── Hamburger Nav ── */
+  .hamburger-nav {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 1002;
+    width: 44px; height: 44px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideDown 0.5s ease both;
+  }
+  .hamburger-nav:hover { background: var(--surface-light); border-color: var(--accent); }
+  .hamburger-nav.open { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+  .hamburger-bar {
+    width: 18px; height: 2px;
+    background: var(--text-secondary);
+    border-radius: 2px;
+    transition: all 0.25s ease;
+  }
+  .hamburger-nav.open .hamburger-bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger-nav.open .hamburger-bar:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger-nav.open .hamburger-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* ── Nav Drawer ── */
+  .nav-drawer {
+    position: fixed;
+    top: 68px; left: 16px;
+    z-index: 1001;
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 200px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .nav-drawer.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .nav-drawer-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px;
+    color: var(--text-primary);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+  }
+  .nav-drawer-item:last-child { border-bottom: none; }
+  .nav-drawer-item:hover { background: var(--surface-light); }
+  .nav-drawer-item svg { width: 18px; height: 18px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; flex-shrink: 0; }
+  .nav-drawer-item:hover svg { stroke: var(--accent); }
+
   /* ── Station Pill ── */
   .station-pill {
     position: fixed;
-    top: 16px; left: 16px;
+    top: 16px; left: 68px;
     z-index: 1001;
     background: var(--surface);
     backdrop-filter: blur(20px);
@@ -104,7 +168,7 @@
   /* ── Station Panel ── */
   .station-panel {
     position: fixed;
-    top: 62px; left: 16px;
+    top: 70px; left: 68px;
     z-index: 6000;
     width: 320px;
     max-height: calc(100vh - 260px);
@@ -344,7 +408,7 @@
     z-index: 1000;
     width: 44px; height: 44px;
     background: var(--surface);
-    display: flex; /* Always visible */
+    display: flex;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(20px);
@@ -1092,12 +1156,18 @@
 
   @media (max-width: 480px) {
     .coords-display { top: 66px; }
-    .station-pill { top: 12px; left: 12px; }
+    .station-pill { top: 12px; left: 64px; }
     .profile-btn { top: 12px; right: 12px; }
-    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 240px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .hamburger-nav { top: 12px; left: 12px; }
+    .station-panel { top: 66px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 240px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   }
 
   /* ── Light Mode Overrides ── */
+  [data-theme="light"] .hamburger-nav { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  [data-theme="light"] .hamburger-bar { background: var(--text-secondary); }
+  [data-theme="light"] .nav-drawer { background: var(--surface); border-color: var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  [data-theme="light"] .nav-drawer-item { color: var(--text-primary); border-color: var(--border); }
+  [data-theme="light"] .nav-drawer-item:hover { background: rgba(0,0,0,0.04); }
   [data-theme="light"] .coords-display { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .station-pill { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .profile-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
@@ -1198,11 +1268,34 @@
 
 <div id="map"></div>
 
+<!-- Hamburger Nav -->
+<div class="hamburger-nav" id="hamburgerNav">
+  <div class="hamburger-bar"></div>
+  <div class="hamburger-bar"></div>
+  <div class="hamburger-bar"></div>
+</div>
+<div class="nav-drawer" id="navDrawer">
+  <a class="nav-drawer-item" href="{% url 'ratemetroapp:my_ratings' %}">
+    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    My Ratings
+  </a>
+  <a class="nav-drawer-item" href="{% url 'ratemetroapp:settings' %}">
+    <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    Settings
+  </a>
+</div>
+
 <!-- Station Pill -->
 <div class="station-pill" id="stationPill">
   <div class="dot"></div>
   <span>Stations</span>
   <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+
+<!-- Profile -->
+<div class="profile-btn" id="profileBtn">
+  <img class="profile-avatar-img" id="profileAvatarImg" style="display:none;" alt="Profile">
+  <svg viewBox="0 0 24 24" id="profileBtnIcon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 </div>
 
 <!-- Station Panel -->
@@ -1221,12 +1314,6 @@
 <div class="coords-display" id="coordsDisplay">
   <svg class="coord-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
   <div class="coord-text" id="coordsText"></div>
-</div>
-
-<!-- Profile -->
-<div class="profile-btn" id="profileBtn">
-  <img class="profile-avatar-img" id="profileAvatarImg" style="display:none;" alt="Profile">
-  <svg viewBox="0 0 24 24" id="profileBtnIcon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 </div>
 <div class="profile-dropdown" id="profileDropdown">
   <!-- Authenticated user menu -->
@@ -2192,7 +2279,7 @@ const panelBackdrop = document.getElementById('panelBackdrop');
 const stationSearch = document.getElementById('stationSearch');
 
 function openPanel() {
-  stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible'); stationSearch.focus();
+  stationPill.classList.add('active'); stationPanel.classList.add('open'); panelBackdrop.classList.add('visible');
   if (!userLocationKnown && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
       userLat = pos.coords.latitude; userLng = pos.coords.longitude; userLocationKnown = true;
@@ -2311,6 +2398,20 @@ if (!_returnToStation && localStorage.getItem('ratemetro-share-location') !== 'f
 
 document.getElementById('locateBtn').addEventListener('click', () => {
   requestUserLocation(true);
+});
+
+// ── Hamburger Nav ──
+const hamburgerNav = document.getElementById('hamburgerNav');
+const navDrawer = document.getElementById('navDrawer');
+hamburgerNav.addEventListener('click', () => {
+  hamburgerNav.classList.toggle('open');
+  navDrawer.classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!hamburgerNav.contains(e.target) && !navDrawer.contains(e.target)) {
+    hamburgerNav.classList.remove('open');
+    navDrawer.classList.remove('open');
+  }
 });
 
 // ── Compass ──
