@@ -105,9 +105,9 @@
   .station-panel {
     position: fixed;
     top: 62px; left: 16px;
-    z-index: 1001;
+    z-index: 6000;
     width: 320px;
-    max-height: calc(100vh - 180px);
+    max-height: calc(100vh - 260px);
     background: var(--surface);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -1071,7 +1071,7 @@
 
   /* Panel backdrop */
   .panel-backdrop {
-    position: fixed; inset: 0; z-index: 1000;
+    position: fixed; inset: 0; z-index: 5999;
     background: rgba(0,0,0,0.4);
     opacity: 0; pointer-events: none;
     transition: opacity 0.3s ease;
@@ -1094,7 +1094,7 @@
     .coords-display { top: 66px; }
     .station-pill { top: 12px; left: 12px; }
     .profile-btn { top: 12px; right: 12px; }
-    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 160px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .station-panel { top: 58px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 240px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   }
 
   /* ── Light Mode Overrides ── */
