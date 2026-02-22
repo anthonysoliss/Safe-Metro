@@ -1756,6 +1756,35 @@ const metroStations = [
   { name: "Woodman", lines: ["G"], lat: 34.1668, lng: -118.3841 },
 ];
 
+// ── Line Routes (ordered station names for polyline drawing) ──
+const lineRoutes = {
+  A: ["7th St/Metro Center","Pico","Grand/LATTC","San Pedro Street","Washington","Slauson","Florence","Firestone","103rd St/Watts Towers","Willowbrook/Rosa Parks","Compton","Artesia","Del Amo","Wardlow","Willow Street","Pacific Coast Hwy","Anaheim Street","5th Street","Downtown Long Beach"],
+  B: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Vermont/Beverly","Vermont/Santa Monica","Vermont/Sunset","Hollywood/Western","Hollywood/Vine","Hollywood/Highland","Universal City/Studio City","North Hollywood"],
+  C: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/LAX","Hawthorne/Lennox","Vermont/Athens","Harbor Freeway","Avalon","Willowbrook/Rosa Parks","Long Beach Blvd","Lakewood Blvd","Norwalk"],
+  D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western","Wilshire/La Brea","Wilshire/Fairfax","Wilshire/La Cienega","Wilshire/Rodeo","Century City/Constellation","Westwood/VA Hospital"],
+  E: ["7th St/Metro Center","Pico","Jefferson/USC","Expo Park/USC","Expo/Vermont","Expo/Western","Farmdale","Expo/Crenshaw","Expo/La Brea","La Cienega/Jefferson","Culver City","Palms","Westwood/Rancho Park","Expo/Sepulveda","Expo/Bundy","26th St/Bergamot","17th St/SMC","Downtown Santa Monica"],
+  G: ["North Hollywood","Woodman","Laurel Canyon","Valley College","Van Nuys","Sepulveda","Woodley","Balboa","Reseda","Tampa","Pierce College","De Soto","Roscoe","Nordhoff","Chatsworth"],
+  K: ["Aviation/LAX","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
+  L: ["Union Station","Chinatown","Lincoln/Cypress","Heritage Square/Arroyo","Southwest Museum","Highland Park","South Pasadena","Fillmore","Del Mar","Memorial Park","Lake","Allen","Sierra Madre Villa","Arcadia","Monrovia","Duarte/City of Hope","Irwindale","Azusa Downtown","APU/Citrus College"],
+};
+
+let activeLinePolyline = null;
+const stationByName = Object.fromEntries(metroStations.map(s => [s.name, s]));
+
+function drawLineRoute(line) {
+  if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+  if (line === 'all' || !lineRoutes[line]) return;
+  const coords = lineRoutes[line].map(n => stationByName[n]).filter(Boolean).map(s => [s.lat, s.lng]);
+  if (coords.length < 2) return;
+  activeLinePolyline = L.polyline(coords, {
+    color: metroLines[line].color,
+    weight: 5,
+    opacity: 0.85,
+    // BRT lines shown dashed
+    ...(line === 'G' ? { dashArray: '10 6' } : {}),
+  }).addTo(map);
+}
+
 // ── Ratings Storage ──
 let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || {};
 let userRatedStations = new Set(); // station names the current user has already rated
@@ -2025,6 +2054,7 @@ function buildFilters() {
       document.getElementById('stationSearch').value = '';
       createMarkers(line);
       renderStationList();
+      drawLineRoute(line);
       if (stationMarkers.length > 0) {
         map.fitBounds(new L.featureGroup(stationMarkers).getBounds().pad(0.1), { animate: true, duration: 0.5 });
       }
