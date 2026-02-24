@@ -81,8 +81,13 @@
     animation: slideDown 0.4s ease both;
   }
   [data-theme="light"] .nav {
-    background: rgba(242,242,247,0.88);
+    background: rgba(242,242,247,0.92);
+    border-bottom-color: rgba(0,0,0,0.08);
   }
+  [data-theme="light"] .nav-back { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
+  [data-theme="light"] .nav-back svg { stroke: rgba(0,0,0,0.5); }
+  [data-theme="light"] .nav-back:hover { border-color: var(--accent); background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .nav-back:hover svg { stroke: var(--accent); }
   .nav-back {
     width: 40px; height: 40px;
     background: var(--surface);
