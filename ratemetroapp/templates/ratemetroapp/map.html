@@ -2677,6 +2677,7 @@ function openChatHistoryPanel() {
 function closeChatHistoryPanel() {
   chatHistoryPanel.classList.remove('open');
   chatHistoryBackdrop.classList.remove('visible');
+  hamburgerNav.classList.remove('open');
 }
 
 document.getElementById('chatHistoryClose').addEventListener('click', closeChatHistoryPanel);
