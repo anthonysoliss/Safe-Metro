@@ -1122,12 +1122,23 @@
   @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
   @keyframes msgIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+  .station-panel-handle { display: none; width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 2px; flex-shrink: 0; }
+
   @media (max-width: 480px) {
     .coords-display { top: 66px; }
     .station-pill { top: 12px; left: 64px; }
     .profile-btn { top: 12px; right: 12px; }
     .hamburger-nav { top: 12px; left: 12px; }
-    .station-panel { top: 66px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 240px); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .station-panel-handle { display: block; }
+    .station-panel {
+      top: auto; bottom: 0; left: 0; right: 0; width: 100%;
+      max-height: 72vh; border-radius: 20px 20px 0 0;
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+      opacity: 1; transform: translateY(100%);
+      transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+      box-shadow: 0 -4px 40px rgba(0,0,0,0.45);
+    }
+    .station-panel.open { transform: translateY(0); opacity: 1; }
   }
 
   /* ── Light Mode Overrides ── */
@@ -1365,6 +1376,7 @@
 <!-- Station Panel -->
 <div class="panel-backdrop" id="panelBackdrop"></div>
 <div class="station-panel" id="stationPanel">
+  <div class="station-panel-handle"></div>
   <div class="panel-header">
     <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
     <input class="panel-search" id="stationSearch" type="text" placeholder="Search stations..." autocomplete="off" />
@@ -1583,6 +1595,10 @@
           <span>My Ratings</span>
         </div>
         <div class="nav-profile-menu-divider"></div>
+        <div class="nav-profile-menu-item" data-nav-action="feedback">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Send Feedback</span>
+        </div>
         <div class="nav-profile-menu-item" data-nav-action="settings">
           <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           <span>Settings</span>
@@ -1655,6 +1671,7 @@ const DJANGO_URLS = {
   stationRatings: '{% url "ratemetroapp:station_ratings" %}',
   logout: '{% url "ratemetroapp:api_logout" %}',
   deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
+  feedback: '{% url "ratemetroapp:feedback" %}',
 };
 
 // Authentication state
@@ -2797,6 +2814,7 @@ navProfileMenu.addEventListener('click', (e) => {
   const action = item.dataset.navAction;
   if (action === 'profile') window.location.href = DJANGO_URLS.profile;
   else if (action === 'ratings') window.location.href = DJANGO_URLS.myRatings;
+  else if (action === 'feedback') window.location.href = DJANGO_URLS.feedback;
   else if (action === 'settings') window.location.href = DJANGO_URLS.settings;
   else if (action === 'signout') { closeChatHistoryPanel(); handleSignOut(); }
   else if (action === 'signin') window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);

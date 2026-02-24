@@ -135,3 +135,7 @@ LOGIN_REDIRECT_URL = '/'
 # Allow up to 150 MB uploads (covers ~5 min of mobile video)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 150 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 150 * 1024 * 1024
+
+# Email — prints to console in dev; swap backend for production SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+FEEDBACK_EMAIL = 'feedback@ratemetro.com'

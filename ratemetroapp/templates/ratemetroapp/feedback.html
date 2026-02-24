@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Feedback — Ratemetro.com</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0d0d18;
+    --surface: rgba(20, 20, 35, 0.88);
+    --surface-light: rgba(28, 28, 48, 0.82);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #f0f0f5;
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-muted: rgba(255, 255, 255, 0.3);
+    --border: rgba(255, 255, 255, 0.07);
+  }
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  [data-theme="light"] body::before {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+  [data-theme="light"] .nav { background: rgba(242,242,247,0.9); }
+
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; }
+  .nav-back:hover svg { stroke: var(--accent); }
+  .nav-title { font-size: 15px; font-weight: 700; }
+
+  /* ── Page ── */
+  .page {
+    padding-top: 80px;
+    padding-bottom: 60px;
+    max-width: 560px;
+    margin: 0 auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Success State ── */
+  .success-card {
+    margin-top: 32px;
+    background: var(--surface);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+    border-radius: 20px;
+    padding: 48px 32px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    animation: fadeIn 0.4s ease both;
+  }
+  .success-icon {
+    width: 64px; height: 64px;
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .success-icon svg { width: 30px; height: 30px; stroke: var(--success); fill: none; stroke-width: 2.5; }
+  .success-title { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .success-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 28px; }
+  .success-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #0d0d18;
+    border: none; border-radius: 12px;
+    padding: 12px 24px; font-size: 14px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .success-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  /* ── Form ── */
+  .form-header {
+    margin-top: 24px;
+    margin-bottom: 6px;
+    animation: slideUp 0.5s ease 0.05s both;
+  }
+  .form-header-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .form-header-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    margin-top: 16px;
+    animation: slideUp 0.5s ease 0.1s both;
+  }
+
+  .form-field {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-field:last-child { border-bottom: none; }
+
+  .form-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .form-label .required { color: var(--accent); }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    caret-color: var(--accent);
+  }
+  .form-input::placeholder,
+  .form-textarea::placeholder { color: var(--text-muted); }
+
+  .form-select {
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 20px;
+  }
+  [data-theme="light"] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.3)' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  .form-select option { background: #1a1a2e; color: #f0f0f5; }
+  [data-theme="light"] .form-select option { background: #fff; color: #1c1c1e; }
+
+  .form-textarea { resize: none; line-height: 1.55; min-height: 130px; }
+
+  .char-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.2s;
+  }
+  .char-count.warn { color: #ff9500; }
+  .char-count.over { color: var(--danger); }
+
+  /* ── Error ── */
+  .error-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--danger);
+    animation: slideUp 0.3s ease both;
+  }
+  .error-banner svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; flex-shrink: 0; }
+
+  /* ── Email note ── */
+  .email-note {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(245, 197, 24, 0.06);
+    border: 1px solid rgba(245, 197, 24, 0.15);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    animation: slideUp 0.5s ease 0.15s both;
+  }
+  .email-note svg { width: 15px; height: 15px; fill: none; stroke: var(--accent); stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Submit ── */
+  .submit-wrap {
+    margin-top: 16px;
+    animation: slideUp 0.5s ease 0.2s both;
+  }
+  .submit-btn {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--accent);
+    color: #0d0d18;
+    border: none;
+    border-radius: 14px;
+    padding: 15px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 20px rgba(245, 197, 24, 0.25);
+  }
+  .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(245, 197, 24, 0.35); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+
+  /* ── Animations ── */
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-back" href="javascript:history.back()" title="Go back">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <span class="nav-title">Send Feedback</span>
+</nav>
+
+<div class="page">
+
+  {% if success %}
+  <div class="success-card">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="success-title">Thanks for your feedback!</div>
+    <div class="success-sub">We've received your message and will get back to you if needed.</div>
+    <a class="success-btn" href="/">
+      <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Map
+    </a>
+  </div>
+
+  {% else %}
+
+  <div class="form-header">
+    <div class="form-header-title">Share your thoughts</div>
+    <div class="form-header-sub">Found a bug, have an idea, or just want to say something? We'd love to hear from you.</div>
+  </div>
+
+  {% if error %}
+  <div class="error-banner">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form class="form-card" method="POST" action="{% url 'ratemetroapp:feedback' %}">
+    {% csrf_token %}
+
+    <div class="form-field">
+      <div class="form-label">Reply-to email <span class="required">*</span></div>
+      <input
+        class="form-input"
+        type="email"
+        name="email"
+        placeholder="your@email.com"
+        value="{{ form_data.email|default:default_email }}"
+        required
+        autocomplete="email"
+      >
+    </div>
+
+    <div class="form-field">
+      <div class="form-label">Category</div>
+      <select class="form-select" name="category">
+        <option value="general" {% if form_data.category == 'general' or not form_data.category %}selected{% endif %}>General Feedback</option>
+        <option value="bug"     {% if form_data.category == 'bug' %}selected{% endif %}>Bug Report</option>
+        <option value="feature" {% if form_data.category == 'feature' %}selected{% endif %}>Feature Request</option>
+        <option value="other"   {% if form_data.category == 'other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <div class="form-label">Subject <span class="required">*</span></div>
+      <input
+        class="form-input"
+        type="text"
+        name="subject"
+        placeholder="Brief summary of your feedback"
+        value="{{ form_data.subject|default:'' }}"
+        maxlength="200"
+        required
+        autocomplete="off"
+      >
+    </div>
+
+    <div class="form-field">
+      <div class="form-label">Message <span class="required">*</span></div>
+      <textarea
+        class="form-textarea"
+        name="message"
+        id="messageTextarea"
+        placeholder="Tell us more…"
+        maxlength="5000"
+        required
+      >{{ form_data.message|default:'' }}</textarea>
+      <div class="char-count" id="charCount">0 / 5000</div>
+    </div>
+  </form>
+
+  <div class="email-note">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    Your feedback goes directly to our team. We may follow up at the email address you provide above.
+  </div>
+
+  <div class="submit-wrap">
+    <button class="submit-btn" type="submit" form="feedbackForm" id="submitBtn">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Send Feedback
+    </button>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+  // Wire the external submit button to the form
+  const form = document.querySelector('.form-card');
+  if (form) form.id = 'feedbackForm';
+
+  // Character counter
+  const textarea = document.getElementById('messageTextarea');
+  const charCount = document.getElementById('charCount');
+  if (textarea && charCount) {
+    function updateCount() {
+      const len = textarea.value.length;
+      charCount.textContent = len.toLocaleString() + ' / 5,000';
+      charCount.classList.toggle('warn', len > 4000 && len <= 5000);
+      charCount.classList.toggle('over', len > 5000);
+    }
+    textarea.addEventListener('input', updateCount);
+    updateCount();
+  }
+</script>
+
+</body>
+</html>

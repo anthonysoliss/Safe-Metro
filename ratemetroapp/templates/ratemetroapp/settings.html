@@ -854,30 +854,6 @@
           <button class="toggle on" onclick="toggleSetting(this, 'share-location')"></button>
         </div>
       </div>
-      <div class="row no-tap" data-search="privacy analytics usage data improve">
-        <div class="row-icon purple">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Analytics</div>
-          <div class="row-sub">Help improve the app anonymously</div>
-        </div>
-        <div class="row-right">
-          <button class="toggle on" onclick="toggleSetting(this, 'analytics')"></button>
-        </div>
-      </div>
-      <div class="row" onclick="showToast('Data export coming soon')" data-search="privacy export data download">
-        <div class="row-icon teal">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </div>
-        <div class="row-body">
-          <div class="row-label">Export My Data</div>
-          <div class="row-sub">Download all your ratings & info</div>
-        </div>
-        <div class="row-right">
-          <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -886,7 +862,7 @@
   <div class="section" data-section="support">
     <div class="section-label">Support</div>
     <div class="section-card">
-      <div class="row" onclick="showToast('Opening Help Center...')" data-search="support help center faq documentation">
+      <div class="row" onclick="window.location.href='{% url 'ratemetroapp:help_center' %}'" data-search="support help center faq documentation">
         <div class="row-icon blue">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>

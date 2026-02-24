@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.core.files.base import ContentFile
 import json
 import io
-from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile
+from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile, Feedback
 
 def map_view(request):
     """Main map page view"""
@@ -207,6 +207,11 @@ def settings_view(request):
         'anonymous_ratings': profile.anonymous_ratings,
     }
     return render(request, 'ratemetroapp/settings.html', context)
+
+
+def help_center_view(request):
+    """Help Center page"""
+    return render(request, 'ratemetroapp/help-center.html')
 
 
 @csrf_exempt
@@ -747,6 +752,59 @@ def api_update_profile(request):
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+def feedback_view(request):
+    """Feedback form page"""
+    success = False
+    error = None
+    form_data = {}
+
+    default_email = request.user.email if request.user.is_authenticated else ''
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        category = request.POST.get('category', 'general')
+        subject = request.POST.get('subject', '').strip()
+        message = request.POST.get('message', '').strip()
+        form_data = {'email': email, 'category': category, 'subject': subject, 'message': message}
+
+        if not email or not subject or not message:
+            error = 'Please fill in all required fields.'
+        elif len(subject) > 200:
+            error = 'Subject must be 200 characters or fewer.'
+        elif len(message) > 5000:
+            error = 'Message must be 5000 characters or fewer.'
+        else:
+            feedback = Feedback.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                email=email,
+                category=category,
+                subject=subject,
+                message=message,
+            )
+            from django.core.mail import send_mail
+            from django.conf import settings as django_settings
+            recipient = getattr(django_settings, 'FEEDBACK_EMAIL', 'feedback@ratemetro.com')
+            send_mail(
+                subject=f'[RateMetro Feedback] {feedback.get_category_display()}: {subject}',
+                message=f'From: {email}\nCategory: {feedback.get_category_display()}\nUser: {request.user.username if request.user.is_authenticated else "Guest"}\n\n{message}',
+                from_email=email,
+                recipient_list=[recipient],
+                fail_silently=True,
+            )
+            success = True
+            form_data = {}
+
+    context = {
+        'success': success,
+        'error': error,
+        'form_data': form_data,
+        'default_email': default_email,
+        'is_authenticated': request.user.is_authenticated,
+        'username': request.user.username if request.user.is_authenticated else None,
+    }
+    return render(request, 'ratemetroapp/feedback.html', context)
 
 
 def get_client_ip(request):

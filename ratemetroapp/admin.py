@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
-    MetroLine, Station, UserProfile, Rating, 
-    RatingPhoto, UserLocation, UserActivity
+    MetroLine, Station, UserProfile, Rating,
+    RatingPhoto, UserLocation, UserActivity, Feedback
 )
 
 @admin.register(MetroLine)
@@ -50,6 +50,15 @@ class UserLocationAdmin(admin.ModelAdmin):
     list_filter = ('timestamp',)
     search_fields = ('user__username', 'session_id')
     readonly_fields = ('timestamp',)
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'email', 'category', 'status', 'user', 'created_at')
+    list_filter = ('category', 'status', 'created_at')
+    list_editable = ('status',)
+    search_fields = ('subject', 'email', 'message', 'user__username')
+    readonly_fields = ('user', 'email', 'category', 'subject', 'message', 'created_at')
+    date_hierarchy = 'created_at'
 
 @admin.register(UserActivity)
 class UserActivityAdmin(admin.ModelAdmin):

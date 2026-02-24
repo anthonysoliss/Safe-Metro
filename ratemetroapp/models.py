@@ -128,6 +128,35 @@ class UserLocation(models.Model):
         return f"Location: {self.latitude}, {self.longitude} at {self.timestamp}"
 
 
+class Feedback(models.Model):
+    CATEGORY_CHOICES = [
+        ('bug', 'Bug Report'),
+        ('feature', 'Feature Request'),
+        ('general', 'General Feedback'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('read', 'Read'),
+        ('resolved', 'Resolved'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback')
+    email = models.EmailField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Feedback'
+
+    def __str__(self):
+        return f"[{self.get_category_display()}] {self.subject} — {self.email}"
+
+
 class UserActivity(models.Model):
     """Track user activity for analytics"""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
