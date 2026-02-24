@@ -874,7 +874,7 @@
           <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
         </div>
       </div>
-      <div class="row" onclick="showToast('Opening feedback form...')" data-search="support feedback report bug contact">
+      <div class="row" onclick="window.location.href='{% url "ratemetroapp:feedback" %}'" data-search="support feedback report bug contact">
         <div class="row-icon orange">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         </div>
@@ -978,7 +978,7 @@
       <a class="footer-link" onclick="showToast('Opening privacy policy...')">Privacy</a>
       <a class="footer-link" onclick="showToast('Opening terms...')">Terms</a>
       <a class="footer-link" onclick="showToast('Opening licenses...')">Licenses</a>
-      <a class="footer-link" onclick="showToast('Opening feedback...')">Feedback</a>
+      <a class="footer-link" href="{% url 'ratemetroapp:feedback' %}">Feedback</a>
     </div>
   </div>
 
