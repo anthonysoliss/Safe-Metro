@@ -95,38 +95,6 @@
   .hamburger-nav.open .hamburger-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
   /* ── Nav Drawer ── */
-  .nav-drawer {
-    position: fixed;
-    top: 68px; left: 16px;
-    z-index: 1001;
-    background: var(--surface);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    width: 200px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-    overflow: hidden;
-    opacity: 0;
-    transform: translateY(-8px) scale(0.97);
-    pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.25s ease;
-  }
-  .nav-drawer.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-  .nav-drawer-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 13px 16px;
-    color: var(--text-primary);
-    font-size: 14px; font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-    border-bottom: 1px solid var(--border);
-    text-decoration: none;
-  }
-  .nav-drawer-item:last-child { border-bottom: none; }
-  .nav-drawer-item:hover { background: var(--surface-light); }
-  .nav-drawer-item svg { width: 18px; height: 18px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; flex-shrink: 0; }
-  .nav-drawer-item:hover svg { stroke: var(--accent); }
 
   /* ── Station Pill ── */
   .station-pill {
@@ -1165,10 +1133,7 @@
   /* ── Light Mode Overrides ── */
   [data-theme="light"] .hamburger-nav { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .hamburger-bar { background: var(--text-secondary); }
-  [data-theme="light"] .nav-drawer { background: var(--surface); border-color: var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
-  [data-theme="light"] .nav-drawer-item { color: var(--text-primary); border-color: var(--border); }
-  [data-theme="light"] .nav-drawer-item:hover { background: rgba(0,0,0,0.04); }
-  [data-theme="light"] .coords-display { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+[data-theme="light"] .coords-display { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .station-pill { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .profile-btn { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   [data-theme="light"] .profile-btn svg { stroke: var(--text-secondary); }
@@ -1267,7 +1232,8 @@
   .chat-history-backdrop {
     position: fixed; inset: 0; z-index: 5999;
     background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
   }
   .chat-history-backdrop.visible { opacity: 1; pointer-events: auto; }
   .chat-history-panel {
@@ -1277,14 +1243,14 @@
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     transform: translateX(-100%);
-    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 8px 0 40px rgba(0,0,0,0.5);
   }
   .chat-history-panel.open { transform: translateX(0); }
   .chat-history-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 16px 14px; border-bottom: 1px solid var(--border);
-    font-size: 16px; font-weight: 700; color: var(--text-primary); flex-shrink: 0;
+    padding: 18px 12px 10px 16px; flex-shrink: 0;
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
   }
   .chat-history-close {
     background: none; border: none; color: var(--text-muted); cursor: pointer;
@@ -1298,12 +1264,11 @@
     cursor: pointer; transition: all 0.2s; flex-shrink: 0;
   }
   .chat-history-new-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-  .chat-history-list { flex: 1; overflow-y: auto; padding: 6px 8px 16px; }
-  .chat-history-list::-webkit-scrollbar { width: 4px; }
-  .chat-history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .chat-history-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+  .chat-history-list::-webkit-scrollbar { width: 3px; }
+  .chat-history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   .chat-history-section-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 1px;
-    text-transform: uppercase; color: var(--text-muted); padding: 10px 8px 4px;
+    font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 10px 8px 4px;
   }
   .chat-history-item {
     padding: 11px 12px; border-radius: 10px; cursor: pointer;
@@ -1320,6 +1285,27 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .chat-history-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 32px 16px; }
+  .chat-history-footer { border-top: 1px solid var(--border); padding: 6px 8px; flex-shrink: 0; }
+  .chat-history-footer-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+    font-size: 13px; color: var(--text-secondary); text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  .chat-history-footer-item:hover { background: var(--surface-light); color: var(--text-primary); }
+  .chat-history-footer-item svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; flex-shrink: 0; }
+  .chat-history-footer-divider { height: 1px; background: var(--border); margin: 4px 2px; }
+  .chat-history-user-info {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+    cursor: pointer; transition: background 0.15s; text-decoration: none; color: var(--text-primary);
+  }
+  .chat-history-user-info:hover { background: var(--surface-light); }
+  .chat-history-user-avatar {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--surface-light);
+    border: 1px solid var(--border); flex-shrink: 0; overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chat-history-user-avatar img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  .chat-history-user-avatar svg { width: 15px; height: 15px; fill: none; stroke: var(--text-secondary); stroke-width: 1.8; }
+  .chat-history-user-name { font-size: 13px; font-weight: 500; }
   [data-theme="light"] .chat-history-panel { background: rgba(255,255,255,0.96); box-shadow: 8px 0 40px rgba(0,0,0,0.15); }
   @media (max-width: 480px) { .chat-history-panel { width: 85vw; } }
 </style>
@@ -1333,24 +1319,6 @@
   <div class="hamburger-bar"></div>
   <div class="hamburger-bar"></div>
   <div class="hamburger-bar"></div>
-</div>
-<div class="nav-drawer" id="navDrawer">
-  <div class="nav-drawer-item" id="navChatHistory" style="cursor:pointer;">
-    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      <line x1="9" y1="9" x2="15" y2="9"/>
-      <line x1="9" y1="13" x2="13" y2="13"/>
-    </svg>
-    Chat History
-  </div>
-  <a class="nav-drawer-item" href="{% url 'ratemetroapp:my_ratings' %}">
-    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-    My Ratings
-  </a>
-  <a class="nav-drawer-item" href="{% url 'ratemetroapp:settings' %}">
-    <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-    Settings
-  </a>
 </div>
 
 <!-- Station Pill -->
@@ -2397,8 +2365,6 @@ function setUserLocation(lat, lng) {
     }), zIndexOffset: 1000
   }).addTo(map);
   map.setView([lat, lng], 14, { animate: true, duration: 1 });
-  document.getElementById('coordsDisplay').classList.add('visible');
-  document.getElementById('locateBtn').classList.add('active');
 
   // Send location to Django backend
   sendLocationToServer(lat, lng);
@@ -2453,6 +2419,10 @@ function requestUserLocation(isUserGesture) {
     function(position) {
       setUserLocation(position.coords.latitude, position.coords.longitude);
       if (locateBtn) locateBtn.classList.remove('loading');
+      if (isUserGesture) {
+        document.getElementById('coordsDisplay').classList.add('visible');
+        document.getElementById('locateBtn').classList.add('active');
+      }
       // User granted location — re-enable share location setting
       localStorage.setItem('ratemetro-share-location', 'true');
     },
@@ -2489,15 +2459,16 @@ document.getElementById('locateBtn').addEventListener('click', () => {
 
 // ── Hamburger Nav ──
 const hamburgerNav = document.getElementById('hamburgerNav');
-const navDrawer = document.getElementById('navDrawer');
+
 hamburgerNav.addEventListener('click', () => {
   hamburgerNav.classList.toggle('open');
-  navDrawer.classList.toggle('open');
-});
-document.addEventListener('click', e => {
-  if (!hamburgerNav.contains(e.target) && !navDrawer.contains(e.target)) {
-    hamburgerNav.classList.remove('open');
-    navDrawer.classList.remove('open');
+  if (hamburgerNav.classList.contains('open')) {
+    renderHistoryPanel();
+    chatHistoryPanel.classList.add('open');
+    chatHistoryBackdrop.classList.add('visible');
+  } else {
+    chatHistoryPanel.classList.remove('open');
+    chatHistoryBackdrop.classList.remove('visible');
   }
 });
 
@@ -2698,17 +2669,16 @@ function renderHistoryPanel() {
 
 function openChatHistoryPanel() {
   hamburgerNav.classList.remove('open');
-  navDrawer.classList.remove('open');
   renderHistoryPanel();
   chatHistoryPanel.classList.add('open');
   chatHistoryBackdrop.classList.add('visible');
 }
+
 function closeChatHistoryPanel() {
   chatHistoryPanel.classList.remove('open');
   chatHistoryBackdrop.classList.remove('visible');
 }
 
-document.getElementById('navChatHistory').addEventListener('click', openChatHistoryPanel);
 document.getElementById('chatHistoryClose').addEventListener('click', closeChatHistoryPanel);
 document.getElementById('chatHistoryBackdrop').addEventListener('click', closeChatHistoryPanel);
 document.getElementById('chatHistoryNew').addEventListener('click', () => { closeChatHistoryPanel(); startNewSession(); });
@@ -2736,8 +2706,9 @@ function loadProfileImage() {
     if (profileBtnIcon) profileBtnIcon.style.display = 'block';
     if (profileBtn) profileBtn.classList.remove('has-avatar');
   }
-  
+
   updateProfileButtonVisibility();
+  updateChatHistoryUserInfo();
 }
 
 // Load profile image on page load
@@ -2771,10 +2742,40 @@ function updateProfileButtonVisibility() {
     if (profileDropdownAuth) profileDropdownAuth.style.display = 'none';
     if (profileDropdownGuest) profileDropdownGuest.style.display = 'block';
   }
+  updateChatHistoryUserInfo();
 }
 
 // Update profile button visibility on page load
 updateProfileButtonVisibility();
+
+// Sync the chat history panel user info section
+function updateChatHistoryUserInfo() {
+  const userInfo = document.getElementById('chatHistoryUserInfo');
+  const avatarImg = document.getElementById('chatHistoryAvatarImg');
+  const avatarIcon = document.getElementById('chatHistoryAvatarIcon');
+  const userName = document.getElementById('chatHistoryUserName');
+  if (!userInfo) return;
+
+  if (isAuthenticated) {
+    userInfo.href = DJANGO_URLS.profile;
+    if (userName) userName.textContent = currentUsername || 'My Profile';
+    const profileAvatarImg = document.getElementById('profileAvatarImg');
+    if (avatarImg && profileAvatarImg && profileAvatarImg.src && profileAvatarImg.src !== window.location.href) {
+      avatarImg.src = profileAvatarImg.src;
+      avatarImg.style.display = 'block';
+      if (avatarIcon) avatarIcon.style.display = 'none';
+    } else {
+      if (avatarImg) avatarImg.style.display = 'none';
+      if (avatarIcon) avatarIcon.style.display = 'block';
+    }
+  } else {
+    userInfo.href = DJANGO_URLS.signIn;
+    if (userName) userName.textContent = 'Sign In';
+    if (avatarImg) avatarImg.style.display = 'none';
+    if (avatarIcon) avatarIcon.style.display = 'block';
+  }
+}
+updateChatHistoryUserInfo();
 
 // Avatar is now loaded from server; no localStorage listener needed.
 
@@ -2847,7 +2848,10 @@ function dismissChat() {
   chatBackdrop.classList.remove('visible');
 }
 chatBackdrop.addEventListener('click', dismissChat);
-map.on('click', () => { if (chatOverlay.classList.contains('visible')) { setTimeout(dismissChat, 100); } });
+map.on('click', () => {
+  if (chatHistoryPanel.classList.contains('open')) closeChatHistoryPanel();
+  if (chatOverlay.classList.contains('visible')) { setTimeout(dismissChat, 100); }
+});
 map.on('movestart', () => { document.getElementById('coordsDisplay').classList.remove('visible'); });
 map.on('moveend', () => { if (!userMarker && document.getElementById('coordsDisplay').classList.contains('visible')) updateCoords(map.getCenter().lat, map.getCenter().lng); });
 
