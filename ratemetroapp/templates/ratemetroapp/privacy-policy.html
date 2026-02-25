@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Privacy Policy — Ratemetro.com</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0d0d18;
+    --surface: rgba(20, 20, 35, 0.88);
+    --surface-light: rgba(28, 28, 48, 0.82);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --text-primary: #f0f0f5;
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-muted: rgba(255, 255, 255, 0.3);
+    --border: rgba(255, 255, 255, 0.07);
+  }
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  [data-theme="light"] body::before {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+  [data-theme="light"] .nav { background: rgba(242,242,247,0.9); }
+
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; }
+  .nav-back:hover svg { stroke: var(--accent); }
+  .nav-title { font-size: 15px; font-weight: 700; flex: 1; }
+  .nav-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+  }
+
+  /* ── Page ── */
+  .page {
+    padding-top: 80px;
+    padding-bottom: 60px;
+    max-width: 680px;
+    margin: 0 auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 32px 0 24px;
+    animation: slideUp 0.5s ease 0.05s both;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(245,197,24,0.1);
+    border: 1px solid rgba(245,197,24,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .hero-badge svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+  .hero-title { font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 10px; }
+  .hero-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ── Section ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    margin-bottom: 12px;
+    animation: slideUp 0.5s ease both;
+  }
+  .section:nth-child(2) { animation-delay: 0.08s; }
+  .section:nth-child(3) { animation-delay: 0.12s; }
+  .section:nth-child(4) { animation-delay: 0.16s; }
+  .section:nth-child(5) { animation-delay: 0.20s; }
+  .section:nth-child(6) { animation-delay: 0.24s; }
+  .section:nth-child(7) { animation-delay: 0.28s; }
+  .section:nth-child(8) { animation-delay: 0.32s; }
+  .section:nth-child(9) { animation-delay: 0.36s; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .section-icon.blue   { background: rgba(74,144,255,0.12); color: #4a90ff; border: 1px solid rgba(74,144,255,0.2); }
+  .section-icon.yellow { background: rgba(245,197,24,0.1); color: var(--accent); border: 1px solid rgba(245,197,24,0.2); }
+  .section-icon.green  { background: rgba(48,209,88,0.1); color: #30d158; border: 1px solid rgba(48,209,88,0.2); }
+  .section-icon.purple { background: rgba(191,90,242,0.1); color: #bf5af2; border: 1px solid rgba(191,90,242,0.2); }
+  .section-icon.orange { background: rgba(255,149,0,0.1); color: #ff9500; border: 1px solid rgba(255,149,0,0.2); }
+  .section-icon.teal   { background: rgba(90,200,250,0.1); color: #5ac8fa; border: 1px solid rgba(90,200,250,0.2); }
+  .section-icon.pink   { background: rgba(255,55,95,0.1); color: #ff375f; border: 1px solid rgba(255,55,95,0.2); }
+  .section-icon.gray   { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); }
+
+  .section-title { font-size: 14px; font-weight: 700; }
+
+  .section-body { padding: 16px 18px; }
+  .section-body p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 10px;
+  }
+  .section-body p:last-child { margin-bottom: 0; }
+  .section-body ul {
+    list-style: none;
+    margin-top: 6px;
+  }
+  .section-body ul li {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 5px 0 5px 18px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-body ul li:last-child { border-bottom: none; padding-bottom: 0; }
+  .section-body ul li::before {
+    content: '';
+    position: absolute;
+    left: 4px; top: 13px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+
+  /* ── Contact card ── */
+  .contact-card {
+    background: rgba(245,197,24,0.06);
+    border: 1px solid rgba(245,197,24,0.15);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    margin-top: 10px;
+  }
+  .contact-card svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
+  .contact-card-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .contact-card-body a { color: var(--accent); text-decoration: none; }
+  .contact-card-body a:hover { text-decoration: underline; }
+
+  /* ── Footer ── */
+  .footer { text-align: center; padding: 28px 0 8px; font-size: 12px; color: var(--text-muted); animation: slideUp 0.5s ease 0.4s both; }
+
+  /* ── Animations ── */
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-back" href="javascript:history.back()" title="Go back">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <span class="nav-title">Privacy Policy</span>
+  <span class="nav-date">Effective Feb 24, 2026</span>
+</nav>
+
+<div class="page">
+
+  <div class="hero">
+    <div class="hero-badge">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Your Privacy Matters
+    </div>
+    <div class="hero-title">Privacy Policy</div>
+    <div class="hero-sub">This policy explains what information Ratemetro collects, how it's used, and the choices you have. We believe in full transparency — no hidden practices, no selling your data.</div>
+  </div>
+
+  <!-- 1. Information We Collect -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon blue">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="section-title">Information We Collect</div>
+    </div>
+    <div class="section-body">
+      <p>We collect only what's necessary to provide the app's features:</p>
+      <ul>
+        <li><strong>Account information</strong> — username, email address, and optional profile photo when you register</li>
+        <li><strong>Station ratings</strong> — your safety and cleanliness scores, descriptions, and any photos you attach to ratings</li>
+        <li><strong>Location data</strong> — approximate GPS coordinates when you use the locate feature or share your location (only if you grant permission)</li>
+        <li><strong>Usage activity</strong> — pages visited and actions taken, used solely to improve the app</li>
+        <li><strong>Device information</strong> — browser type and IP address, used for security and analytics</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 2. How We Use Your Information -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon green">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="section-title">How We Use Your Information</div>
+    </div>
+    <div class="section-body">
+      <p>Your data is used exclusively to operate and improve Ratemetro:</p>
+      <ul>
+        <li>Display station ratings and reviews on the map</li>
+        <li>Personalise your experience (home station, preferences)</li>
+        <li>Show you nearby stations based on your location</li>
+        <li>Send you replies to feedback or support requests</li>
+        <li>Detect and prevent fraud or abuse</li>
+        <li>Analyse anonymous usage trends to improve the app</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3. Ratings & Anonymity -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon purple">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="section-title">Ratings &amp; Anonymity</div>
+    </div>
+    <div class="section-body">
+      <p>By default, your username is shown alongside ratings you submit. You can switch to anonymous mode at any time from <strong>Settings → Privacy → Anonymous Ratings</strong>. When enabled, your name is hidden from all public rating displays.</p>
+      <p>Anonymous ratings are still linked to your account internally for moderation purposes, but are never publicly attributed to you.</p>
+    </div>
+  </div>
+
+  <!-- 4. Location Data -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon orange">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+      </div>
+      <div class="section-title">Location Data</div>
+    </div>
+    <div class="section-body">
+      <p>Location access is entirely optional. We request it only when you tap the locate button or enable location sharing. Your coordinates are used to:</p>
+      <ul>
+        <li>Sort stations by distance from you</li>
+        <li>Attach location metadata to ratings you submit</li>
+        <li>Improve station coverage based on anonymised heatmaps</li>
+      </ul>
+      <p>You can disable location sharing at any time from <strong>Settings → Privacy → Share Location</strong> or via your browser/device settings. We do not track your location in the background.</p>
+    </div>
+  </div>
+
+  <!-- 5. Data Sharing -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon teal">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </div>
+      <div class="section-title">Data Sharing</div>
+    </div>
+    <div class="section-body">
+      <p><strong>We do not sell, rent, or trade your personal information to third parties.</strong> We may share data only in these limited circumstances:</p>
+      <ul>
+        <li><strong>Service providers</strong> — trusted vendors who help operate infrastructure (hosting, email delivery) under strict confidentiality agreements</li>
+        <li><strong>Legal requirements</strong> — if required by law, court order, or to protect the safety of users</li>
+        <li><strong>Business transfers</strong> — in the event of a merger or acquisition, your data would transfer under the same privacy terms</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 6. Data Retention -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon yellow">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="section-title">Data Retention</div>
+    </div>
+    <div class="section-body">
+      <p>We keep your account data for as long as your account is active. If you delete your account, all personal information — including your ratings, avatar, and profile — is permanently removed within 30 days. Aggregated, anonymised analytics data may be retained longer.</p>
+      <p>Location logs older than 90 days are automatically purged.</p>
+    </div>
+  </div>
+
+  <!-- 7. Your Rights -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon pink">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="section-title">Your Rights</div>
+    </div>
+    <div class="section-body">
+      <p>You have full control over your data:</p>
+      <ul>
+        <li><strong>Access</strong> — view all data we hold about you from your profile and ratings pages</li>
+        <li><strong>Export</strong> — request a copy of your data via Settings → Privacy → Export My Data</li>
+        <li><strong>Correction</strong> — update your username, email, or avatar at any time from your profile</li>
+        <li><strong>Deletion</strong> — permanently delete your account and all associated data from Settings → Danger Zone</li>
+        <li><strong>Opt-out</strong> — disable analytics tracking from Settings → Privacy at any time</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8. Security -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon gray">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="section-title">Security</div>
+    </div>
+    <div class="section-body">
+      <p>We use industry-standard measures to protect your data: HTTPS encryption in transit, hashed passwords, and access controls limiting who can view personal information. No system is 100% secure — if you suspect a breach, please contact us immediately.</p>
+    </div>
+  </div>
+
+  <!-- 9. Contact -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon green">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <div class="section-title">Contact &amp; Questions</div>
+    </div>
+    <div class="section-body">
+      <p>If you have questions about this policy or want to exercise any of your rights, reach out using the feedback form or the email below.</p>
+      <div class="contact-card">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div class="contact-card-body">
+          Have a privacy concern? <a href="{% url 'ratemetroapp:feedback' %}">Send us a message</a> and we'll respond within 48 hours.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Ratemetro &nbsp;·&nbsp; Privacy Policy &nbsp;·&nbsp; Last updated February 2026</div>
+
+</div>
+</body>
+</html>

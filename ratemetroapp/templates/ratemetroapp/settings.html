@@ -887,7 +887,7 @@
           <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
         </div>
       </div>
-      <div class="row" onclick="showToast('Opening privacy policy...')" data-search="support privacy policy legal">
+      <div class="row" onclick="window.location.href='{% url "ratemetroapp:privacy_policy" %}'" data-search="support privacy policy legal">
         <div class="row-icon gray">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </div>
@@ -899,7 +899,7 @@
           <svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
         </div>
       </div>
-      <div class="row" onclick="showToast('Opening terms of service...')" data-search="support terms service legal agreement">
+      <div class="row" onclick="window.location.href='{% url 'ratemetroapp:terms' %}'" data-search="support terms service legal agreement">
         <div class="row-icon gray">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
@@ -975,8 +975,8 @@
     <div class="app-footer-name">rate<span>metro</span>.com</div>
     <div class="app-footer-ver">© 2026 ratemetro</div>
     <div class="footer-links">
-      <a class="footer-link" onclick="showToast('Opening privacy policy...')">Privacy</a>
-      <a class="footer-link" onclick="showToast('Opening terms...')">Terms</a>
+      <a class="footer-link" href="{% url 'ratemetroapp:privacy_policy' %}">Privacy</a>
+      <a class="footer-link" href="{% url 'ratemetroapp:terms' %}">Terms</a>
       <a class="footer-link" onclick="showToast('Opening licenses...')">Licenses</a>
       <a class="footer-link" href="{% url 'ratemetroapp:feedback' %}">Feedback</a>
     </div>

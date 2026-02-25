@@ -895,8 +895,7 @@ async function handleSignUp() {
     if (data.status === 'success') {
       showSuccess('Account created! 🎉', 'You\'re all set. Opening the map...');
       setTimeout(() => {
-        const nextUrl = new URLSearchParams(window.location.search).get('next') || DJANGO_URLS.map;
-        window.location.href = nextUrl;
+        window.location.href = data.redirect_url || DJANGO_URLS.map;
       }, 1500);
     } else {
       btn.disabled = false;

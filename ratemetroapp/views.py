@@ -214,6 +214,11 @@ def help_center_view(request):
     return render(request, 'ratemetroapp/help-center.html')
 
 
+def terms_view(request):
+    """Terms of Service page"""
+    return render(request, 'ratemetroapp/terms.html')
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_settings(request):
@@ -617,11 +622,13 @@ def api_sign_up(request):
         )
         
         login(request, user)
-        
+
+        from django.urls import reverse
         return JsonResponse({
             'status': 'success',
             'message': 'Account created successfully',
-            'username': user.username
+            'username': user.username,
+            'redirect_url': reverse('ratemetroapp:map'),
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -752,6 +759,11 @@ def api_update_profile(request):
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+def privacy_policy_view(request):
+    """Privacy policy page"""
+    return render(request, 'ratemetroapp/privacy-policy.html')
 
 
 def feedback_view(request):

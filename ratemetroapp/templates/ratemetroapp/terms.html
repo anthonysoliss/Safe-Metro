@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Terms of Service — Ratemetro.com</title>
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0d0d18;
+    --surface: rgba(20, 20, 35, 0.88);
+    --surface-light: rgba(28, 28, 48, 0.82);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #f0f0f5;
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-muted: rgba(255, 255, 255, 0.3);
+    --border: rgba(255, 255, 255, 0.07);
+  }
+
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  [data-theme="light"] body::before {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(10,10,15,0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.4s ease both;
+  }
+  [data-theme="light"] .nav {
+    background: rgba(242,242,247,0.92);
+    border-bottom-color: rgba(0,0,0,0.08);
+  }
+  [data-theme="light"] .nav-back { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
+  [data-theme="light"] .nav-back svg { stroke: rgba(0,0,0,0.5); }
+  [data-theme="light"] .nav-back:hover { border-color: var(--accent); background: rgba(0,0,0,0.08); }
+  [data-theme="light"] .nav-back:hover svg { stroke: var(--accent); }
+  .nav-back {
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+  .nav-back:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .nav-back svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .nav-back:hover svg { stroke: var(--accent); }
+  .nav-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+
+  /* ── Page ── */
+  .page {
+    padding-top: 72px;
+    padding-bottom: 60px;
+    max-width: 680px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Legal Header ── */
+  .legal-header {
+    padding: 24px 20px 20px;
+    animation: slideDown 0.5s ease 0.05s both;
+  }
+  .legal-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .legal-heading {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .legal-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Section Cards ── */
+  .section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin: 0 16px 12px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    animation: slideUp 0.5s ease both;
+  }
+  .section-card:nth-child(1)  { animation-delay: 0.10s; }
+  .section-card:nth-child(2)  { animation-delay: 0.15s; }
+  .section-card:nth-child(3)  { animation-delay: 0.20s; }
+  .section-card:nth-child(4)  { animation-delay: 0.25s; }
+  .section-card:nth-child(5)  { animation-delay: 0.30s; }
+  .section-card:nth-child(6)  { animation-delay: 0.35s; }
+  .section-card:nth-child(7)  { animation-delay: 0.40s; }
+  .section-card:nth-child(8)  { animation-delay: 0.45s; }
+  .section-card:nth-child(9)  { animation-delay: 0.50s; }
+  .section-card:nth-child(10) { animation-delay: 0.55s; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-body p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .section-body p:last-child { margin-bottom: 0; }
+
+  /* ── Footer ── */
+  .page-footer {
+    margin: 8px 16px 0;
+    text-align: center;
+    animation: slideUp 0.5s ease 0.6s both;
+  }
+  .page-footer-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp   { from { opacity: 0; transform: translateY(14px);  } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 480px) {
+    .legal-header { padding: 20px 16px 16px; }
+    .section-card { margin: 0 12px 10px; padding: 16px 18px; }
+    .page-footer  { margin: 8px 12px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <a href="{% url 'ratemetroapp:settings' %}" class="nav-back" aria-label="Back to Settings">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <span class="nav-title">Terms of Service</span>
+</nav>
+
+<!-- Page -->
+<main class="page">
+
+  <header class="legal-header">
+    <div class="legal-label">Legal</div>
+    <h1 class="legal-heading">Terms of Service</h1>
+    <div class="legal-date">Last updated: February 2026</div>
+  </header>
+
+  <div class="section-card">
+    <div class="section-title">Acceptance of Terms</div>
+    <div class="section-body">
+      <p>By accessing or using RateMetro, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use the app.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Description of Service</div>
+    <div class="section-body">
+      <p>RateMetro is a community-driven platform that allows users to view and submit safety ratings for public transit stations. Ratings cover cleanliness, lighting, crowding, and overall safety.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">User Accounts</div>
+    <div class="section-body">
+      <p>You must create an account to submit ratings. You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. You must be at least 13 years of age to use RateMetro.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">User-Generated Content</div>
+    <div class="section-body">
+      <p>Ratings and reviews you submit must be honest and based on your personal experience. You may not submit false, misleading, or defamatory content. We reserve the right to remove any content that violates these terms without prior notice.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Prohibited Conduct</div>
+    <div class="section-body">
+      <p>You agree not to: use the service for any unlawful purpose; attempt to interfere with the service's infrastructure or security; create multiple accounts to manipulate ratings; or scrape, harvest, or collect data from the platform without prior written permission.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Intellectual Property</div>
+    <div class="section-body">
+      <p>All design, code, and branding of RateMetro are the property of RateMetro and its creators. User-submitted ratings remain the property of the submitting user, but by submitting you grant RateMetro a worldwide, royalty-free license to display and aggregate your ratings within the platform.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Disclaimers</div>
+    <div class="section-body">
+      <p>RateMetro is provided "as is" without warranties of any kind. We do not guarantee the accuracy of user-submitted ratings. Safety conditions at stations change frequently. Always use your own judgment when making transit decisions.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Limitation of Liability</div>
+    <div class="section-body">
+      <p>To the fullest extent permitted by applicable law, RateMetro and its creators shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of — or inability to use — the service.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Changes to Terms</div>
+    <div class="section-body">
+      <p>We may update these Terms at any time. Continued use of the app after changes are posted constitutes your acceptance of the revised terms. The updated date at the top of this page will always reflect the most recent revision.</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">Contact</div>
+    <div class="section-body">
+      <p>For questions about these Terms of Service, please contact us through the feedback form in Settings. We aim to respond to all inquiries within a reasonable timeframe.</p>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <p class="page-footer-text">© 2026 RateMetro. All rights reserved.</p>
+  </footer>
+
+</main>
+
+</body>
+</html>
