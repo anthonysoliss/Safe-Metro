@@ -2729,50 +2729,53 @@ setInterval(rotateChatPlaceholder, 5500);
 
 chatInput.addEventListener('input', () => sendBtn.classList.toggle('active', chatInput.value.trim().length > 0));
 
-const aiR = {
-  safety: ["Based on recent reports, this area has moderate foot traffic. Stay aware of surroundings during late hours.","Current advisory: well-lit areas and cameras are active. Avoid isolated platforms off-peak.","Community patrols are active here. Report concerns through the app or to station personnel."],
-  station: ["The nearest station is ~0.3 mi away. Trains run every 10-12 min during peak.","This station has recent safety upgrades including improved lighting and extra cameras.","Peak hours: 7-9 AM, 5-7 PM. Off-peak travel is less crowded."],
-  general: ["I help you navigate Metro safely. Ask about station conditions, safety tips, or report an incident.","I monitor transit data and community reports across all LA Metro stations.","For emergencies call 911. Non-emergency Metro safety: 1-888-950-7233."]
-};
-function getAI(msg) {
-  const l = msg.toLowerCase();
-  if (/safe|danger|crime|report/.test(l)) return aiR.safety[Math.random()*3|0];
-  if (/station|train|line|metro/.test(l)) return aiR.station[Math.random()*3|0];
-  return aiR.general[Math.random()*3|0];
+function getFreshLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(userLocationKnown ? { lat: userLat, lng: userLng } : null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        userLocationKnown = true;
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {
+        // Fallback to last known location if geolocation fails
+        resolve(userLocationKnown ? { lat: userLat, lng: userLng } : null);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+    );
+  });
+}
+
+async function getAIResponse(msg) {
+  const session = getActiveSession();
+  const history = session ? session.messages.slice(-10) : [];
+  const payload = { message: msg, history: history };
+  // Get fresh GPS location for every chat message
+  const loc = await getFreshLocation();
+  if (loc) {
+    payload.lat = loc.lat;
+    payload.lng = loc.lng;
+  }
+  try {
+    const res = await fetch('/api/chat/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.status === 'ok') return data.reply;
+    return 'Sorry, I\'m having trouble right now. Please try again in a moment.';
+  } catch (e) {
+    return 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.';
+  }
 }
 // ── Chat Sessions ──
 const CHAT_SESSIONS_KEY = 'metroSafeChatSessions';
-const defaultSessions = [
-  {
-    id: 'default-1', title: 'Is Union Station safe at night?', date: 'Feb 20, 2026',
-    messages: [
-      { type: 'ai', text: 'Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.' },
-      { type: 'user', text: 'Is Union Station safe at night?' },
-      { type: 'ai', text: 'Union Station has regular LAPD Transit and Metro Security patrols. The main concourse is well-lit and staffed. Stick to busy areas near the entrance — avoid isolated platforms after midnight.' },
-    ]
-  },
-  {
-    id: 'default-2', title: 'What lines stop at 7th/Metro Center?', date: 'Feb 19, 2026',
-    messages: [
-      { type: 'ai', text: 'Welcome to Metro Safe LA. Ask me anything about LA Metro stations.' },
-      { type: 'user', text: 'What lines stop at 7th/Metro Center?' },
-      { type: 'ai', text: 'The A (Blue), B (Red), D (Purple), and E (Expo) lines all stop at 7th/Metro Center — one of LA\'s busiest hubs. Trains run every 6–12 min during peak hours.' },
-      { type: 'user', text: 'Is it safe during rush hour?' },
-      { type: 'ai', text: 'During peak hours (7–9 AM, 5–7 PM) 7th/Metro is busy with commuters, which means more visibility. Security is present and cameras are active throughout the station.' },
-    ]
-  },
-  {
-    id: 'default-3', title: 'Safety tips for late night rides', date: 'Feb 14, 2026',
-    messages: [
-      { type: 'ai', text: 'Welcome to Metro Safe LA. Ask me anything about LA Metro stations.' },
-      { type: 'user', text: 'Any safety tips for late night rides?' },
-      { type: 'ai', text: 'Stand near the Train Operator window when boarding. Use well-lit waiting areas, keep valuables out of sight, and sit in populated cars. Call Metro Security at 1-888-950-7233 for non-emergencies.' },
-      { type: 'user', text: 'What if I feel unsafe on the train?' },
-      { type: 'ai', text: 'Move to a different car near the front if possible. Press the emergency intercom to contact the operator. At the next station, exit and notify Metro staff. Always call 911 for immediate emergencies.' },
-    ]
-  },
-];
-
 function loadSessions() {
   try { const s = localStorage.getItem(CHAT_SESSIONS_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
@@ -2780,7 +2783,7 @@ function saveSessions(sessions) {
   try { localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions)); } catch(e) {}
 }
 
-let chatSessions = loadSessions() || defaultSessions;
+let chatSessions = loadSessions() || [];
 let activeSessionId = null;
 
 function getActiveSession() { return chatSessions.find(s => s.id === activeSessionId) || null; }
@@ -2829,11 +2832,13 @@ function showTyping() {
   t.innerHTML = `<div class="ai-label">Metro Safe AI</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
   chatOverlay.appendChild(t); chatOverlay.scrollTop = chatOverlay.scrollHeight;
 }
-function sendMessage() {
+async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
   addMsg(text, 'user'); chatInput.value = ''; sendBtn.classList.remove('active');
   showTyping();
-  setTimeout(() => { document.getElementById('typingMsg')?.remove(); addMsg(getAI(text), 'ai'); }, 1200 + Math.random() * 800);
+  const reply = await getAIResponse(text);
+  document.getElementById('typingMsg')?.remove();
+  addMsg(reply, 'ai');
 }
 sendBtn.addEventListener('click', sendMessage);
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });

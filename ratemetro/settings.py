@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -139,3 +140,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 150 * 1024 * 1024
 # Email — prints to console in dev; swap backend for production SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 FEEDBACK_EMAIL = 'feedback@ratemetro.com'
+
+# Anthropic API
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')

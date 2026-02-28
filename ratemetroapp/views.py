@@ -10,6 +10,10 @@ from django.contrib import messages
 from django.core.files.base import ContentFile
 import json
 import io
+import math
+import anthropic
+from django.conf import settings
+from django.db.models import Avg, Count
 from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile, Feedback
 
 def map_view(request):
@@ -844,3 +848,154 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+METRO_SYSTEM_PROMPT = """You are Metro Safe LA, a friendly and knowledgeable AI assistant for the Rate Metro app. You specialize in two areas:
+
+1. **LA Metro Transit** — You know everything about the Los Angeles Metro system:
+   - All rail lines: A (Blue), B (Red), C (Green), D (Purple), E (Expo), K (Crenshaw), L (Gold)
+   - Station locations, connections, and transfer points
+   - Safety information, hours of operation, and general ridership tips
+   - Real-time safety advisories and community-reported conditions
+   - Metro Security contact: 1-888-950-7233 (non-emergency)
+
+2. **LA Tourist Information** — You help visitors explore Los Angeles:
+   - Popular attractions and how to reach them via Metro
+   - Neighborhoods, dining, culture, and entertainment
+   - Practical tips for getting around LA (Metro, buses, rideshare)
+   - Safety tips for tourists
+
+Guidelines:
+- Keep responses concise (2-4 sentences for simple questions, up to a short paragraph for detailed ones)
+- Be warm, helpful, and encouraging about using public transit
+- If someone asks about emergencies, always direct them to call 911 first
+- If a question is completely unrelated to LA Metro or LA tourism, politely redirect: "I specialize in LA Metro safety and tourist info — ask me anything about that!"
+- Never make up specific real-time data (train delays, crime stats) — speak in general terms about safety patterns
+- Use a casual, friendly tone
+- You will receive a CURRENT USER CONTEXT section with each request. Use it to personalize your responses:
+  - If you know their location, reference nearby stations by name and distance
+  - If they have a home station, remember that's their usual stop
+  - If they have recent ratings, you can reference those stations as places they've been
+  - If they ask "what's near me" or "closest station", use the nearby stations list
+  - Greet signed-in users by their username on the first message
+  - Never expose raw coordinates to the user — use station names and distances instead"""
+
+
+def _haversine_miles(lat1, lng1, lat2, lng2):
+    """Calculate distance in miles between two coordinates."""
+    R = 3958.8  # Earth radius in miles
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _build_user_context(request, data):
+    """Build a context string with user info for the AI."""
+    parts = []
+
+    # --- User identity ---
+    if request.user.is_authenticated:
+        user = request.user
+        parts.append(f"User: {user.username} (signed in)")
+        try:
+            profile = user.profile
+            if profile.home_station:
+                parts.append(f"Home station: {profile.home_station.name}")
+        except UserProfile.DoesNotExist:
+            pass
+
+        # User's rating history
+        user_ratings = (
+            Rating.objects.filter(user=user)
+            .select_related('station')
+            .order_by('-created_at')[:5]
+        )
+        if user_ratings.exists():
+            rated = []
+            for r in user_ratings:
+                rated.append(f"{r.station.name} (safety:{r.safety}/5, cleanliness:{r.cleanliness}/5)")
+            parts.append(f"Recent ratings: {'; '.join(rated)}")
+    else:
+        parts.append("User: anonymous (not signed in)")
+
+    # --- User location & nearby stations ---
+    user_lat = data.get('lat')
+    user_lng = data.get('lng')
+    if user_lat is not None and user_lng is not None:
+        try:
+            user_lat = float(user_lat)
+            user_lng = float(user_lng)
+            parts.append(f"Current location: {user_lat:.4f}, {user_lng:.4f}")
+
+            # Find nearby stations with ratings
+            stations = Station.objects.annotate(
+                avg_safety=Avg('ratings__safety'),
+                avg_cleanliness=Avg('ratings__cleanliness'),
+                rating_count=Count('ratings'),
+            )
+            nearby = []
+            for s in stations:
+                dist = _haversine_miles(user_lat, user_lng, s.latitude, s.longitude)
+                if dist <= 5:  # within 5 miles
+                    info = f"{s.name} ({dist:.1f} mi)"
+                    if s.rating_count and s.rating_count > 0:
+                        info += f" — avg safety {s.avg_safety:.1f}/5, cleanliness {s.avg_cleanliness:.1f}/5 ({s.rating_count} ratings)"
+                    nearby.append((dist, info))
+            nearby.sort()
+            if nearby:
+                parts.append("Nearby stations: " + "; ".join(info for _, info in nearby[:8]))
+            else:
+                parts.append("No Metro stations within 5 miles of user.")
+        except (ValueError, TypeError):
+            pass
+
+    return "\n".join(parts)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_chat(request):
+    """AI chat endpoint using Claude API"""
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '').strip()
+        conversation_history = data.get('history', [])
+
+        if not user_message:
+            return JsonResponse({'status': 'error', 'message': 'Empty message'}, status=400)
+
+        # Build user context
+        user_context = _build_user_context(request, data)
+        system_prompt = METRO_SYSTEM_PROMPT + "\n\n--- CURRENT USER CONTEXT ---\n" + user_context
+
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        # Build messages from conversation history
+        messages = []
+        for msg in conversation_history[-10:]:  # Last 10 messages for context
+            role = 'user' if msg.get('type') == 'user' else 'assistant'
+            messages.append({'role': role, 'content': msg.get('text', '')})
+
+        # Add the current user message
+        messages.append({'role': 'user', 'content': user_message})
+
+        response = client.messages.create(
+            model='claude-haiku-4-5',
+            max_tokens=512,
+            system=system_prompt,
+            messages=messages,
+        )
+
+        ai_text = response.content[0].text
+
+        return JsonResponse({'status': 'ok', 'reply': ai_text})
+
+    except anthropic.AuthenticationError:
+        return JsonResponse({'status': 'error', 'message': 'AI service configuration error'}, status=500)
+    except anthropic.RateLimitError:
+        return JsonResponse({'status': 'error', 'message': 'AI is busy, please try again in a moment'}, status=429)
+    except anthropic.APIError as e:
+        return JsonResponse({'status': 'error', 'message': 'AI service temporarily unavailable'}, status=503)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': 'Something went wrong'}, status=500)
