@@ -819,6 +819,23 @@ def feedback_view(request):
     return render(request, 'ratemetroapp/feedback.html', context)
 
 
+@require_http_methods(["GET"])
+def get_station_arrivals(request):
+    """Return upcoming train arrivals for a station as JSON."""
+    station_name = request.GET.get('station', '').strip()
+    if not station_name:
+        return JsonResponse({'status': 'error', 'message': 'station param required'}, status=400)
+
+    from .gtfs_service import get_arrivals
+    arrivals = get_arrivals(station_name, limit=10)
+
+    return JsonResponse({
+        'status': 'ok',
+        'station': station_name,
+        'arrivals': arrivals,
+    })
+
+
 def get_client_ip(request):
     """Get client IP address"""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

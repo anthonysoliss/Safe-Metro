@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — Ratemetro.com</title>
 <script>
   (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
@@ -51,7 +51,9 @@
     align-items: center;
     justify-content: center;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 24px 0;
   }
 
   /* ── Background ── */
@@ -117,9 +119,9 @@
   .card {
     position: relative;
     z-index: 1;
-    width: 100%;
+    width: calc(100% - 32px);
     max-width: 400px;
-    margin: 0 16px;
+    margin: 0 auto;
     background: var(--surface);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
@@ -915,6 +917,8 @@ function showSuccess(title, sub) {
   document.getElementById('signupForm').style.display = 'none';
   document.getElementById('bottomNote').style.display = 'none';
   document.getElementById('tabsEl').style.display = 'none';
+  const card = document.querySelector('.card');
+  card.style.maxWidth = '320px';
   const screen = document.getElementById('successScreen');
   screen.style.display = 'flex';
   document.getElementById('successTitle').textContent = title;

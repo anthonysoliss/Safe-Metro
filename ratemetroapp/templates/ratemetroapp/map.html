@@ -506,6 +506,7 @@
     animation: slideUp 0.5s ease 0.35s both;
   }
   .chat-bar {
+    position: relative;
     display: flex; align-items: center; gap: 10px;
     background: var(--chat-bg);
     backdrop-filter: blur(24px);
@@ -515,6 +516,26 @@
     transition: all 0.25s ease;
     max-width: 600px;
     margin: 0 auto;
+  }
+  .chat-bar-ring {
+    position: absolute;
+    inset: -2px;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+  }
+  .chat-bar-ring rect {
+    fill: none;
+    stroke: url(#goldGrad);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    animation: drawRing 1.4s ease-in-out 0.9s forwards, fadeRing 0.4s ease-out 2.3s forwards;
+  }
+  @keyframes drawRing {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes fadeRing {
+    to { opacity: 0; }
   }
   .chat-bar:focus-within {
     border-color: rgba(245,197,24,0.35);
@@ -692,6 +713,14 @@
   .popup-rating-btn { margin-top: 6px; padding: 5px 10px; background: var(--accent); color: var(--bg-dark); border: none; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
   .popup-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
   .popup-rated-badge { margin-top: 6px; padding: 5px 10px; background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; font-size: 10px; font-weight: 600; width: 100%; text-align: center; }
+  .popup-arrivals { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .popup-arrivals-title { font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .popup-arrival-row { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-secondary); margin-bottom: 3px; line-height: 1.4; }
+  .popup-arrival-row:last-child { margin-bottom: 0; }
+  .popup-line-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+  .popup-arrival-dest { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .popup-arrival-time { font-weight: 600; white-space: nowrap; color: var(--accent); }
+  .popup-arrivals-loading { font-size: 10px; color: var(--text-muted); font-style: italic; }
   .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 16px !important; padding: 4px 6px !important; width: 20px !important; height: 20px !important; line-height: 1 !important; }
 
   @media (max-width: 480px) {
@@ -1634,6 +1663,16 @@
 <!-- Always-visible bottom bar -->
 <div class="chat-bar-container">
   <div class="chat-bar">
+    <svg class="chat-bar-ring" id="chatBarRing">
+      <defs>
+        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#f5c518"/>
+          <stop offset="50%" stop-color="#d4a017"/>
+          <stop offset="100%" stop-color="#f5c518"/>
+        </linearGradient>
+      </defs>
+      <rect id="chatBarRingRect" rx="28" ry="28"/>
+    </svg>
     <div class="info-btn" id="infoBtn" title="Ask Metro Safe AI">
       <svg viewBox="0 0 24 24" fill="none" style="display:block;">
         <path d="M11 2L12.5 7.2L18 9L12.5 10.8L11 16L9.5 10.8L4 9L9.5 7.2L11 2Z"/>
@@ -1669,6 +1708,7 @@ const DJANGO_URLS = {
   checkAuth: '{% url "ratemetroapp:check_auth" %}',
   submitRating: '{% url "ratemetroapp:submit_rating" %}',
   stationRatings: '{% url "ratemetroapp:station_ratings" %}',
+  stationArrivals: '{% url "ratemetroapp:station_arrivals" %}',
   logout: '{% url "ratemetroapp:api_logout" %}',
   deleteAccount: '{% url "ratemetroapp:api_delete_account" %}',
   feedback: '{% url "ratemetroapp:feedback" %}',
@@ -2047,6 +2087,7 @@ function drawLineRoute(line) {
 
 // ── Ratings Storage ──
 let stationRatings = JSON.parse(localStorage.getItem('metroStationRatings')) || {};
+const _arrivalsCache = {};
 let userRatedStations = new Set(); // station names the current user has already rated
 
 function getStationRating(stationName) {
@@ -2205,7 +2246,7 @@ window.addEventListener('storage', function(e) {
 
 function getStationColor(s) { return metroLines[s.lines[0]]?.color || '#f5c518'; }
 
-function buildPopupHTML(station, rating, userHasRated = false) {
+function buildPopupHTML(station, rating, userHasRated = false, arrivals = undefined) {
   const badges = station.lines.map(l => {
     const line = metroLines[l];
     return `<span class="popup-badge" style="background:${line.color};color:${line.text}">${l} Line</span>`;
@@ -2230,13 +2271,33 @@ function buildPopupHTML(station, rating, userHasRated = false) {
   } else {
     ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;
   }
+
+  // Arrivals section
+  let arrivalsHTML = '';
+  if (arrivals === undefined || arrivals === null) {
+    arrivalsHTML = `<div class="popup-arrivals"><div class="popup-arrivals-loading">Loading schedule...</div></div>`;
+  } else if (arrivals.length === 0) {
+    arrivalsHTML = `<div class="popup-arrivals"><div class="popup-arrivals-loading">No upcoming trains</div></div>`;
+  } else {
+    const rows = arrivals.slice(0, 5).map(a => {
+      const textColor = a.line === 'E' || a.line === 'G' ? '#000' : '#fff';
+      const minLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+      return `<div class="popup-arrival-row">
+        <span class="popup-line-badge" style="background:${a.color};color:${textColor}">${a.line}</span>
+        <span class="popup-arrival-dest">${a.headsign}</span>
+        <span class="popup-arrival-time">${minLabel}</span>
+      </div>`;
+    }).join('');
+    arrivalsHTML = `<div class="popup-arrivals"><div class="popup-arrivals-title">Upcoming Trains</div>${rows}</div>`;
+  }
+
   const rateBtn = userHasRated
     ? `<div class="popup-rated-badge">✓ You rated this station</div>`
     : `<button class="popup-rating-btn" onclick="openRatingModal('${stationNameEscaped}')">Rate This Station</button>`;
   const viewRatingsBtn = count > 0
     ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${count})</a>`
     : '';
-  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${ratingHTML}${rateBtn}${viewRatingsBtn}`;
+  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${arrivalsHTML}${ratingHTML}${rateBtn}${viewRatingsBtn}`;
 }
 
 function createMarkers(filterLine = 'all') {
@@ -2252,25 +2313,46 @@ function createMarkers(filterLine = 'all') {
     });
     const rating = getStationRating(station.name);
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(buildPopupHTML(station, rating), { maxWidth: 240, minWidth: 160, autoPanPadding: [20, 20] });
+    marker.bindPopup(buildPopupHTML(station, rating, false, null), { maxWidth: 260, minWidth: 180, autoPanPadding: [20, 20] });
     marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
     marker.stationData = station;
-    // Fetch fresh ratings from backend each time popup opens so ratings always
-    // reflect the DB (fixes disappearing ratings and anonymous ratings setting)
+    // Fetch fresh ratings + arrivals from backend each time popup opens
     marker.on('popupopen', async function() {
-      try {
-        const res = await fetch(DJANGO_URLS.stationRatings + '?station=' + encodeURIComponent(station.name));
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.status === 'ok') {
-          stationRatings[station.name] = data.ratings;
-          localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
-          if (data.user_has_rated) userRatedStations.add(station.name);
-          if (this.isPopupOpen()) {
-            this.getPopup().setContent(buildPopupHTML(station, data.summary, data.user_has_rated));
-          }
+      const marker = this;
+      const encName = encodeURIComponent(station.name);
+
+      // Check arrivals cache (60-second TTL)
+      const cachedArr = _arrivalsCache[station.name];
+      const now = Date.now();
+      const useCache = cachedArr && (now - cachedArr._ts < 60000);
+
+      const [ratingsResult, arrivalsResult] = await Promise.allSettled([
+        fetch(DJANGO_URLS.stationRatings + '?station=' + encName).then(r => r.ok ? r.json() : null),
+        useCache ? Promise.resolve(cachedArr) : fetch(DJANGO_URLS.stationArrivals + '?station=' + encName).then(r => r.ok ? r.json() : null),
+      ]);
+
+      let summary = null, userHasRated = false, arrivals = [];
+
+      if (ratingsResult.status === 'fulfilled' && ratingsResult.value && ratingsResult.value.status === 'ok') {
+        const data = ratingsResult.value;
+        stationRatings[station.name] = data.ratings;
+        localStorage.setItem('metroStationRatings', JSON.stringify(stationRatings));
+        if (data.user_has_rated) userRatedStations.add(station.name);
+        summary = data.summary;
+        userHasRated = data.user_has_rated;
+      }
+
+      if (arrivalsResult.status === 'fulfilled' && arrivalsResult.value && arrivalsResult.value.status === 'ok') {
+        arrivals = arrivalsResult.value.arrivals || [];
+        if (!useCache) {
+          _arrivalsCache[station.name] = arrivalsResult.value;
+          _arrivalsCache[station.name]._ts = Date.now();
         }
-      } catch (e) { /* silent — cached data stays */ }
+      }
+
+      if (marker.isPopupOpen()) {
+        marker.getPopup().setContent(buildPopupHTML(station, summary || getStationRating(station.name), userHasRated, arrivals));
+      }
     });
     stationMarkers.push(marker);
   });
@@ -2323,49 +2405,54 @@ function buildFilters() {
 }
 buildFilters();
 
-// ── Station Train Times ──
-function shortTerminus(name) {
-  // Shorten terminus label: take text before first "/" or first 2 words
-  const base = name.split('/')[0].trim();
-  const words = base.split(' ');
-  return words.length > 2 ? words.slice(0, 2).join(' ') : base;
+// ── Station Train Times (real GTFS data) ──
+function getStationTimesFromCache(station) {
+  const cached = _arrivalsCache[station.name];
+  if (!cached || !cached.arrivals || Date.now() - cached._ts > 60000) return null;
+  return cached.arrivals;
 }
 
-function getStationTimes(station) {
-  const rows = [];
-  for (const line of station.lines) {
-    const route = lineRoutes[line];
-    if (!route) continue;
-    const idx = route.indexOf(station.name);
-    if (idx === -1) continue;
-    const color = metroLines[line].color;
-    const seed = station.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) + line.charCodeAt(0);
-    const interval = 8 + (seed % 7); // 8–14 min service gap
-
-    const genMins = (dirOffset) => {
-      const s = (seed + dirOffset) % interval;
-      const first = 1 + (s % Math.max(1, interval - 1));
-      return [first, first + interval, first + interval * 2];
-    };
-
-    if (idx > 0) {
-      rows.push({ color, dir: '← ' + shortTerminus(route[0]), mins: genMins(0) });
-    }
-    if (idx < route.length - 1) {
-      rows.push({ color, dir: '→ ' + shortTerminus(route[route.length - 1]), mins: genMins(Math.ceil(interval / 2)) });
-    }
-    if (idx === 0 || idx === route.length - 1) {
-      rows.push({ color, dir: 'Departing', mins: genMins(0) });
-    }
-  }
-  return rows;
-}
-
-function renderTimePills(mins) {
-  return mins.map((m, i) => {
-    const label = m === 1 ? '1 min' : `${m} min`;
-    return `<span class="station-time-pill${i === 0 ? ' soon' : ''}">${label}</span>`;
+function renderStationTimesHTML(arrivals) {
+  if (!arrivals || arrivals.length === 0) return '';
+  const rows = arrivals.slice(0, 3).map(a => {
+    const textColor = a.line === 'E' || a.line === 'G' ? '#000' : '#fff';
+    const minLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+    return `<div class="station-time-row">
+      <span class="popup-line-badge" style="background:${a.color};color:${textColor};width:14px;height:14px;font-size:8px">${a.line}</span>
+      <span class="station-time-dir" style="color:${a.color};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.headsign}</span>
+      <span class="station-time-pill soon">${minLabel}</span>
+    </div>`;
   }).join('');
+  return `<div class="station-times">${rows}</div>`;
+}
+
+async function fetchStationTimesForList() {
+  const items = document.querySelectorAll('#stationList .station-item');
+  const fetches = [];
+  items.forEach(item => {
+    const name = item.dataset.name;
+    if (!name) return;
+    const cached = _arrivalsCache[name];
+    if (cached && Date.now() - cached._ts < 60000) {
+      const timesEl = item.querySelector('.station-times-live');
+      if (timesEl) timesEl.innerHTML = renderStationTimesHTML(cached.arrivals);
+      return;
+    }
+    fetches.push(
+      fetch(DJANGO_URLS.stationArrivals + '?station=' + encodeURIComponent(name))
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.status === 'ok') {
+            _arrivalsCache[name] = data;
+            _arrivalsCache[name]._ts = Date.now();
+            const timesEl = item.querySelector('.station-times-live');
+            if (timesEl) timesEl.innerHTML = renderStationTimesHTML(data.arrivals);
+          }
+        })
+        .catch(() => {})
+    );
+  });
+  await Promise.allSettled(fetches);
 }
 
 // ── Station List ──
@@ -2394,13 +2481,11 @@ function renderStationList(searchQuery = '') {
     const ratingDisplay = rating.count > 0
       ? `<div class="station-rating-display"><div class="station-rating-stars">${renderStars(parseFloat(rating.avg), '11px')}</div><div class="station-rating-count">${rating.avg}</div></div>`
       : '';
-    const timeRows = getStationTimes(station);
-    const timesHtml = timeRows.length
-      ? `<div class="station-times">${timeRows.map(r => `<div class="station-time-row"><span class="station-time-dir" style="color:${r.color}">${r.dir}</span><div class="station-time-pills">${renderTimePills(r.mins)}</div></div>`).join('')}</div>`
-      : '';
+    const cachedArrivals = getStationTimesFromCache(station);
+    const timesHtml = cachedArrivals ? renderStationTimesHTML(cachedArrivals) : '';
     return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}" data-name="${station.name}">
       <div class="station-color-bar" style="background:${getStationColor(station)}"></div>
-      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div>${ratingDisplay}${timesHtml}</div>
+      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div>${ratingDisplay}<div class="station-times-live">${timesHtml}</div></div>
       <svg class="station-arrow" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`;
   }).join('');
@@ -2431,6 +2516,8 @@ function renderStationList(searchQuery = '') {
       });
     }
   });
+  // Fetch real arrival times for visible stations
+  fetchStationTimesForList();
 }
 renderStationList();
 
@@ -2579,6 +2666,27 @@ hamburgerNav.addEventListener('click', () => {
 const needleEl = document.getElementById('compassNeedle');
 if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', e => { if (e.alpha !== null) needleEl.style.transform = `rotate(${-e.alpha}deg)`; });
 document.getElementById('compass').addEventListener('click', () => { map.setView([userLat, userLng], map.getZoom(), { animate: true }); needleEl.style.transform = 'rotate(0deg)'; });
+
+// ── Gold ring intro animation ──
+(function() {
+  const bar = document.querySelector('.chat-bar');
+  const svg = document.getElementById('chatBarRing');
+  const rect = document.getElementById('chatBarRingRect');
+  if (bar && svg && rect) {
+    const w = bar.offsetWidth + 4;
+    const h = bar.offsetHeight + 4;
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    rect.setAttribute('x', '1.5');
+    rect.setAttribute('y', '1.5');
+    rect.setAttribute('width', w - 3);
+    rect.setAttribute('height', h - 3);
+    const perimeter = 2 * (w - 3 + h - 3) - 8 * 28 + 2 * Math.PI * 28;
+    rect.style.strokeDasharray = perimeter;
+    rect.style.strokeDashoffset = perimeter;
+  }
+})();
 
 // ── Chat ──
 const chatInput = document.getElementById('chatInput');
