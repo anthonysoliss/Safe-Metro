@@ -645,6 +645,100 @@
   .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
   .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
 
+  /* ── Route Widget ── */
+  .route-widget {
+    align-self: stretch;
+    max-width: 100%;
+    flex-shrink: 0;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: visible;
+    animation: msgIn 0.3s ease both;
+    margin-bottom: 8px;
+  }
+  .route-widget-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .route-widget-header h3 {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-primary);
+    margin: 0;
+  }
+  .route-widget-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px; line-height: 1;
+    padding: 0 2px; transition: color 0.2s;
+  }
+  .route-widget-close:hover { color: var(--text-primary); }
+  .route-widget-summary {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-secondary); font-weight: 500;
+  }
+  .route-widget-summary .line-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .route-widget-summary .summary-label { margin-left: auto; }
+  .route-widget-steps { padding: 12px 16px; }
+  .route-step {
+    display: flex; gap: 12px; position: relative;
+    min-height: 44px; padding-bottom: 4px;
+  }
+  .route-step-track {
+    display: flex; flex-direction: column; align-items: center;
+    width: 20px; flex-shrink: 0; position: relative;
+  }
+  .route-step-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2.5px solid; flex-shrink: 0; z-index: 1;
+    background: var(--surface);
+  }
+  .route-step-line {
+    width: 3px; flex: 1; min-height: 20px; border-radius: 2px;
+  }
+  .route-step-content { flex: 1; padding-bottom: 10px; }
+  .route-step-station {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .route-step-detail {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-secondary); margin-top: 3px;
+  }
+  .route-step-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 1px 7px; border-radius: 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .route-step-transfer {
+    font-size: 12px; color: var(--text-secondary);
+    font-weight: 500; display: flex; align-items: center; gap: 6px;
+    padding: 4px 0;
+  }
+  .route-widget-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .route-start-btn {
+    width: 100%; padding: 10px;
+    background: var(--accent); color: var(--bg-dark);
+    border: none; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .route-start-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .route-start-btn:active { transform: translateY(0); }
+
   /* ── Map Markers ── */
   .metro-marker { display: flex; align-items: center; justify-content: center; }
   .metro-marker-inner {
@@ -2781,11 +2875,11 @@ async function getAIResponse(msg) {
         session.conversation_id = data.conversation_id;
         saveSessions(chatSessions);
       }
-      return data.reply;
+      return { reply: data.reply, route_data: data.route_data || null };
     }
-    return 'Sorry, I\'m having trouble right now. Please try again in a moment.';
+    return { reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null };
   } catch (e) {
-    return 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.';
+    return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null };
   }
 }
 // ── Chat Sessions ──
@@ -2851,10 +2945,18 @@ async function openSession(id) {
     } catch(e) { /* show whatever we have */ }
   }
 
-  session.messages.forEach(msg => appendMsgEl(msg.text, msg.type));
+  // Remove any previous route widget
+  document.querySelectorAll('.route-widget').forEach(el => el.remove());
+  let lastRouteData = null;
+  session.messages.forEach(msg => {
+    appendMsgEl(msg.text, msg.type);
+    if (msg.route_data && msg.route_data.steps) lastRouteData = msg.route_data;
+  });
+  // Show the most recent route widget if any
+  if (lastRouteData) showRouteWidget(lastRouteData);
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
-  chatOverlay.scrollTop = chatOverlay.scrollHeight;
+  requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
 }
 
 function startNewSession() {
@@ -2862,16 +2964,22 @@ function startNewSession() {
   chatOverlay.innerHTML = '';
   chatOverlay.classList.remove('visible');
   chatBackdrop.classList.remove('visible');
+  clearRouteFromMap();
 }
 
-function addMsg(text, type) {
+function addMsg(text, type, routeData) {
   if (!activeSessionId) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
     activeSessionId = id;
   }
   const session = getActiveSession();
-  if (session) { session.messages.push({ type, text }); saveSessions(chatSessions); }
+  if (session) {
+    const msg = { type, text };
+    if (routeData) msg.route_data = routeData;
+    session.messages.push(msg);
+    saveSessions(chatSessions);
+  }
   appendMsgEl(text, type);
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
@@ -2886,12 +2994,186 @@ async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
   addMsg(text, 'user'); chatInput.value = ''; sendBtn.classList.remove('active');
   showTyping();
-  const reply = await getAIResponse(text);
+  const result = await getAIResponse(text);
   document.getElementById('typingMsg')?.remove();
-  addMsg(reply, 'ai');
+  if (result.route_data && result.route_data.steps) {
+    addMsg(result.reply, 'ai', result.route_data);
+    // Remove any existing route widget before showing a new one
+    document.querySelectorAll('.route-widget').forEach(el => el.remove());
+    showRouteWidget(result.route_data);
+  } else {
+    addMsg(result.reply, 'ai');
+  }
 }
 sendBtn.addEventListener('click', sendMessage);
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+// ── Route Widget & Map Drawing ──
+let routePolylines = [];
+let routeMarkers = [];
+
+function clearRouteFromMap() {
+  routePolylines.forEach(p => map.removeLayer(p));
+  routeMarkers.forEach(m => map.removeLayer(m));
+  routePolylines = [];
+  routeMarkers = [];
+}
+
+function getStopCount(line, from, to) {
+  const route = lineRoutes[line];
+  if (!route) return null;
+  const fi = route.indexOf(from);
+  const ti = route.indexOf(to);
+  if (fi === -1 || ti === -1) return null;
+  return Math.abs(ti - fi);
+}
+
+function showRouteWidget(routeData) {
+  const steps = routeData.steps;
+  if (!steps || steps.length === 0) return;
+
+  // Collect unique lines used
+  const usedLines = [...new Set(steps.filter(s => s.type === 'ride' && s.line).map(s => s.line))];
+  const transferCount = steps.filter(s => s.type === 'transfer').length;
+
+  const widget = document.createElement('div');
+  widget.className = 'route-widget';
+
+  // Header
+  let html = `<div class="route-widget-header"><h3>Your Route</h3><button class="route-widget-close" onclick="this.closest('.route-widget').remove()">&times;</button></div>`;
+
+  // Summary bar
+  html += `<div class="route-widget-summary">`;
+  usedLines.forEach(l => {
+    const info = metroLines[l];
+    if (info) html += `<span class="line-dot" style="background:${info.color};color:${info.text}">${l}</span>`;
+  });
+  html += `<span class="summary-label">${transferCount > 0 ? transferCount + ' transfer' + (transferCount > 1 ? 's' : '') : 'Direct'}</span></div>`;
+
+  // Steps
+  html += `<div class="route-widget-steps">`;
+  steps.forEach((step, i) => {
+    const isLast = i === steps.length - 1;
+    if (step.type === 'ride') {
+      const lineInfo = metroLines[step.line] || { color: '#888', text: '#fff', name: step.line };
+      const stopCount = getStopCount(step.line, step.from, step.to);
+      // From station
+      html += `<div class="route-step">`;
+      html += `<div class="route-step-track"><span class="route-step-dot" style="border-color:${lineInfo.color}"></span><span class="route-step-line" style="background:${lineInfo.color}"></span></div>`;
+      html += `<div class="route-step-content"><div class="route-step-station">${step.from}</div>`;
+      html += `<div class="route-step-detail"><span class="route-step-badge" style="background:${lineInfo.color};color:${lineInfo.text}">${step.line} Line</span>`;
+      if (stopCount !== null) html += `<span>${stopCount} stop${stopCount !== 1 ? 's' : ''}</span>`;
+      html += `</div></div></div>`;
+      // To station (only if this is the last step)
+      if (isLast) {
+        html += `<div class="route-step"><div class="route-step-track"><span class="route-step-dot" style="border-color:${lineInfo.color}"></span></div>`;
+        html += `<div class="route-step-content"><div class="route-step-station">${step.to}</div></div></div>`;
+      }
+    } else if (step.type === 'transfer') {
+      html += `<div class="route-step">`;
+      html += `<div class="route-step-track"><span class="route-step-dot" style="border-color:var(--accent);background:var(--accent)"></span>`;
+      if (!isLast) html += `<span class="route-step-line" style="background:var(--border)"></span>`;
+      html += `</div>`;
+      html += `<div class="route-step-content"><div class="route-step-transfer">⇆ Transfer at ${step.from}</div></div></div>`;
+    }
+  });
+  html += `</div>`;
+
+  // Footer with Get Started button
+  html += `<div class="route-widget-footer"><button class="route-start-btn" id="routeStartBtn">Get Started</button></div>`;
+
+  widget.innerHTML = html;
+  chatOverlay.appendChild(widget);
+  // Scroll after DOM paint so full widget height is measured
+  requestAnimationFrame(() => {
+    chatOverlay.scrollTop = chatOverlay.scrollHeight;
+  });
+
+  // Attach event to Get Started button
+  widget.querySelector('#routeStartBtn').addEventListener('click', () => {
+    startRouteNavigation(routeData);
+  });
+}
+
+function startRouteNavigation(routeData) {
+  // Close chat overlay
+  dismissChat();
+
+  // Clear previous route
+  clearRouteFromMap();
+  // Also clear the active line polyline if any
+  if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+
+  const allBounds = [];
+  const steps = routeData.steps;
+
+  steps.forEach((step, i) => {
+    if (step.type === 'ride' && step.line) {
+      const route = lineRoutes[step.line];
+      if (!route) return;
+      const fi = route.indexOf(step.from);
+      const ti = route.indexOf(step.to);
+      if (fi === -1 || ti === -1) return;
+      const start = Math.min(fi, ti);
+      const end = Math.max(fi, ti);
+      const segment = route.slice(start, end + 1);
+      const coords = segment.map(n => stationByName[n]).filter(Boolean).map(s => [s.lat, s.lng]);
+      if (coords.length < 2) return;
+
+      const lineInfo = metroLines[step.line] || { color: '#888' };
+      const poly = L.polyline(coords, {
+        color: lineInfo.color,
+        weight: 6,
+        opacity: 0.9,
+        ...(step.line === 'G' ? { dashArray: '10 6' } : {}),
+      }).addTo(map);
+      routePolylines.push(poly);
+      coords.forEach(c => allBounds.push(c));
+    }
+
+    // Place transfer markers
+    if (step.type === 'transfer') {
+      const st = stationByName[step.from];
+      if (st) {
+        const m = L.circleMarker([st.lat, st.lng], {
+          radius: 8, fillColor: '#f5c518', color: '#fff', weight: 2, fillOpacity: 1,
+        }).addTo(map).bindTooltip('Transfer: ' + step.from, { direction: 'top', offset: [0, -10] });
+        routeMarkers.push(m);
+        allBounds.push([st.lat, st.lng]);
+      }
+    }
+  });
+
+  // Place start and end markers
+  const rideSteps = steps.filter(s => s.type === 'ride');
+  if (rideSteps.length > 0) {
+    const startStation = stationByName[rideSteps[0].from];
+    const endStation = stationByName[rideSteps[rideSteps.length - 1].to];
+    if (startStation) {
+      const sm = L.circleMarker([startStation.lat, startStation.lng], {
+        radius: 9, fillColor: '#34c759', color: '#fff', weight: 2.5, fillOpacity: 1,
+      }).addTo(map).bindTooltip('Start: ' + rideSteps[0].from, { direction: 'top', offset: [0, -10] });
+      routeMarkers.push(sm);
+      allBounds.push([startStation.lat, startStation.lng]);
+    }
+    if (endStation) {
+      const em = L.circleMarker([endStation.lat, endStation.lng], {
+        radius: 9, fillColor: '#ff3b30', color: '#fff', weight: 2.5, fillOpacity: 1,
+      }).addTo(map).bindTooltip('End: ' + rideSteps[rideSteps.length - 1].to, { direction: 'top', offset: [0, -10] });
+      routeMarkers.push(em);
+      allBounds.push([endStation.lat, endStation.lng]);
+    }
+  }
+
+  // Zoom to fit
+  if (allBounds.length > 1) {
+    map.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50], maxZoom: 14 });
+  } else if (allBounds.length === 1) {
+    map.setView(allBounds[0], 13);
+  }
+
+  showMapToast('Route displayed on map', 'success');
+}
 
 document.getElementById('infoBtn').addEventListener('click', () => {
   if (!chatOverlay.classList.contains('visible') || chatOverlay.children.length === 0) {

@@ -11,6 +11,7 @@ from django.core.files.base import ContentFile
 import json
 import io
 import math
+import re
 import anthropic
 from django.conf import settings
 from django.db.models import Avg, Count
@@ -925,7 +926,26 @@ Guidelines:
   - Greet signed-in users by their username on the first message
   - If the user asks for their coordinates or location data, share it — it's their data
   - When not explicitly asked, prefer using station names and distances over raw coordinates
-  - ALWAYS start directions from the user's closest station — never suggest a farther station when a closer one works"""
+  - ALWAYS start directions from the user's closest station — never suggest a farther station when a closer one works
+
+Structured Route Data — IMPORTANT:
+Whenever you give step-by-step Metro directions (riding from one station to another), you MUST append a machine-readable JSON block at the very end of your response in this exact format:
+
+[ROUTE]{"steps":[...]}[/ROUTE]
+
+Each step object has these fields:
+- "type": "ride" or "transfer"
+- "line": line letter code (e.g. "A", "B", "E") — required for "ride", null for "transfer"
+- "from": exact station name (starting station of this segment)
+- "to": exact station name (ending station of this segment)
+For "transfer" steps, "from" and "to" are the same station (the transfer point), and "line" is null.
+
+Station names MUST exactly match official names: e.g. "7th St/Metro Center", "Union Station", "Hollywood/Highland", "Willowbrook/Rosa Parks".
+
+Example for a trip from Atlantic to Hollywood/Highland:
+[ROUTE]{"steps":[{"type":"ride","line":"E","from":"Atlantic","to":"7th St/Metro Center"},{"type":"transfer","line":null,"from":"7th St/Metro Center","to":"7th St/Metro Center"},{"type":"ride","line":"B","from":"7th St/Metro Center","to":"Hollywood/Highland"}]}[/ROUTE]
+
+Only include the [ROUTE] block for actual routing directions, NOT for general info questions about lines or stations."""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -1058,23 +1078,39 @@ def api_chat(request):
 
         response = client.messages.create(
             model='claude-haiku-4-5',
-            max_tokens=512,
+            max_tokens=1024,
             system=system_prompt,
             messages=messages,
         )
 
         ai_text = response.content[0].text
 
-        # Save the assistant reply
+        # Parse structured route data if present
+        route_data = None
+        ai_text_clean = ai_text
+        route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
+        if route_match:
+            try:
+                route_data = json.loads(route_match.group(1))
+            except (json.JSONDecodeError, ValueError):
+                route_data = None
+            # Strip the route block from display text
+            ai_text_clean = ai_text[:route_match.start()].rstrip()
+
+        # Save full text (with route block) to DB for AI context continuity
         if conversation:
             ChatMessage.objects.create(conversation=conversation, role='assistant', content=ai_text)
             conversation.save()  # bump updated_at
 
-        return JsonResponse({
+        resp = {
             'status': 'ok',
-            'reply': ai_text,
+            'reply': ai_text_clean,
             'conversation_id': conversation.id if conversation else None,
-        })
+        }
+        if route_data:
+            resp['route_data'] = route_data
+
+        return JsonResponse(resp)
 
     except anthropic.AuthenticationError:
         return JsonResponse({'status': 'error', 'message': 'AI service configuration error'}, status=500)
@@ -1114,10 +1150,24 @@ def api_chat_conversation(request, conversation_id):
 
     msgs = []
     for m in conversation.messages.order_by('created_at'):
-        msgs.append({
+        text = m.content
+        route_data = None
+        # Strip route block from assistant messages and extract route data
+        if m.role == 'assistant':
+            route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', text, re.DOTALL)
+            if route_match:
+                try:
+                    route_data = json.loads(route_match.group(1))
+                except (json.JSONDecodeError, ValueError):
+                    pass
+                text = text[:route_match.start()].rstrip()
+        msg_obj = {
             'type': 'user' if m.role == 'user' else 'ai',
-            'text': m.content,
-        })
+            'text': text,
+        }
+        if route_data:
+            msg_obj['route_data'] = route_data
+        msgs.append(msg_obj)
     return JsonResponse({
         'status': 'ok',
         'id': conversation.id,
