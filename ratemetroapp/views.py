@@ -959,7 +959,17 @@ Station names MUST exactly match official names: e.g. "7th St/Metro Center", "Un
 Example for a trip from Atlantic to Hollywood/Highland:
 [ROUTE]{"steps":[{"type":"ride","line":"E","from":"Atlantic","to":"7th St/Metro Center"},{"type":"transfer","line":null,"from":"7th St/Metro Center","to":"7th St/Metro Center"},{"type":"ride","line":"B","from":"7th St/Metro Center","to":"Hollywood/Highland"}]}[/ROUTE]
 
-Only include the [ROUTE] block for actual routing directions, NOT for general info questions about lines or stations."""
+Only include the [ROUTE] block for actual routing directions, NOT for general info questions about lines or stations.
+
+Structured Arrivals Data — IMPORTANT:
+When the user asks about train times, schedule, next trains, or arrivals at a station, append a machine-readable JSON block at the very end of your response in this exact format:
+
+[ARRIVALS]{"station":"Station Name","arrivals":[{"line":"E","headsign":"Downtown Santa Monica","minutes_away":5,"color":"#fdb913"}]}[/ARRIVALS]
+
+Copy the arrivals exactly from the CURRENT USER CONTEXT "Live trains at ..." data. Do not invent or modify times.
+Use the station name, line letter, headsign, minutes_away, and color values exactly as provided in the context.
+Only include the [ARRIVALS] block for train time/schedule/arrival questions, NOT for directions or general info.
+If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station."""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -971,8 +981,30 @@ def _haversine_miles(lat1, lng1, lat2, lng2):
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def _build_user_context(request, data):
+def _station_mentioned(station_name, msg_lower):
+    """Check if a station is mentioned in a message, with fuzzy matching."""
+    name_lower = station_name.lower()
+    # Direct: full station name found in message
+    if name_lower in msg_lower:
+        return True
+    # Normalize slashes to spaces for both name and message
+    name_norm = name_lower.replace('/', ' ')
+    msg_norm = msg_lower.replace('/', ' ')
+    if name_norm in msg_norm:
+        return True
+    # Reverse: check if 2+ consecutive words from station name appear in message
+    name_words = name_norm.split()
+    for length in range(len(name_words), 1, -1):
+        for start in range(len(name_words) - length + 1):
+            phrase = ' '.join(name_words[start:start + length])
+            if len(phrase) >= 5 and phrase in msg_norm:
+                return True
+    return False
+
+
+def _build_user_context(request, data, user_message=''):
     """Build a context string with user info for the AI."""
+    from .gtfs_service import get_arrivals
     parts = []
 
     # --- User identity ---
@@ -1029,9 +1061,39 @@ def _build_user_context(request, data):
             if nearby:
                 parts.append(f"Closest station: {nearby[0][1]}")
                 parts.append("Nearby stations: " + "; ".join(info for _, info in nearby[:10]))
+
+                # Fetch live arrivals for nearest station
+                try:
+                    nearest_name = nearby[0][1].split(' [')[0]  # extract station name before [Lines: ...]
+                    nearest_arrivals = get_arrivals(nearest_name, limit=5)
+                    if nearest_arrivals:
+                        arr_strs = [f"{a['line']} Line to {a['headsign']} in {a['minutes_away']} min" for a in nearest_arrivals]
+                        parts.append(f"Live trains at {nearest_name}: " + "; ".join(arr_strs))
+                except Exception:
+                    pass
             else:
                 parts.append("No Metro stations within 5 miles of user.")
         except (ValueError, TypeError):
+            pass
+
+    # Fetch arrivals for any station mentioned in the user message
+    if user_message:
+        try:
+            all_stations = Station.objects.all()
+            msg_lower = user_message.lower()
+            for s in all_stations:
+                if _station_mentioned(s.name, msg_lower):
+                    try:
+                        mentioned_arrivals = get_arrivals(s.name, limit=5)
+                        if mentioned_arrivals:
+                            arr_strs = [
+                                f"{a['line']} Line to {a['headsign']} in {a['minutes_away']} min (color:{a['color']})"
+                                for a in mentioned_arrivals
+                            ]
+                            parts.append(f"Live trains at {s.name}: " + "; ".join(arr_strs))
+                    except Exception:
+                        pass
+        except Exception:
             pass
 
     return "\n".join(parts)
@@ -1085,7 +1147,7 @@ def api_chat(request):
             messages.append({'role': 'user', 'content': user_message})
 
         # Build user context
-        user_context = _build_user_context(request, data)
+        user_context = _build_user_context(request, data, user_message)
         system_prompt = METRO_SYSTEM_PROMPT + "\n\n--- CURRENT USER CONTEXT ---\n" + user_context
 
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -1111,7 +1173,17 @@ def api_chat(request):
             # Strip the route block from display text
             ai_text_clean = ai_text[:route_match.start()].rstrip()
 
-        # Save full text (with route block) to DB for AI context continuity
+        # Parse structured arrivals data if present
+        arrivals_data = None
+        arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', ai_text_clean, re.DOTALL)
+        if arrivals_match:
+            try:
+                arrivals_data = json.loads(arrivals_match.group(1))
+            except (json.JSONDecodeError, ValueError):
+                arrivals_data = None
+            ai_text_clean = ai_text_clean[:arrivals_match.start()].rstrip()
+
+        # Save full text (with route/arrivals blocks) to DB for AI context continuity
         if conversation:
             ChatMessage.objects.create(conversation=conversation, role='assistant', content=ai_text)
             conversation.save()  # bump updated_at
@@ -1123,6 +1195,8 @@ def api_chat(request):
         }
         if route_data:
             resp['route_data'] = route_data
+        if arrivals_data:
+            resp['arrivals_data'] = arrivals_data
 
         return JsonResponse(resp)
 
@@ -1188,7 +1262,8 @@ def api_chat_conversation(request, conversation_id):
     for m in conversation.messages.order_by('created_at'):
         text = m.content
         route_data = None
-        # Strip route block from assistant messages and extract route data
+        arrivals_data = None
+        # Strip route/arrivals blocks from assistant messages and extract data
         if m.role == 'assistant':
             route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', text, re.DOTALL)
             if route_match:
@@ -1197,12 +1272,21 @@ def api_chat_conversation(request, conversation_id):
                 except (json.JSONDecodeError, ValueError):
                     pass
                 text = text[:route_match.start()].rstrip()
+            arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', text, re.DOTALL)
+            if arrivals_match:
+                try:
+                    arrivals_data = json.loads(arrivals_match.group(1))
+                except (json.JSONDecodeError, ValueError):
+                    pass
+                text = text[:arrivals_match.start()].rstrip()
         msg_obj = {
             'type': 'user' if m.role == 'user' else 'ai',
             'text': text,
         }
         if route_data:
             msg_obj['route_data'] = route_data
+        if arrivals_data:
+            msg_obj['arrivals_data'] = arrivals_data
         msgs.append(msg_obj)
     return JsonResponse({
         'status': 'ok',

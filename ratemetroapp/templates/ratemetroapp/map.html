@@ -745,6 +745,81 @@
   .route-start-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .route-start-btn:active { transform: translateY(0); }
 
+  /* ── Arrivals Widget ── */
+  .arrivals-widget {
+    align-self: stretch;
+    max-width: 100%;
+    flex-shrink: 0;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: visible;
+    animation: msgIn 0.3s ease both;
+    margin-bottom: 8px;
+  }
+  .arrivals-widget-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .arrivals-widget-header h3 {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-primary);
+    margin: 0; display: flex; align-items: center; gap: 8px;
+  }
+  .arrivals-widget-header .line-dots {
+    display: flex; gap: 4px;
+  }
+  .arrivals-widget-header .line-dot-sm {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .arrivals-widget-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px; line-height: 1;
+    padding: 0 2px; transition: color 0.2s;
+  }
+  .arrivals-widget-close:hover { color: var(--text-primary); }
+  .arrivals-widget-rows { padding: 6px 0; }
+  .arrivals-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px;
+    transition: background 0.15s;
+  }
+  .arrivals-row:hover { background: rgba(255,255,255,0.03); }
+  [data-theme="light"] .arrivals-row:hover { background: rgba(0,0,0,0.03); }
+  .arrivals-line-badge {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; flex-shrink: 0;
+    letter-spacing: 0.3px;
+  }
+  .arrivals-headsign {
+    flex: 1; font-size: 13px; font-weight: 500;
+    color: var(--text-primary); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .arrivals-time {
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .arrivals-widget-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .arrivals-view-btn {
+    width: 100%; padding: 10px;
+    background: var(--accent); color: var(--bg-dark);
+    border: none; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .arrivals-view-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .arrivals-view-btn:active { transform: translateY(0); }
+
   /* ── Map Markers ── */
   .metro-marker { display: flex; align-items: center; justify-content: center; }
   .metro-marker-inner {
@@ -2899,11 +2974,11 @@ async function getAIResponse(msg) {
         session.conversation_id = data.conversation_id;
         saveSessions(chatSessions);
       }
-      return { reply: data.reply, route_data: data.route_data || null };
+      return { reply: data.reply, route_data: data.route_data || null, arrivals_data: data.arrivals_data || null };
     }
-    return { reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null };
+    return { reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null, arrivals_data: null };
   } catch (e) {
-    return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null };
+    return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null, arrivals_data: null };
   }
 }
 // ── Chat Sessions ──
@@ -2992,15 +3067,20 @@ async function openSession(id) {
     } catch(e) { /* show whatever we have */ }
   }
 
-  // Remove any previous route widget
+  // Remove any previous route/arrivals widgets
   document.querySelectorAll('.route-widget').forEach(el => el.remove());
+  document.querySelectorAll('.arrivals-widget').forEach(el => el.remove());
   let lastRouteData = null;
+  let lastArrivalsData = null;
   session.messages.forEach(msg => {
     appendMsgEl(msg.text, msg.type);
     if (msg.route_data && msg.route_data.steps) lastRouteData = msg.route_data;
+    if (msg.arrivals_data && msg.arrivals_data.arrivals) lastArrivalsData = msg.arrivals_data;
   });
   // Show the most recent route widget if any
   if (lastRouteData) showRouteWidget(lastRouteData);
+  // Show the most recent arrivals widget if any
+  if (lastArrivalsData) showArrivalsWidget(lastArrivalsData);
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
   requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
@@ -3015,7 +3095,7 @@ function startNewSession() {
   chatBackdrop.classList.add('visible');
 }
 
-function addMsg(text, type, routeData) {
+function addMsg(text, type, routeData, arrivalsData) {
   if (!activeSessionId) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
@@ -3025,6 +3105,7 @@ function addMsg(text, type, routeData) {
   if (session) {
     const msg = { type, text };
     if (routeData) msg.route_data = routeData;
+    if (arrivalsData) msg.arrivals_data = arrivalsData;
     session.messages.push(msg);
     saveSessions(chatSessions);
   }
@@ -3049,6 +3130,10 @@ async function sendMessage() {
     // Remove any existing route widget before showing a new one
     document.querySelectorAll('.route-widget').forEach(el => el.remove());
     showRouteWidget(result.route_data);
+  } else if (result.arrivals_data && result.arrivals_data.arrivals) {
+    addMsg(result.reply, 'ai', null, result.arrivals_data);
+    document.querySelectorAll('.arrivals-widget').forEach(el => el.remove());
+    showArrivalsWidget(result.arrivals_data);
   } else {
     addMsg(result.reply, 'ai');
   }
@@ -3141,6 +3226,63 @@ function showRouteWidget(routeData) {
   widget.querySelector('#routeStartBtn').addEventListener('click', () => {
     startRouteNavigation(routeData);
   });
+}
+
+function showArrivalsWidget(data) {
+  const arrivals = data.arrivals;
+  if (!arrivals || arrivals.length === 0) return;
+
+  // Collect unique line colors for header dots
+  const uniqueLines = [...new Set(arrivals.map(a => a.line))];
+
+  const widget = document.createElement('div');
+  widget.className = 'arrivals-widget';
+
+  // Header with station name + line color dots
+  let html = `<div class="arrivals-widget-header"><h3>${data.station || 'Train Times'}<span class="line-dots">`;
+  uniqueLines.forEach(l => {
+    const info = metroLines[l];
+    if (info) html += `<span class="line-dot-sm" style="background:${info.color}"></span>`;
+  });
+  html += `</span></h3><button class="arrivals-widget-close" onclick="this.closest('.arrivals-widget').remove()">&times;</button></div>`;
+
+  // Arrival rows
+  html += `<div class="arrivals-widget-rows">`;
+  arrivals.forEach(a => {
+    const color = a.color || '#888';
+    // Determine text color for badge — light colors need dark text
+    const badgeText = ['#fdb913', '#f58220'].includes(color) ? '#1a1a2e' : '#fff';
+    const timeLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+    html += `<div class="arrivals-row">`;
+    html += `<span class="arrivals-line-badge" style="background:${color};color:${badgeText}">${a.line}</span>`;
+    html += `<span class="arrivals-headsign">${a.headsign}</span>`;
+    html += `<span class="arrivals-time" style="color:${color}">${timeLabel}</span>`;
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  // Footer with View on Map button
+  const stationName = data.station || '';
+  html += `<div class="arrivals-widget-footer"><button class="arrivals-view-btn" onclick="viewStationOnMap('${stationName.replace(/'/g, "\\'")}')">View on Map</button></div>`;
+
+  widget.innerHTML = html;
+  chatOverlay.appendChild(widget);
+  requestAnimationFrame(() => {
+    chatOverlay.scrollTop = chatOverlay.scrollHeight;
+  });
+}
+
+function viewStationOnMap(stationName) {
+  dismissChat();
+  const station = stationByName[stationName];
+  if (station) {
+    map.setView([station.lat, station.lng], 15);
+    // Find and open the station's popup marker
+    const marker = stationMarkers.find(m => m.stationData && m.stationData.name === stationName);
+    if (marker) {
+      setTimeout(() => marker.openPopup(), 400);
+    }
+  }
 }
 
 function startRouteNavigation(routeData) {
