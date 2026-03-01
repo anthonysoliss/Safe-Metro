@@ -27,4 +27,6 @@ urlpatterns = [
     path('api/update-settings/', views.api_update_settings, name='api_update_settings'),
     path('api/arrivals/', views.get_station_arrivals, name='station_arrivals'),
     path('api/chat/', views.api_chat, name='api_chat'),
+    path('api/chat/history/', views.api_chat_history, name='api_chat_history'),
+    path('api/chat/<int:conversation_id>/', views.api_chat_conversation, name='api_chat_conversation'),
 ]

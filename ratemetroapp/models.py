@@ -157,6 +157,45 @@ class Feedback(models.Model):
         return f"[{self.get_category_display()}] {self.subject} — {self.email}"
 
 
+class ChatConversation(models.Model):
+    """A chat conversation between a user and the AI assistant."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_conversations')
+    title = models.CharField(max_length=200, default='New Chat')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', '-updated_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.title}"
+
+
+class ChatMessage(models.Model):
+    """A single message in a chat conversation."""
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('assistant', 'Assistant'),
+    ]
+
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name='messages')
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['conversation', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.role}: {self.content[:50]}"
+
+
 class UserActivity(models.Model):
     """Track user activity for analytics"""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')

@@ -2755,6 +2755,10 @@ async function getAIResponse(msg) {
   const session = getActiveSession();
   const history = session ? session.messages.slice(-10) : [];
   const payload = { message: msg, history: history };
+  // Send conversation_id so the server can persist to DB
+  if (session && session.conversation_id) {
+    payload.conversation_id = session.conversation_id;
+  }
   // Get fresh GPS location for every chat message
   const loc = await getFreshLocation();
   if (loc) {
@@ -2768,7 +2772,14 @@ async function getAIResponse(msg) {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (data.status === 'ok') return data.reply;
+    if (data.status === 'ok') {
+      // Store server conversation_id on the active session
+      if (data.conversation_id && session) {
+        session.conversation_id = data.conversation_id;
+        saveSessions(chatSessions);
+      }
+      return data.reply;
+    }
     return 'Sorry, I\'m having trouble right now. Please try again in a moment.';
   } catch (e) {
     return 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.';
@@ -2785,9 +2796,32 @@ function saveSessions(sessions) {
 
 let chatSessions = loadSessions() || [];
 let activeSessionId = null;
+let chatSessionsLoaded = false;
 
 function getActiveSession() { return chatSessions.find(s => s.id === activeSessionId) || null; }
 function formatDate(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+
+// Load chat sessions from the server for authenticated users
+async function loadServerSessions() {
+  if (!isAuthenticated) return;
+  try {
+    const res = await fetch('/api/chat/history/');
+    const data = await res.json();
+    if (data.status === 'ok' && data.conversations) {
+      chatSessions = data.conversations.map(c => ({
+        id: 'conv-' + c.id,
+        conversation_id: c.id,
+        title: c.title,
+        date: c.date,
+        preview: c.preview,
+        messages: [],  // loaded on demand when opened
+      }));
+      chatSessionsLoaded = true;
+      saveSessions(chatSessions);
+      renderHistoryPanel();
+    }
+  } catch(e) { /* fall back to localStorage */ }
+}
 
 function appendMsgEl(text, type) {
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
@@ -2796,11 +2830,24 @@ function appendMsgEl(text, type) {
   chatOverlay.appendChild(m);
 }
 
-function openSession(id) {
+async function openSession(id) {
   const session = chatSessions.find(s => s.id === id);
   if (!session) return;
   activeSessionId = id;
   chatOverlay.innerHTML = '';
+
+  // If this is a server-backed session with no messages loaded yet, fetch them
+  if (session.conversation_id && session.messages.length === 0) {
+    try {
+      const res = await fetch('/api/chat/' + session.conversation_id + '/');
+      const data = await res.json();
+      if (data.status === 'ok') {
+        session.messages = data.messages;
+        saveSessions(chatSessions);
+      }
+    } catch(e) { /* show whatever we have */ }
+  }
+
   session.messages.forEach(msg => appendMsgEl(msg.text, msg.type));
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
@@ -2874,7 +2921,8 @@ function renderHistoryPanel() {
       const item = document.createElement('div');
       item.className = 'chat-history-item' + (session.id === activeSessionId ? ' active' : '');
       const lastAI = [...session.messages].reverse().find(m => m.type === 'ai');
-      item.innerHTML = `<div class="chat-history-item-title">${session.title}</div><div class="chat-history-item-preview">${lastAI ? lastAI.text : ''}</div>`;
+      const previewText = lastAI ? lastAI.text : (session.preview || '');
+      item.innerHTML = `<div class="chat-history-item-title">${session.title}</div><div class="chat-history-item-preview">${previewText}</div>`;
       item.addEventListener('click', () => { closeChatHistoryPanel(); openSession(session.id); });
       chatHistoryList.appendChild(item);
     });
@@ -3047,6 +3095,9 @@ function updateChatHistoryUserInfo() {
   }
 }
 updateChatHistoryUserInfo();
+
+// Load chat sessions from the database for authenticated users
+loadServerSessions();
 
 // Avatar is now loaded from server; no localStorage listener needed.
 

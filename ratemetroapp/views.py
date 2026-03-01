@@ -14,7 +14,7 @@ import math
 import anthropic
 from django.conf import settings
 from django.db.models import Avg, Count
-from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile, Feedback
+from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile, Feedback, ChatConversation, ChatMessage
 
 def map_view(request):
     """Main map page view"""
@@ -687,13 +687,16 @@ def api_delete_account(request):
     try:
         # Delete user's ratings
         Rating.objects.filter(user=request.user).delete()
-        
+
         # Delete user's profile
         try:
             UserProfile.objects.filter(user=request.user).delete()
         except:
             pass
-        
+
+        # Delete user's chat conversations
+        ChatConversation.objects.filter(user=request.user).delete()
+
         # Delete user's location data
         UserLocation.objects.filter(user=request.user).delete()
         
@@ -878,7 +881,8 @@ Guidelines:
   - If they have recent ratings, you can reference those stations as places they've been
   - If they ask "what's near me" or "closest station", use the nearby stations list
   - Greet signed-in users by their username on the first message
-  - Never expose raw coordinates to the user — use station names and distances instead"""
+  - If the user asks for their coordinates or location data, share it — it's their data
+  - When not explicitly asked, prefer using station names and distances over raw coordinates"""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -956,29 +960,55 @@ def _build_user_context(request, data):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_chat(request):
-    """AI chat endpoint using Claude API"""
+    """AI chat endpoint using Claude API — persists messages for authenticated users"""
     try:
         data = json.loads(request.body)
         user_message = data.get('message', '').strip()
+        conversation_id = data.get('conversation_id')
         conversation_history = data.get('history', [])
 
         if not user_message:
             return JsonResponse({'status': 'error', 'message': 'Empty message'}, status=400)
+
+        # --- Resolve or create conversation for authenticated users ---
+        conversation = None
+        if request.user.is_authenticated:
+            if conversation_id:
+                try:
+                    conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
+                except ChatConversation.DoesNotExist:
+                    conversation = None
+
+            if conversation is None:
+                # Create new conversation; use first ~50 chars of the message as title
+                conversation = ChatConversation.objects.create(
+                    user=request.user,
+                    title=user_message[:50],
+                )
+
+            # Save the user message
+            ChatMessage.objects.create(conversation=conversation, role='user', content=user_message)
+
+            # Load history from DB instead of client payload
+            db_messages = conversation.messages.order_by('created_at')
+            messages = []
+            for m in db_messages:
+                messages.append({'role': m.role, 'content': m.content})
+            # Keep last 20 messages for context window
+            messages = messages[-20:]
+        else:
+            # Anonymous: use client-supplied history
+            messages = []
+            for msg in conversation_history[-10:]:
+                role = 'user' if msg.get('type') == 'user' else 'assistant'
+                messages.append({'role': role, 'content': msg.get('text', '')})
+            messages.append({'role': 'user', 'content': user_message})
 
         # Build user context
         user_context = _build_user_context(request, data)
         system_prompt = METRO_SYSTEM_PROMPT + "\n\n--- CURRENT USER CONTEXT ---\n" + user_context
 
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-
-        # Build messages from conversation history
-        messages = []
-        for msg in conversation_history[-10:]:  # Last 10 messages for context
-            role = 'user' if msg.get('type') == 'user' else 'assistant'
-            messages.append({'role': role, 'content': msg.get('text', '')})
-
-        # Add the current user message
-        messages.append({'role': 'user', 'content': user_message})
 
         response = client.messages.create(
             model='claude-haiku-4-5',
@@ -989,7 +1019,16 @@ def api_chat(request):
 
         ai_text = response.content[0].text
 
-        return JsonResponse({'status': 'ok', 'reply': ai_text})
+        # Save the assistant reply
+        if conversation:
+            ChatMessage.objects.create(conversation=conversation, role='assistant', content=ai_text)
+            conversation.save()  # bump updated_at
+
+        return JsonResponse({
+            'status': 'ok',
+            'reply': ai_text,
+            'conversation_id': conversation.id if conversation else None,
+        })
 
     except anthropic.AuthenticationError:
         return JsonResponse({'status': 'error', 'message': 'AI service configuration error'}, status=500)
@@ -999,3 +1038,43 @@ def api_chat(request):
         return JsonResponse({'status': 'error', 'message': 'AI service temporarily unavailable'}, status=503)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': 'Something went wrong'}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_chat_history(request):
+    """Return the authenticated user's chat conversations."""
+    conversations = ChatConversation.objects.filter(user=request.user)[:50]
+    result = []
+    for conv in conversations:
+        last_msg = conv.messages.filter(role='assistant').order_by('-created_at').first()
+        result.append({
+            'id': conv.id,
+            'title': conv.title,
+            'date': conv.updated_at.strftime('%b %d, %Y'),
+            'preview': last_msg.content[:100] if last_msg else '',
+        })
+    return JsonResponse({'status': 'ok', 'conversations': result})
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_chat_conversation(request, conversation_id):
+    """Return all messages for a specific conversation."""
+    try:
+        conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
+    except ChatConversation.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Conversation not found'}, status=404)
+
+    msgs = []
+    for m in conversation.messages.order_by('created_at'):
+        msgs.append({
+            'type': 'user' if m.role == 'user' else 'ai',
+            'text': m.content,
+        })
+    return JsonResponse({
+        'status': 'ok',
+        'id': conversation.id,
+        'title': conversation.title,
+        'messages': msgs,
+    })
