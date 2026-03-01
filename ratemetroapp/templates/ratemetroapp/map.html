@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -694,6 +695,7 @@
     overflow: hidden !important;
     word-wrap: break-word !important;
   }
+  .leaflet-popup-content .popup-station-img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; display: block; }
   .leaflet-popup-content .popup-title { font-weight: 700; font-size: 13px; color: var(--accent); margin-bottom: 4px; line-height: 1.3; }
   .leaflet-popup-content .popup-badges { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 6px; }
   .leaflet-popup-content .popup-badge {
@@ -2297,7 +2299,8 @@ function buildPopupHTML(station, rating, userHasRated = false, arrivals = undefi
   const viewRatingsBtn = count > 0
     ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${count})</a>`
     : '';
-  return `<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${arrivalsHTML}${ratingHTML}${rateBtn}${viewRatingsBtn}`;
+  const stationImg = station.image || '{% static "ratemetroapp/images/default-station.svg" %}';
+  return `<img class="popup-station-img" src="${stationImg}" alt="${station.name}"><div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${arrivalsHTML}${ratingHTML}${rateBtn}${viewRatingsBtn}`;
 }
 
 function createMarkers(filterLine = 'all') {

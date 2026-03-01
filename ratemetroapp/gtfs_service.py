@@ -13,6 +13,9 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 import requests
+from zoneinfo import ZoneInfo
+
+LA_TZ = ZoneInfo("America/Los_Angeles")
 
 GTFS_URL = "https://gitlab.com/LACMTA/gtfs_rail/-/raw/master/gtfs_rail.zip"
 CACHE_TTL = 4 * 3600  # 4 hours
@@ -198,7 +201,7 @@ def _get_cached_data():
 
 def _get_service_ids_for_today(calendar, calendar_dates):
     """Determine which service_ids are active today."""
-    today = datetime.now()
+    today = datetime.now(LA_TZ)
     day_name = today.strftime("%A").lower()
     today_str = today.strftime("%Y%m%d")
     active = set()
@@ -284,7 +287,7 @@ def get_arrivals(station_name, limit=10):
     if not stop_ids:
         return []
 
-    now = datetime.now()
+    now = datetime.now(LA_TZ)
     base = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     seen = set()
