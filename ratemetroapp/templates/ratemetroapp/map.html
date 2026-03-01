@@ -1409,9 +1409,11 @@
   .chat-history-item {
     padding: 11px 12px; border-radius: 10px; cursor: pointer;
     transition: background 0.15s; margin-bottom: 2px; border: 1px solid transparent;
+    position: relative; display: flex; align-items: center; gap: 8px;
   }
   .chat-history-item:hover { background: var(--surface-light); border-color: var(--border); }
   .chat-history-item.active { background: var(--surface-light); border-color: var(--accent); }
+  .chat-history-item-content { flex: 1; min-width: 0; }
   .chat-history-item-title {
     font-size: 13px; font-weight: 500; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
@@ -1420,6 +1422,22 @@
     font-size: 11px; color: var(--text-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .chat-history-delete {
+    flex-shrink: 0; width: 28px; height: 28px; border: none; background: none;
+    border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); opacity: 0; transition: opacity 0.15s, background 0.15s, color 0.15s;
+  }
+  .chat-history-item:hover .chat-history-delete { opacity: 1; }
+  .chat-history-delete:hover { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+  .chat-history-delete svg { width: 15px; height: 15px; }
+  .chat-history-clear-all {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 8px; margin-top: 8px; border: 1px solid var(--border);
+    background: none; border-radius: 8px; cursor: pointer; font-size: 12px;
+    color: var(--text-muted); transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chat-history-clear-all:hover { background: rgba(239, 68, 68, 0.08); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+  .chat-history-clear-all svg { width: 14px; height: 14px; }
   .chat-history-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 32px 16px; }
   .chat-history-footer { border-top: 1px solid var(--border); padding: 6px 8px; flex-shrink: 0; }
   .chat-history-footer-item {
@@ -2962,9 +2980,10 @@ async function openSession(id) {
 function startNewSession() {
   activeSessionId = null;
   chatOverlay.innerHTML = '';
-  chatOverlay.classList.remove('visible');
-  chatBackdrop.classList.remove('visible');
   clearRouteFromMap();
+  // Keep chat open with backdrop so user can start typing immediately
+  chatOverlay.classList.add('visible');
+  chatBackdrop.classList.add('visible');
 }
 
 function addMsg(text, type, routeData) {
@@ -3189,6 +3208,38 @@ const chatHistoryPanel = document.getElementById('chatHistoryPanel');
 const chatHistoryBackdrop = document.getElementById('chatHistoryBackdrop');
 const chatHistoryList = document.getElementById('chatHistoryList');
 
+async function deleteChat(session, e) {
+  e.stopPropagation();
+  // Delete from server if it has a conversation_id
+  if (session.conversation_id) {
+    try {
+      await fetch('/api/chat/' + session.conversation_id + '/delete/', { method: 'DELETE' });
+    } catch(err) { /* continue with local delete */ }
+  }
+  // Remove from local state
+  chatSessions = chatSessions.filter(s => s.id !== session.id);
+  saveSessions(chatSessions);
+  // If we deleted the active session, clear the chat
+  if (activeSessionId === session.id) {
+    startNewSession();
+  }
+  renderHistoryPanel();
+}
+
+async function deleteAllChats() {
+  if (!chatSessions.length) return;
+  // Delete from server
+  if (isAuthenticated) {
+    try {
+      await fetch('/api/chat/delete-all/', { method: 'DELETE' });
+    } catch(err) { /* continue with local delete */ }
+  }
+  chatSessions = [];
+  saveSessions(chatSessions);
+  startNewSession();
+  renderHistoryPanel();
+}
+
 function renderHistoryPanel() {
   chatHistoryList.innerHTML = '';
   if (!chatSessions.length) {
@@ -3207,13 +3258,20 @@ function renderHistoryPanel() {
       item.className = 'chat-history-item' + (session.id === activeSessionId ? ' active' : '');
       const lastAI = [...session.messages].reverse().find(m => m.type === 'ai');
       const previewText = lastAI ? lastAI.text : (session.preview || '');
-      item.innerHTML = `<div class="chat-history-item-title">${session.title}</div><div class="chat-history-item-preview">${previewText}</div>`;
-      item.addEventListener('click', () => { closeChatHistoryPanel(); openSession(session.id); });
+      item.innerHTML = `<div class="chat-history-item-content"><div class="chat-history-item-title">${session.title}</div><div class="chat-history-item-preview">${previewText}</div></div><button class="chat-history-delete" title="Delete chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+      item.querySelector('.chat-history-delete').addEventListener('click', (e) => deleteChat(session, e));
+      item.querySelector('.chat-history-item-content').addEventListener('click', () => { closeChatHistoryPanel(); openSession(session.id); });
       chatHistoryList.appendChild(item);
     });
   }
   renderGroup('Today', todaySessions);
   renderGroup('Earlier', earlierSessions);
+  // Clear All button
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'chat-history-clear-all';
+  clearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear All Chats';
+  clearBtn.addEventListener('click', deleteAllChats);
+  chatHistoryList.appendChild(clearBtn);
 }
 
 function openChatHistoryPanel() {

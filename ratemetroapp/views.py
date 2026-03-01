@@ -1122,6 +1122,28 @@ def api_chat(request):
         return JsonResponse({'status': 'error', 'message': 'Something went wrong'}, status=500)
 
 
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def api_chat_delete(request, conversation_id):
+    """Delete a single chat conversation."""
+    try:
+        conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
+        conversation.delete()
+        return JsonResponse({'status': 'ok'})
+    except ChatConversation.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Conversation not found'}, status=404)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def api_chat_delete_all(request):
+    """Delete all chat conversations for the authenticated user."""
+    ChatConversation.objects.filter(user=request.user).delete()
+    return JsonResponse({'status': 'ok'})
+
+
 @login_required
 @require_http_methods(["GET"])
 def api_chat_history(request):

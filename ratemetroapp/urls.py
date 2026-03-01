@@ -29,4 +29,6 @@ urlpatterns = [
     path('api/chat/', views.api_chat, name='api_chat'),
     path('api/chat/history/', views.api_chat_history, name='api_chat_history'),
     path('api/chat/<int:conversation_id>/', views.api_chat_conversation, name='api_chat_conversation'),
+    path('api/chat/<int:conversation_id>/delete/', views.api_chat_delete, name='api_chat_delete'),
+    path('api/chat/delete-all/', views.api_chat_delete_all, name='api_chat_delete_all'),
 ]
