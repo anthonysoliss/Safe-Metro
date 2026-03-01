@@ -508,7 +508,7 @@
   }
   .chat-bar {
     position: relative;
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: flex-end; gap: 10px;
     background: var(--chat-bg);
     backdrop-filter: blur(24px);
     border: 1px solid var(--border);
@@ -551,6 +551,8 @@
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
+    margin-bottom: 2px;
+    flex-shrink: 0;
   }
   .info-btn:hover { background: rgba(212,160,23,0.22); border-color: var(--accent); box-shadow: 0 0 14px rgba(212,160,23,0.25); }
   .info-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -564,6 +566,10 @@
     padding: 10px 4px;
     caret-color: var(--accent);
     transition: opacity 0.4s ease;
+    resize: none;
+    overflow-y: hidden;
+    max-height: 120px;
+    line-height: 1.4;
   }
   .chat-input::placeholder { 
     color: var(--text-muted);
@@ -577,6 +583,7 @@
     width: 40px; height: 40px; min-width: 40px;
     background: var(--accent); border: none; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
+    margin-bottom: 2px; flex-shrink: 0;
     cursor: pointer; transition: all 0.2s ease; opacity: 0.4;
   }
   .send-btn.active { opacity: 1; }
@@ -1874,7 +1881,7 @@
         <path d="M18 13.5L18.8 15.8L21 16.5L18.8 17.2L18 19.5L17.2 17.2L15 16.5L17.2 15.8L18 13.5Z"/>
       </svg>
     </div>
-    <input class="chat-input" id="chatInput" type="text" placeholder="Ask about station safety..." autocomplete="off" />
+    <textarea class="chat-input" id="chatInput" rows="1" placeholder="Ask about station safety..." autocomplete="off"></textarea>
     <button class="send-btn" id="sendBtn">
       <svg viewBox="0 0 24 24">
         <line x1="22" y1="2" x2="11" y2="13"/>
@@ -2742,22 +2749,32 @@ function updateCoords(lat, lng) {
   document.getElementById('coordsText').innerHTML =
     `<strong>${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}</strong> &nbsp; <strong>${Math.abs(lng).toFixed(4)}°${lng >= 0 ? 'E' : 'W'}</strong>`;
 }
-function setUserLocation(lat, lng) {
+let _lastServerSend = 0;
+function setUserLocation(lat, lng, panToUser) {
   userLat = lat; userLng = lng; userLocationKnown = true;
   renderStationList(document.getElementById('stationSearch').value);
   updateCoords(lat, lng);
-  if (userMarker) map.removeLayer(userMarker);
-  userMarker = L.marker([lat, lng], {
-    icon: L.divIcon({
-      className: '',
-      html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;"><div class="user-marker-ring"></div><div class="user-marker"></div></div>`,
-      iconSize: [18, 18], iconAnchor: [9, 9],
-    }), zIndexOffset: 1000
-  }).addTo(map);
-  map.setView([lat, lng], 14, { animate: true, duration: 1 });
+  if (userMarker) {
+    userMarker.setLatLng([lat, lng]);
+  } else {
+    userMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;"><div class="user-marker-ring"></div><div class="user-marker"></div></div>`,
+        iconSize: [18, 18], iconAnchor: [9, 9],
+      }), zIndexOffset: 1000
+    }).addTo(map);
+  }
+  if (panToUser) {
+    map.setView([lat, lng], 14, { animate: true, duration: 1 });
+  }
 
-  // Send location to Django backend
-  sendLocationToServer(lat, lng);
+  // Send location to Django backend (throttle to once per 30s)
+  const now = Date.now();
+  if (now - _lastServerSend > 30000) {
+    _lastServerSend = now;
+    sendLocationToServer(lat, lng);
+  }
 }
 
 function sendLocationToServer(lat, lng) {
@@ -2794,6 +2811,25 @@ function getCookie(name) {
   }
   return cookieValue;
 }
+let _watchId = null;
+function startLocationWatch() {
+  if (_watchId !== null || !navigator.geolocation) return;
+  _watchId = navigator.geolocation.watchPosition(
+    function(position) {
+      const panFirst = !userLocationKnown;
+      setUserLocation(position.coords.latitude, position.coords.longitude, panFirst);
+      const locateBtn = document.getElementById('locateBtn');
+      if (locateBtn) { locateBtn.classList.remove('loading'); locateBtn.classList.add('active'); }
+      localStorage.setItem('ratemetro-share-location', 'true');
+    },
+    function(error) {
+      const locateBtn = document.getElementById('locateBtn');
+      if (locateBtn) locateBtn.classList.remove('loading');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+  );
+}
+
 function requestUserLocation(isUserGesture) {
   if (!navigator.geolocation) {
     if (isUserGesture) {
@@ -2805,15 +2841,29 @@ function requestUserLocation(isUserGesture) {
   const locateBtn = document.getElementById('locateBtn');
   if (locateBtn) locateBtn.classList.add('loading');
 
+  // If already watching, just re-center
+  if (_watchId !== null && userLocationKnown) {
+    map.setView([userLat, userLng], 14, { animate: true, duration: 1 });
+    if (locateBtn) locateBtn.classList.remove('loading');
+    if (isUserGesture) {
+      document.getElementById('coordsDisplay').classList.add('visible');
+      locateBtn.classList.add('active');
+    }
+    return;
+  }
+
+  // Start watching for continuous updates
+  startLocationWatch();
+
+  // Also do a one-shot to get the first position quickly
   navigator.geolocation.getCurrentPosition(
     function(position) {
-      setUserLocation(position.coords.latitude, position.coords.longitude);
+      setUserLocation(position.coords.latitude, position.coords.longitude, true);
       if (locateBtn) locateBtn.classList.remove('loading');
       if (isUserGesture) {
         document.getElementById('coordsDisplay').classList.add('visible');
         document.getElementById('locateBtn').classList.add('active');
       }
-      // User granted location — re-enable share location setting
       localStorage.setItem('ratemetro-share-location', 'true');
     },
     function(error) {
@@ -2834,7 +2884,7 @@ function requestUserLocation(isUserGesture) {
         showConfirmModal('Location Error', msg, 'OK', '', false);
       }
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
   );
 }
 
@@ -2923,7 +2973,12 @@ function rotateChatPlaceholder() {
 rotateChatPlaceholder();
 setInterval(rotateChatPlaceholder, 5500);
 
-chatInput.addEventListener('input', () => sendBtn.classList.toggle('active', chatInput.value.trim().length > 0));
+chatInput.addEventListener('input', () => {
+  sendBtn.classList.toggle('active', chatInput.value.trim().length > 0);
+  chatInput.style.height = 'auto';
+  chatInput.style.height = chatInput.scrollHeight + 'px';
+  chatInput.style.overflowY = chatInput.scrollHeight > 120 ? 'auto' : 'hidden';
+});
 
 function getFreshLocation() {
   return new Promise((resolve) => {
@@ -3121,7 +3176,7 @@ function showTyping() {
 }
 async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
-  addMsg(text, 'user'); chatInput.value = ''; sendBtn.classList.remove('active');
+  addMsg(text, 'user'); chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.classList.remove('active');
   showTyping();
   const result = await getAIResponse(text);
   document.getElementById('typingMsg')?.remove();
@@ -3139,7 +3194,7 @@ async function sendMessage() {
   }
 }
 sendBtn.addEventListener('click', sendMessage);
-chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
 // ── Route Widget & Map Drawing ──
 let routePolylines = [];

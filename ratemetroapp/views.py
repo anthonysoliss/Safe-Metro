@@ -927,6 +927,24 @@ Response Format Rules — CRITICAL:
 - Do NOT bold station names or line names. Write them plain.
 - Use parentheses for line letters: "the Blue (A) Line"
 
+Meetup / Coordination Requests — IMPORTANT:
+When a user asks about coordinating arrivals from multiple stations to one destination at a specific time:
+1. The CURRENT USER CONTEXT will include "Travel times to [destination]" with the travel time in minutes from each origin station.
+2. It may also include "Trains at [station] around [time]" with actual schedule data near the target time.
+3. Use the travel time data to work BACKWARDS from the target arrival time. For each friend:
+   - Subtract the travel time from the target arrival time to get when they should board.
+   - Round to a practical time (e.g. "around 1:35 PM" not "1:37 PM").
+   - Mention which line they should take.
+4. Present a clear plan with one line per person/station.
+5. Example format:
+   Here's the plan for everyone to arrive at Willowbrook/Rosa Parks by 2:00 PM:
+   - From Washington: Board the A (Blue) Line around 1:45 PM (~12 min ride).
+   - From Florence: Board the A (Blue) Line around 1:50 PM (~8 min ride).
+   - From Long Beach: Board the A (Blue) Line around 1:25 PM (~30 min ride).
+   The A Line runs every 8-10 min during the day, so have everyone text when they board so you know their actual ETA.
+6. If travel time data is missing for an origin (says "no direct route"), explain they need a transfer and estimate the total time.
+7. ALWAYS use the travel time data from the context — do not guess travel times.
+
 Guidelines:
 - Be warm but concise — every word should earn its place
 - If someone asks about emergencies, direct them to call 911
@@ -1076,13 +1094,16 @@ def _build_user_context(request, data, user_message=''):
         except (ValueError, TypeError):
             pass
 
-    # Fetch arrivals for any station mentioned in the user message
+    # Fetch arrivals and travel times for stations mentioned in the user message
     if user_message:
+        from .gtfs_service import get_travel_times, get_schedule_at_station
         try:
             all_stations = Station.objects.all()
             msg_lower = user_message.lower()
+            mentioned_stations = []
             for s in all_stations:
                 if _station_mentioned(s.name, msg_lower):
+                    mentioned_stations.append(s.name)
                     try:
                         mentioned_arrivals = get_arrivals(s.name, limit=5)
                         if mentioned_arrivals:
@@ -1093,6 +1114,76 @@ def _build_user_context(request, data, user_message=''):
                             parts.append(f"Live trains at {s.name}: " + "; ".join(arr_strs))
                     except Exception:
                         pass
+
+            # If 2+ stations mentioned, compute travel times between them
+            # Detect a destination/meetup station (look for keywords like "at", "to", "arrive")
+            if len(mentioned_stations) >= 2:
+                # Try to identify the destination station
+                import re as _re
+                dest_station = None
+                # Check for patterns like "arrive at X", "get to X", "meet at X", "at X station"
+                for s_name in mentioned_stations:
+                    s_lower = s_name.lower()
+                    s_norm = s_lower.replace('/', ' ')
+                    patterns = [
+                        rf'(?:arrive|get|meet|be)\s+(?:at|to)\s+.*{_re.escape(s_norm)}',
+                        rf'(?:at|to)\s+{_re.escape(s_norm)}\s+(?:station|at)',
+                    ]
+                    for pat in patterns:
+                        if _re.search(pat, msg_lower.replace('/', ' ')):
+                            dest_station = s_name
+                            break
+                    if dest_station:
+                        break
+
+                # If no explicit destination found, use the last mentioned station
+                if not dest_station:
+                    dest_station = mentioned_stations[-1]
+
+                origin_stations = [s for s in mentioned_stations if s != dest_station]
+                if origin_stations:
+                    try:
+                        travel_data = get_travel_times(origin_stations, dest_station)
+                        travel_strs = []
+                        for origin, info in travel_data.items():
+                            if info:
+                                travel_strs.append(
+                                    f"{origin} -> {dest_station}: ~{info['minutes']} min on {info['line']} Line"
+                                )
+                            else:
+                                travel_strs.append(
+                                    f"{origin} -> {dest_station}: no direct route found (transfer needed)"
+                                )
+                        if travel_strs:
+                            parts.append(f"Travel times to {dest_station}: " + "; ".join(travel_strs))
+                    except Exception:
+                        pass
+
+                # Check if user mentioned a specific target time
+                time_match = _re.search(r'(\d{1,2})\s*:\s*(\d{2})\s*(am|pm|AM|PM)?', msg_lower)
+                if not time_match:
+                    time_match = _re.search(r'(\d{1,2})\s*(am|pm|AM|PM)', msg_lower)
+                if time_match:
+                    groups = time_match.groups()
+                    if len(groups) == 3:
+                        hour, minute, period = int(groups[0]), int(groups[1]), (groups[2] or '').lower()
+                    else:
+                        hour, minute, period = int(groups[0]), 0, (groups[1] or '').lower()
+                    if period == 'pm' and hour != 12:
+                        hour += 12
+                    elif period == 'am' and hour == 12:
+                        hour = 0
+                    target_time = f"{hour:02d}:{minute:02d}"
+
+                    # Get schedule at each origin around the target time, heading toward destination
+                    for origin in origin_stations:
+                        try:
+                            schedule = get_schedule_at_station(origin, target_time, direction_station=dest_station, limit=3)
+                            if schedule:
+                                sched_strs = [f"{s['time']} ({s['line']} Line to {s['headsign']})" for s in schedule]
+                                parts.append(f"Trains at {origin} around {target_time}: " + "; ".join(sched_strs))
+                        except Exception:
+                            pass
         except Exception:
             pass
 

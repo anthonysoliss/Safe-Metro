@@ -151,6 +151,7 @@ def _build_cache_data(zf):
     return {
         "trip_lookup": trip_lookup,
         "stop_times_index": dict(stop_times_index),
+        "trip_stop_times": dict(trip_stop_times),
         "calendar": calendar,
         "calendar_dates": calendar_dates,
         "stop_lookup": stop_lookup,
@@ -339,3 +340,193 @@ def get_arrivals(station_name, limit=10):
         del a["_sort"]
 
     return arrivals[:limit]
+
+
+def _parse_gtfs_time(time_str):
+    """Parse a GTFS time string (HH:MM:SS, may exceed 24h) into total seconds from midnight."""
+    h, m, s = map(int, time_str.split(":"))
+    return h * 3600 + m * 60 + s
+
+
+def get_travel_times(origin_names, destination_name):
+    """
+    Compute travel times from multiple origin stations to one destination.
+
+    Returns a dict: {origin_name: {"minutes": int, "line": str}} or None per origin if no route found.
+    Only considers direct (same-trip) connections — no transfers.
+    """
+    try:
+        data = _get_cached_data()
+    except Exception:
+        return {}
+
+    service_ids = _get_service_ids_for_today(data["calendar"], data["calendar_dates"])
+    if not service_ids:
+        return {}
+
+    dest_stop_ids = _find_stop_ids_for_station(data, destination_name)
+    if not dest_stop_ids:
+        return {}
+
+    results = {}
+
+    for origin_name in origin_names:
+        origin_stop_ids = _find_stop_ids_for_station(data, origin_name)
+        if not origin_stop_ids:
+            results[origin_name] = None
+            continue
+
+        # Find trips that pass through both origin and destination
+        best_time = None
+        best_line = None
+
+        # Build set of trip_ids that serve the origin
+        origin_trips = set()
+        for sid in origin_stop_ids:
+            for st in data["stop_times_index"].get(sid, []):
+                tid = st.get("trip_id", "")
+                trip = data["trip_lookup"].get(tid)
+                if trip and trip.get("service_id") in service_ids:
+                    origin_trips.add(tid)
+
+        # Check each origin trip for a stop at the destination
+        for tid in origin_trips:
+            trip_stops = data["trip_stop_times"].get(tid, [])
+            origin_time = None
+            dest_time = None
+
+            for st in trip_stops:
+                sid = st.get("stop_id", "")
+                t_str = st.get("arrival_time") or st.get("departure_time", "")
+                if not t_str:
+                    continue
+                try:
+                    t_sec = _parse_gtfs_time(t_str)
+                except ValueError:
+                    continue
+
+                if sid in origin_stop_ids and (origin_time is None or t_sec < origin_time):
+                    origin_time = t_sec
+                if sid in dest_stop_ids and (dest_time is None or t_sec > dest_time):
+                    dest_time = t_sec
+
+            if origin_time is not None and dest_time is not None and dest_time > origin_time:
+                travel_min = (dest_time - origin_time) // 60
+                if best_time is None or travel_min < best_time:
+                    best_time = travel_min
+                    trip = data["trip_lookup"].get(tid)
+                    best_line = trip.get("_line", "") if trip else ""
+
+        if best_time is not None:
+            results[origin_name] = {"minutes": best_time, "line": best_line}
+        else:
+            results[origin_name] = None
+
+    return results
+
+
+def get_schedule_at_station(station_name, target_time_str, direction_station=None, limit=5):
+    """
+    Get train schedule at a station around a target time.
+
+    target_time_str: "HH:MM" in 24h format (LA time), e.g. "14:00"
+    direction_station: optional station name to filter trains heading toward that station
+
+    Returns list of dicts: {time, line, headsign, color}
+    """
+    try:
+        data = _get_cached_data()
+    except Exception:
+        return []
+
+    service_ids = _get_service_ids_for_today(data["calendar"], data["calendar_dates"])
+    if not service_ids:
+        return []
+
+    stop_ids = _find_stop_ids_for_station(data, station_name)
+    if not stop_ids:
+        return []
+
+    # Parse target time
+    try:
+        th, tm = map(int, target_time_str.split(":"))
+        target_sec = th * 3600 + tm * 60
+    except ValueError:
+        return []
+
+    # If direction_station specified, find its stop_ids to filter trips
+    dir_stop_ids = None
+    if direction_station:
+        dir_stop_ids = _find_stop_ids_for_station(data, direction_station)
+
+    window = 60 * 60  # 1 hour window around target time
+    candidates = []
+
+    for sid in stop_ids:
+        for st in data["stop_times_index"].get(sid, []):
+            trip = data["trip_lookup"].get(st.get("trip_id"))
+            if not trip:
+                continue
+            if trip.get("service_id") not in service_ids:
+                continue
+
+            time_str = st.get("arrival_time") or st.get("departure_time", "")
+            if not time_str:
+                continue
+
+            try:
+                t_sec = _parse_gtfs_time(time_str)
+            except ValueError:
+                continue
+
+            # Within window of target time (before and after)
+            if abs(t_sec - target_sec) > window:
+                continue
+
+            # If direction filter, check this trip also stops at the direction station AFTER this stop
+            if dir_stop_ids:
+                trip_stops = data["trip_stop_times"].get(st.get("trip_id", ""), [])
+                passes_dir = False
+                for ts in trip_stops:
+                    ts_sid = ts.get("stop_id", "")
+                    ts_time = ts.get("arrival_time") or ts.get("departure_time", "")
+                    if ts_sid in dir_stop_ids and ts_time:
+                        try:
+                            if _parse_gtfs_time(ts_time) > t_sec:
+                                passes_dir = True
+                                break
+                        except ValueError:
+                            continue
+                if not passes_dir:
+                    continue
+
+            h, m, s = map(int, time_str.split(":"))
+            # Normalize hours > 23 for display
+            display_h = h % 24
+            period = "AM" if display_h < 12 else "PM"
+            display_h = display_h % 12 or 12
+
+            line = trip.get("_line", "")
+            candidates.append({
+                "time": f"{display_h}:{m:02d} {period}",
+                "line": line,
+                "headsign": trip.get("trip_headsign", ""),
+                "color": LINE_COLORS.get(line, "#888"),
+                "_sort_sec": t_sec,
+            })
+
+    # Sort by closeness to target time, preferring trains just before target
+    candidates.sort(key=lambda x: (x["_sort_sec"] > target_sec, abs(x["_sort_sec"] - target_sec)))
+
+    # Deduplicate
+    seen = set()
+    results = []
+    for c in candidates:
+        key = (c["time"], c["line"], c["headsign"])
+        if key not in seen:
+            seen.add(key)
+            results.append({k: v for k, v in c.items() if k != "_sort_sec"})
+        if len(results) >= limit:
+            break
+
+    return results
