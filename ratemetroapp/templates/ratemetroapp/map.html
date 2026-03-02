@@ -590,6 +590,33 @@
   .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
   .send-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--bg-dark); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+  /* ── Chat Back Button ── */
+  .chat-back-btn {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 5003;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--chat-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: var(--text-primary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+  .chat-back-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .chat-back-btn:hover {
+    border-color: var(--accent);
+    background: rgba(245,197,24,0.1);
+  }
+
   /* ── Chat Backdrop ── */
   .chat-backdrop {
     position: fixed;
@@ -623,6 +650,27 @@
   }
   .chat-overlay::-webkit-scrollbar { display: none; }
   .chat-overlay.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+  .chat-welcome {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px 20px; gap: 14px;
+  }
+  .chat-welcome-logo {
+    width: 64px; height: 64px; border-radius: 14px; object-fit: contain;
+  }
+  .chat-welcome-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+  .chat-welcome-sub { font-size: 13px; color: #fff; font-weight: 700; line-height: 1.6; max-width: 280px; }
+  .chat-welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+  .chat-welcome-chip {
+    padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    background: #fff; border: none; color: #000;
+    cursor: pointer; transition: background 0.15s, transform 0.15s;
+  }
+  .chat-welcome-chip:hover { background: #f5c518; transform: translateY(-1px); }
+  [data-theme="light"] .chat-welcome-title { color: #000; }
+  [data-theme="light"] .chat-welcome-sub { color: #000; }
+  [data-theme="light"] .chat-welcome-chip { background: #000; color: #fff; }
+  [data-theme="light"] .chat-welcome-chip:hover { background: #d4a017; color: #fff; }
 
   .chat-msg {
     padding: 10px 14px; border-radius: 18px;
@@ -1858,6 +1906,10 @@
   </div>
 </div>
 
+<!-- Chat back button -->
+<button class="chat-back-btn" id="chatBackBtn">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</button>
 <!-- Chat backdrop -->
 <div class="chat-backdrop" id="chatBackdrop"></div>
 <!-- Chat messages (shown when chat open) -->
@@ -3098,6 +3150,9 @@ function parseMd(t) {
   return t;
 }
 function appendMsgEl(text, type) {
+  // Remove welcome screen when first message is added
+  const welcome = chatOverlay.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
   if (type === 'ai') m.innerHTML = `<div class="ai-label">Metro Safe AI</div>${parseMd(text)}`;
   else m.textContent = text;
@@ -3141,11 +3196,34 @@ async function openSession(id) {
   requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
 }
 
+function showChatWelcome() {
+  const logoUrl = '{% static "ratemetroapp/images/ratemetro.png" %}';
+  chatOverlay.innerHTML = `<div class="chat-welcome">
+    <img class="chat-welcome-logo" src="${logoUrl}" alt="Ratemetro">
+    <div class="chat-welcome-title">Ratemetro.com</div>
+    <div class="chat-welcome-sub">Your LA Metro guide. Ask about directions, train times, safety info, or places to visit.</div>
+    <div class="chat-welcome-chips">
+      <div class="chat-welcome-chip" data-prompt="What's the nearest station?">Nearest station</div>
+      <div class="chat-welcome-chip" data-prompt="How do I get to Hollywood?">Directions</div>
+      <div class="chat-welcome-chip" data-prompt="When is the next train?">Train times</div>
+      <div class="chat-welcome-chip" data-prompt="Safe tourist spots in LA?">Tourist tips</div>
+    </div>
+  </div>`;
+  chatOverlay.querySelectorAll('.chat-welcome-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.dataset.prompt;
+      chatInput.value = prompt;
+      chatInput.focus();
+      chatInput.dispatchEvent(new Event('input'));
+    });
+  });
+}
+
 function startNewSession() {
   activeSessionId = null;
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
-  // Keep chat open with backdrop so user can start typing immediately
+  showChatWelcome();
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
 }
@@ -3430,7 +3508,9 @@ function startRouteNavigation(routeData) {
 
 document.getElementById('infoBtn').addEventListener('click', () => {
   if (!chatOverlay.classList.contains('visible') || chatOverlay.children.length === 0) {
-    addMsg('Welcome to Metro Safe LA. I provide real-time safety info for all LA Metro stations — A through L lines. Ask about any station, report an incident, or get safety tips.', 'ai');
+    showChatWelcome();
+    chatOverlay.classList.add('visible');
+    chatBackdrop.classList.add('visible');
   } else {
     chatOverlay.classList.add('visible');
     chatBackdrop.classList.add('visible');
@@ -3742,10 +3822,18 @@ if (profileBtn && profileDropdown) {
   });
 }
 
+const chatBackBtn = document.getElementById('chatBackBtn');
+
+// Auto-sync back button with chat backdrop visibility
+new MutationObserver(() => {
+  chatBackBtn.classList.toggle('visible', chatBackdrop.classList.contains('visible'));
+}).observe(chatBackdrop, { attributes: true, attributeFilter: ['class'] });
+
 function dismissChat() {
   chatOverlay.classList.remove('visible');
   chatBackdrop.classList.remove('visible');
 }
+chatBackBtn.addEventListener('click', dismissChat);
 chatBackdrop.addEventListener('click', dismissChat);
 map.on('click', () => {
   if (chatHistoryPanel.classList.contains('open')) closeChatHistoryPanel();

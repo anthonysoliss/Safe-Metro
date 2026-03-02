@@ -1244,13 +1244,17 @@ def api_chat(request):
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
         response = client.messages.create(
-            model='claude-haiku-4-5',
-            max_tokens=1024,
+            model='claude-sonnet-4-5',
+            max_tokens=2048,
             system=system_prompt,
             messages=messages,
+            tools=[
+                {"type": "web_search_20250305", "name": "web_search", "max_uses": 2},
+            ],
         )
 
-        ai_text = response.content[0].text
+        # Extract text from all text blocks (web search responses have mixed block types)
+        ai_text = ''.join(block.text for block in response.content if block.type == 'text')
 
         # Parse structured route data if present
         route_data = None
