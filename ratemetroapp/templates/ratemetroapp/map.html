@@ -595,26 +595,40 @@
     position: fixed;
     top: 16px; left: 16px;
     z-index: 5003;
-    width: 48px; height: 48px;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(30,30,30,0.55);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    color: var(--text-primary);
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(20,20,24,0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 14px 8px 10px;
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     opacity: 0;
     pointer-events: none;
     transition: all 0.3s ease;
+  }
+  .chat-back-btn svg {
+    width: 18px; height: 18px;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
   }
   .chat-back-btn.visible {
     opacity: 1;
     pointer-events: auto;
   }
-  .chat-back-btn:hover {
-    border-color: var(--accent);
-    background: rgba(245,197,24,0.1);
+  [data-theme="light"] .chat-back-btn {
+    background: rgba(255,255,255,0.7);
   }
 
   /* ── Chat Backdrop ── */
@@ -1908,7 +1922,8 @@
 
 <!-- Chat back button -->
 <button class="chat-back-btn" id="chatBackBtn">
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  Map
 </button>
 <!-- Chat backdrop -->
 <div class="chat-backdrop" id="chatBackdrop"></div>
