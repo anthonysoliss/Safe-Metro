@@ -595,12 +595,12 @@
     position: fixed;
     top: 16px; left: 16px;
     z-index: 5003;
-    width: 40px; height: 40px;
+    width: 48px; height: 48px;
     border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--chat-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(30,30,30,0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     color: var(--text-primary);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
@@ -653,16 +653,16 @@
 
   .chat-welcome {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 24px 20px; gap: 14px;
+    text-align: center; padding: 32px 24px; gap: 18px;
   }
   .chat-welcome-logo {
-    width: 64px; height: 64px; border-radius: 14px; object-fit: contain;
+    width: 88px; height: 88px; border-radius: 18px; object-fit: contain;
   }
-  .chat-welcome-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
-  .chat-welcome-sub { font-size: 13px; color: #fff; font-weight: 700; line-height: 1.6; max-width: 280px; }
-  .chat-welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+  .chat-welcome-title { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+  .chat-welcome-sub { font-size: 16px; color: #fff; font-weight: 700; line-height: 1.6; max-width: 320px; }
+  .chat-welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
   .chat-welcome-chip {
-    padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    padding: 10px 18px; border-radius: 22px; font-size: 14px; font-weight: 700;
     background: #fff; border: none; color: #000;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
   }
