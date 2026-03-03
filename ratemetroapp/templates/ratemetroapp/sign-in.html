@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — Ratemetro.com</title>
 <script>
-  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -144,19 +145,11 @@
     animation: fadeSlideDown 0.5s ease 0.1s both;
   }
   .brand-logo {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, rgba(245,197,24,0.2), rgba(245,197,24,0.05));
-    border: 1.5px solid rgba(245,197,24,0.3);
-    border-radius: 16px;
+    width: 72px; height: 72px;
+    border-radius: 18px;
+    object-fit: contain;
     margin-bottom: 16px;
-    box-shadow: 0 0 24px rgba(245,197,24,0.12);
-    transition: all 0.3s ease;
   }
-  .brand-logo:hover { box-shadow: 0 0 36px rgba(245,197,24,0.22); border-color: rgba(245,197,24,0.5); }
-  .brand-logo svg { width: 28px; height: 28px; }
 
   .brand-title {
     font-family: 'JetBrains Mono', monospace;
@@ -493,8 +486,7 @@
     box-shadow: 0 24px 64px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
   }
   [data-theme="light"] .brand-logo {
-    background: linear-gradient(135deg, rgba(212,160,23,0.15), rgba(212,160,23,0.05));
-    border-color: rgba(212,160,23,0.25);
+    /* logo image works in both themes */
   }
   [data-theme="light"] .tabs { background: rgba(0,0,0,0.04); border-color: var(--border); }
   [data-theme="light"] .tab { color: var(--text-muted); }
@@ -556,14 +548,7 @@
 <div class="card">
   <!-- Brand -->
   <div class="brand">
-    <div class="brand-logo">
-      <!-- Metro M icon -->
-      <svg viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="19" stroke="#f5c518" stroke-width="1.5" stroke-opacity="0.4"/>
-        <path d="M9 28V14l7.5 9L24 14v14M24 14l7 14" stroke="#f5c518" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="20" cy="20" r="2.5" fill="#f5c518" opacity="0.6"/>
-      </svg>
-    </div>
+    <img class="brand-logo" src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="Rate Metro">
     <div class="brand-title">rate<span>metro</span>.com</div>
     <div class="brand-subtitle">LA Metro Station Ratings</div>
   </div>

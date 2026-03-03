@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Rate Metro</title>
 <script>
-  (function(){var t=localStorage.getItem('ratemetro-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1824,6 +1824,7 @@
       </svg>
     </button>
     <div class="signin-prompt-header">
+      <img src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="Rate Metro" style="width:72px;height:72px;border-radius:18px;object-fit:contain;margin-bottom:16px;">
       <h2>Welcome to Rate Metro</h2>
       <p>Sign in to save your ratings and access your profile</p>
     </div>
