@@ -3115,6 +3115,7 @@ function saveSessions(sessions) {
 
 let chatSessions = loadSessions() || [];
 let activeSessionId = null;
+try { activeSessionId = localStorage.getItem('metroActiveSessionId') || null; } catch(e) {}
 let chatSessionsLoaded = false;
 
 function getActiveSession() { return chatSessions.find(s => s.id === activeSessionId) || null; }
@@ -3179,6 +3180,7 @@ async function openSession(id) {
   const session = chatSessions.find(s => s.id === id);
   if (!session) return;
   activeSessionId = id;
+  try { localStorage.setItem('metroActiveSessionId', id); } catch(e) {}
   chatOverlay.innerHTML = '';
 
   // If this is a server-backed session with no messages loaded yet, fetch them
@@ -3237,6 +3239,7 @@ function showChatWelcome() {
 
 function startNewSession() {
   activeSessionId = null;
+  try { localStorage.removeItem('metroActiveSessionId'); } catch(e) {}
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
   showChatWelcome();
@@ -3249,6 +3252,7 @@ function addMsg(text, type, routeData, arrivalsData) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
     activeSessionId = id;
+    try { localStorage.setItem('metroActiveSessionId', id); } catch(e) {}
   }
   const session = getActiveSession();
   if (session) {
@@ -3301,12 +3305,18 @@ document.querySelector('.chat-bar').addEventListener('click', e => {
 // ── Route Widget & Map Drawing ──
 let routePolylines = [];
 let routeMarkers = [];
+let routeActiveFilter = false;
 
 function clearRouteFromMap() {
   routePolylines.forEach(p => map.removeLayer(p));
   routeMarkers.forEach(m => map.removeLayer(m));
   routePolylines = [];
   routeMarkers = [];
+  // Restore all station markers if they were filtered
+  if (routeActiveFilter) {
+    routeActiveFilter = false;
+    stationMarkers.forEach(m => m.addTo(map));
+  }
 }
 
 function getStopCount(line, from, to) {
@@ -3512,6 +3522,40 @@ function startRouteNavigation(routeData) {
     }
   }
 
+  // Filter station markers to only show stations on the route's lines
+  const routeLines = new Set(steps.filter(s => s.type === 'ride' && s.line).map(s => s.line));
+  // Also collect the actual station names on the route segments for tighter filtering
+  const routeStationNames = new Set();
+  steps.forEach(step => {
+    if (step.type === 'ride' && step.line) {
+      const route = lineRoutes[step.line];
+      if (route) {
+        const fi = route.indexOf(step.from);
+        const ti = route.indexOf(step.to);
+        if (fi !== -1 && ti !== -1) {
+          const start = Math.min(fi, ti);
+          const end = Math.max(fi, ti);
+          for (let k = start; k <= end; k++) routeStationNames.add(route[k]);
+        }
+      }
+    }
+    if (step.type === 'transfer') {
+      routeStationNames.add(step.from);
+      routeStationNames.add(step.to);
+    }
+  });
+
+  routeActiveFilter = true;
+  stationMarkers.forEach(m => {
+    const sd = m.stationData;
+    if (!sd) return;
+    // Keep marker if the station is on one of the route's lines
+    const onRouteLine = sd.lines.some(l => routeLines.has(l));
+    if (!onRouteLine) {
+      map.removeLayer(m);
+    }
+  });
+
   // Zoom to fit
   if (allBounds.length > 1) {
     map.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50], maxZoom: 14 });
@@ -3523,10 +3567,18 @@ function startRouteNavigation(routeData) {
 }
 
 document.getElementById('infoBtn').addEventListener('click', () => {
-  if (!chatOverlay.classList.contains('visible') || chatOverlay.children.length === 0) {
-    showChatWelcome();
-    chatOverlay.classList.add('visible');
-    chatBackdrop.classList.add('visible');
+  if (!chatOverlay.classList.contains('visible')) {
+    // If there's an active session, re-open it instead of starting fresh
+    if (activeSessionId) {
+      openSession(activeSessionId);
+    } else if (chatOverlay.children.length === 0) {
+      showChatWelcome();
+      chatOverlay.classList.add('visible');
+      chatBackdrop.classList.add('visible');
+    } else {
+      chatOverlay.classList.add('visible');
+      chatBackdrop.classList.add('visible');
+    }
   } else {
     chatOverlay.classList.add('visible');
     chatBackdrop.classList.add('visible');
