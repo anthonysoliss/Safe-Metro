@@ -3414,6 +3414,23 @@ document.querySelector('.chat-bar').addEventListener('click', e => {
   }
 });
 
+// Open chat overlay when user taps or focuses the chat input
+chatInput.addEventListener('focus', () => {
+  if (!chatOverlay.classList.contains('visible')) {
+    if (activeSessionId && chatOverlay.children.length > 0) {
+      chatOverlay.classList.add('visible');
+      chatBackdrop.classList.add('visible');
+      requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
+    } else if (activeSessionId) {
+      openSession(activeSessionId);
+    } else {
+      showChatWelcome();
+      chatOverlay.classList.add('visible');
+      chatBackdrop.classList.add('visible');
+    }
+  }
+});
+
 // ── Route Widget & Map Drawing ──
 let routePolylines = [];
 let routeMarkers = [];
