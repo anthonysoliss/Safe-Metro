@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    MetroLine, Station, UserProfile, Rating,
+    MetroLine, Station, StationImage, UserProfile, Rating,
     RatingPhoto, UserLocation, UserActivity, Feedback
 )
 
@@ -9,20 +9,30 @@ class MetroLineAdmin(admin.ModelAdmin):
     list_display = ('code', 'name', 'color')
     search_fields = ('code', 'name')
 
+class StationImageInline(admin.TabularInline):
+    model = StationImage
+    extra = 1
+    max_num = 5
+
 @admin.register(Station)
 class StationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'latitude', 'longitude', 'get_lines', 'rating_count')
+    list_display = ('name', 'latitude', 'longitude', 'get_lines', 'rating_count', 'image_count')
     list_filter = ('lines',)
     search_fields = ('name',)
     filter_horizontal = ('lines',)
-    
+    inlines = [StationImageInline]
+
     def get_lines(self, obj):
         return ', '.join([line.code for line in obj.lines.all()])
     get_lines.short_description = 'Lines'
-    
+
     def rating_count(self, obj):
         return obj.ratings.count()
     rating_count.short_description = 'Ratings'
+
+    def image_count(self, obj):
+        return obj.images.count()
+    image_count.short_description = 'Images'
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):

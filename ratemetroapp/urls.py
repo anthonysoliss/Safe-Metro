@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/delete-rating/', views.api_delete_rating, name='api_delete_rating'),
     path('api/update-profile/', views.api_update_profile, name='api_update_profile'),
     path('api/update-settings/', views.api_update_settings, name='api_update_settings'),
+    path('api/station-images/', views.get_station_images, name='station_images'),
     path('api/arrivals/', views.get_station_arrivals, name='station_arrivals'),
     path('api/chat/', views.api_chat, name='api_chat'),
     path('api/chat/history/', views.api_chat_history, name='api_chat_history'),

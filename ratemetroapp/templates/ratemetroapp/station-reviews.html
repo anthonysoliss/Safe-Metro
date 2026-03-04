@@ -121,6 +121,13 @@
   /* ── Station Banner Image ── */
   .station-banner { width: 100%; max-width: 680px; margin: 0 auto; display: block; }
   .station-banner img { width: 100%; height: 160px; object-fit: cover; border-radius: 0 0 16px 16px; display: block; }
+  .banner-carousel { position: relative; width: 100%; max-width: 680px; height: 160px; margin: 0 auto; overflow: hidden; border-radius: 0 0 16px 16px; }
+  .banner-carousel-track { display: flex; height: 100%; transition: transform 0.3s ease; }
+  .banner-carousel-slide { min-width: 100%; height: 100%; }
+  .banner-carousel-slide img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0; }
+  .banner-carousel-dots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+  .banner-carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); border: none; padding: 0; cursor: pointer; transition: background 0.2s; }
+  .banner-carousel-dot.active { background: #fff; }
 
   /* ── Content ── */
   .page-content {
@@ -406,7 +413,7 @@
   <div class="header-count" id="headerCount"></div>
 </header>
 
-<div class="station-banner">
+<div class="station-banner" id="stationBanner">
   <img id="stationBannerImg" src="{% static 'ratemetroapp/images/default-station.svg' %}" alt="Station">
 </div>
 
@@ -470,6 +477,45 @@ let allRatings = [];
 // Set page title
 document.getElementById('headerTitle').textContent = stationName || 'Station Reviews';
 document.title = stationName ? `${stationName} Reviews — Metro Safe LA` : 'Station Reviews — Metro Safe LA';
+
+function initBannerCarousel(container) {
+  if (!container) return;
+  const track = container.querySelector('.banner-carousel-track');
+  const dots = container.querySelectorAll('.banner-carousel-dot');
+  if (!track || dots.length === 0) return;
+  let current = 0;
+  const total = dots.length;
+  function goTo(i) {
+    current = Math.max(0, Math.min(i, total - 1));
+    track.style.transform = `translateX(-${current * 100}%)`;
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === current));
+  }
+  dots.forEach((d, i) => d.addEventListener('click', () => goTo(i)));
+  let startX = 0, startY = 0, isDragging = false, isVertical = false;
+  container.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; isDragging = true; isVertical = false; }, { passive: true });
+  container.addEventListener('touchmove', e => { if (!isDragging) return; const dx = Math.abs(e.touches[0].clientX - startX); const dy = Math.abs(e.touches[0].clientY - startY); if (!isVertical && dy > dx && dy > 10) { isDragging = false; isVertical = true; } }, { passive: true });
+  container.addEventListener('touchend', e => { if (!isDragging) return; isDragging = false; const diff = e.changedTouches[0].clientX - startX; if (Math.abs(diff) > 40) goTo(current + (diff < 0 ? 1 : -1)); }, { passive: true });
+  goTo(0);
+}
+
+async function loadBannerImages() {
+  if (!stationName) return;
+  try {
+    const res = await fetch(`/api/station-images/?station=${encodeURIComponent(stationName)}`);
+    const data = await res.json();
+    if (data.status !== 'ok' || !data.images || data.images.length === 0) return;
+    const banner = document.getElementById('stationBanner');
+    if (data.images.length === 1) {
+      banner.innerHTML = `<img src="${data.images[0].url}" alt="${data.images[0].alt}">`;
+    } else {
+      const slides = data.images.map(img => `<div class="banner-carousel-slide"><img src="${img.url}" alt="${img.alt}"></div>`).join('');
+      const dots = data.images.map((_, i) => `<button class="banner-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></button>`).join('');
+      banner.innerHTML = `<div class="banner-carousel"><div class="banner-carousel-track">${slides}</div><div class="banner-carousel-dots">${dots}</div></div>`;
+      initBannerCarousel(banner.querySelector('.banner-carousel'));
+    }
+  } catch (e) { /* keep default SVG */ }
+}
+loadBannerImages();
 
 function goBack() {
   if (document.referrer && document.referrer.includes(window.location.host)) {

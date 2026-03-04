@@ -15,7 +15,7 @@ import re
 import anthropic
 from django.conf import settings
 from django.db.models import Avg, Count
-from .models import UserLocation, Rating, Station, RatingPhoto, UserProfile, Feedback, ChatConversation, ChatMessage
+from .models import UserLocation, Rating, Station, StationImage, RatingPhoto, UserProfile, Feedback, ChatConversation, ChatMessage
 
 def map_view(request):
     """Main map page view"""
@@ -825,6 +825,19 @@ def feedback_view(request):
         'username': request.user.username if request.user.is_authenticated else None,
     }
     return render(request, 'ratemetroapp/feedback.html', context)
+
+
+@require_http_methods(["GET"])
+def get_station_images(request):
+    """Return curated images for a station."""
+    station_name = request.GET.get('station', '').strip()
+    if not station_name:
+        return JsonResponse({'status': 'error', 'message': 'station param required'}, status=400)
+    images = StationImage.objects.filter(station__name=station_name).order_by('order', 'uploaded_at')
+    return JsonResponse({
+        'status': 'ok',
+        'images': [{'url': img.image.url, 'alt': img.alt_text or station_name} for img in images],
+    })
 
 
 @require_http_methods(["GET"])

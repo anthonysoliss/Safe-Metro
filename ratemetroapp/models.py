@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 class MetroLine(models.Model):
     """Metro line information"""
@@ -33,6 +34,30 @@ class Station(models.Model):
         indexes = [
             models.Index(fields=['latitude', 'longitude']),
         ]
+
+
+class StationImage(models.Model):
+    """Curated photos for a station (up to 5)"""
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='station_images/')
+    order = models.PositiveSmallIntegerField(default=0)
+    alt_text = models.CharField(max_length=200, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'uploaded_at']
+        constraints = [
+            models.UniqueConstraint(fields=['station', 'order'], name='unique_station_image_order'),
+        ]
+
+    def clean(self):
+        if self.pk is None and self.station_id:
+            count = StationImage.objects.filter(station=self.station).count()
+            if count >= 5:
+                raise ValidationError('A station can have at most 5 images.')
+
+    def __str__(self):
+        return f"{self.station.name} — image {self.order}"
 
 
 class UserProfile(models.Model):
