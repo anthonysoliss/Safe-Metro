@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -966,11 +967,7 @@
   <!-- Footer -->
   <div class="app-footer">
     <div class="app-footer-logo">
-      <svg viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="19" stroke="#f5c518" stroke-width="1.5" stroke-opacity="0.4"/>
-        <path d="M9 28V14l7.5 9L24 14v14M24 14l7 14" stroke="#f5c518" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="20" cy="20" r="2.5" fill="#f5c518" opacity="0.6"/>
-      </svg>
+      <img src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="Ratemetro" style="width: 40px; height: 40px; border-radius: 10px; object-fit: contain;">
     </div>
     <div class="app-footer-name">rate<span>metro</span>.com</div>
     <div class="app-footer-ver">© 2026 ratemetro</div>
