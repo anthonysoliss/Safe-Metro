@@ -914,6 +914,54 @@
     animation: ringPulse 2s ease infinite;
   }
 
+  /* Landmark markers */
+  .landmark-marker-inner {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface, rgba(22,22,34,0.92));
+    border: 2px solid var(--border, rgba(255,255,255,0.12));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
+    transition: transform 0.25s ease, border-color 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .landmark-marker-inner:hover {
+    transform: scale(1.25) !important;
+    border-color: #FFD700;
+  }
+  @keyframes landmarkBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes landmarkFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(2deg); }
+  }
+  @keyframes landmarkPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.85; }
+  }
+  .landmark-bob { animation: landmarkBob 3s ease-in-out infinite; }
+  .landmark-float { animation: landmarkFloat 4s ease-in-out infinite; }
+  .landmark-pulse { animation: landmarkPulse 3.5s ease-in-out infinite; }
+
+  .landmark-tooltip {
+    background: var(--surface, rgba(22,22,34,0.92)) !important;
+    border: 1px solid rgba(255,215,0,0.35) !important;
+    color: var(--text, #fff) !important;
+    border-radius: 8px !important;
+    font-size: 11px !important; font-weight: 600 !important;
+    padding: 3px 8px !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+  }
+  [data-theme="light"] .landmark-tooltip {
+    background: rgba(255,255,255,0.96) !important;
+    border-color: rgba(200,170,0,0.4) !important;
+    color: #1a1a2e !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .landmark-bob, .landmark-float, .landmark-pulse { animation: none !important; }
+  }
+
   /* Leaflet popup */
   .leaflet-popup { max-width: calc(100vw - 40px) !important; }
   .leaflet-popup-content-wrapper {
@@ -2497,6 +2545,24 @@ const defaultLat = 34.0522, defaultLng = -118.2437;
 let userLat = defaultLat, userLng = defaultLng;
 let userLocationKnown = false;
 let userMarker = null, stationMarkers = [], activeFilter = 'all';
+let landmarkMarkers = [];
+
+const LA_LANDMARKS = [
+  { name: 'Hollywood Sign', lat: 34.1341, lng: -118.3215, icon: '🎬', anim: 'landmark-bob' },
+  { name: 'Griffith Observatory', lat: 34.1184, lng: -118.3004, icon: '🔭', anim: 'landmark-float' },
+  { name: 'Santa Monica Pier', lat: 34.0094, lng: -118.4973, icon: '🎡', anim: 'landmark-pulse' },
+  { name: 'LAX', lat: 33.9425, lng: -118.4081, icon: '✈️', anim: 'landmark-bob' },
+  { name: 'Dodger Stadium', lat: 34.0739, lng: -118.2400, icon: '⚾', anim: 'landmark-float' },
+  { name: 'Crypto.com Arena', lat: 34.0430, lng: -118.2673, icon: '🏀', anim: 'landmark-pulse' },
+  { name: 'The Getty Center', lat: 34.0780, lng: -118.4741, icon: '🏛️', anim: 'landmark-bob' },
+  { name: 'Venice Beach', lat: 33.9850, lng: -118.4695, icon: '🏖️', anim: 'landmark-float' },
+  { name: 'Universal Studios', lat: 34.1381, lng: -118.3534, icon: '🎢', anim: 'landmark-pulse' },
+  { name: 'Walt Disney Concert Hall', lat: 34.0553, lng: -118.2498, icon: '🎵', anim: 'landmark-bob' },
+  { name: 'SoFi Stadium', lat: 33.9534, lng: -118.3392, icon: '🏟️', anim: 'landmark-float' },
+  { name: 'The Broad Museum', lat: 34.0544, lng: -118.2505, icon: '🎨', anim: 'landmark-pulse' },
+  { name: 'La Brea Tar Pits', lat: 34.0638, lng: -118.3554, icon: '🦣', anim: 'landmark-bob' },
+  { name: 'Olvera Street', lat: 34.0566, lng: -118.2380, icon: '🪅', anim: 'landmark-float' },
+];
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
 
@@ -2629,6 +2695,49 @@ function createMarkers(filterLine = 'all') {
   });
 }
 createMarkers();
+
+// ── Landmark Markers ──
+function createLandmarkMarkers() {
+  landmarkMarkers.forEach(m => map.removeLayer(m));
+  landmarkMarkers = [];
+  LA_LANDMARKS.forEach(lm => {
+    const icon = L.divIcon({
+      className: 'landmark-marker',
+      html: `<div class="landmark-marker-inner ${lm.anim}">${lm.icon}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+    const marker = L.marker([lm.lat, lm.lng], { icon, zIndexOffset: -100 });
+    marker.bindTooltip(lm.name, {
+      className: 'landmark-tooltip',
+      direction: 'top',
+      offset: [0, -18],
+    });
+    marker.addTo(map);
+    marker._landmarkName = lm.name;
+    landmarkMarkers.push(marker);
+  });
+  updateLandmarkVisibility();
+}
+
+function updateLandmarkVisibility() {
+  const zoom = map.getZoom();
+  landmarkMarkers.forEach(m => {
+    if (zoom >= 12) {
+      if (!map.hasLayer(m)) m.addTo(map);
+      if (zoom >= 14) {
+        m.openTooltip();
+      } else {
+        m.closeTooltip();
+      }
+    } else {
+      if (map.hasLayer(m)) map.removeLayer(m);
+    }
+  });
+}
+
+map.on('zoomend', updateLandmarkVisibility);
+createLandmarkMarkers();
 
 // ── Restore popup after returning from station reviews ──
 const _returnToStation = sessionStorage.getItem('returnToStation');
@@ -3176,7 +3285,7 @@ function appendMsgEl(text, type) {
   chatOverlay.appendChild(m);
 }
 
-async function openSession(id) {
+async function openSession(id, {show = true} = {}) {
   const session = chatSessions.find(s => s.id === id);
   if (!session) return;
   activeSessionId = id;
@@ -3209,8 +3318,10 @@ async function openSession(id) {
   if (lastRouteData) showRouteWidget(lastRouteData);
   // Show the most recent arrivals widget if any
   if (lastArrivalsData) showArrivalsWidget(lastArrivalsData);
-  chatOverlay.classList.add('visible');
-  chatBackdrop.classList.add('visible');
+  if (show) {
+    chatOverlay.classList.add('visible');
+    chatBackdrop.classList.add('visible');
+  }
   requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
 }
 
@@ -3240,6 +3351,7 @@ function showChatWelcome() {
 function startNewSession() {
   activeSessionId = null;
   try { localStorage.removeItem('metroActiveSessionId'); } catch(e) {}
+  try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
   showChatWelcome();
@@ -3317,6 +3429,8 @@ function clearRouteFromMap() {
     routeActiveFilter = false;
     stationMarkers.forEach(m => m.addTo(map));
   }
+  // Clear saved active route
+  try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
 }
 
 function getStopCount(line, from, to) {
@@ -3452,14 +3566,14 @@ function viewStationOnMap(stationName) {
   }
 }
 
-function startRouteNavigation(routeData) {
-  // Close chat overlay
-  dismissChat();
-
+function drawRouteOnMap(routeData) {
   // Clear previous route
   clearRouteFromMap();
   // Also clear the active line polyline if any
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+
+  // Save active route so it persists across refresh (after clear so it doesn't get removed)
+  try { localStorage.setItem('metroActiveRoute', JSON.stringify(routeData)); } catch(e) {}
 
   const allBounds = [];
   const steps = routeData.steps;
@@ -3524,7 +3638,6 @@ function startRouteNavigation(routeData) {
 
   // Filter station markers to only show stations on the route's lines
   const routeLines = new Set(steps.filter(s => s.type === 'ride' && s.line).map(s => s.line));
-  // Also collect the actual station names on the route segments for tighter filtering
   const routeStationNames = new Set();
   steps.forEach(step => {
     if (step.type === 'ride' && step.line) {
@@ -3549,7 +3662,6 @@ function startRouteNavigation(routeData) {
   stationMarkers.forEach(m => {
     const sd = m.stationData;
     if (!sd) return;
-    // Keep marker if the station is on one of the route's lines
     const onRouteLine = sd.lines.some(l => routeLines.has(l));
     if (!onRouteLine) {
       map.removeLayer(m);
@@ -3562,20 +3674,25 @@ function startRouteNavigation(routeData) {
   } else if (allBounds.length === 1) {
     map.setView(allBounds[0], 13);
   }
+}
 
+function startRouteNavigation(routeData) {
+  dismissChat();
+  drawRouteOnMap(routeData);
   showMapToast('Route displayed on map', 'success');
 }
 
 document.getElementById('infoBtn').addEventListener('click', () => {
   if (!chatOverlay.classList.contains('visible')) {
-    // If there's an active session, re-open it instead of starting fresh
-    if (activeSessionId) {
-      openSession(activeSessionId);
-    } else if (chatOverlay.children.length === 0) {
-      showChatWelcome();
+    // If session is already pre-loaded, just show it; otherwise load it
+    if (activeSessionId && chatOverlay.children.length > 0) {
       chatOverlay.classList.add('visible');
       chatBackdrop.classList.add('visible');
+      requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
+    } else if (activeSessionId) {
+      openSession(activeSessionId);
     } else {
+      showChatWelcome();
       chatOverlay.classList.add('visible');
       chatBackdrop.classList.add('visible');
     }
@@ -3822,7 +3939,24 @@ function updateChatHistoryUserInfo() {
 updateChatHistoryUserInfo();
 
 // Load chat sessions from the database for authenticated users
-loadServerSessions();
+loadServerSessions().then(async () => {
+  // Pre-load the last active session so it's ready when user clicks, but don't show it
+  if (activeSessionId && chatSessions.find(s => s.id === activeSessionId)) {
+    await openSession(activeSessionId, {show: false});
+  }
+});
+
+// Restore active route on map if user had clicked "Get Started" before refresh
+try {
+  const savedRoute = localStorage.getItem('metroActiveRoute');
+  if (savedRoute) {
+    const routeData = JSON.parse(savedRoute);
+    if (routeData && routeData.steps) {
+      // Draw route without touching the chat overlay
+      drawRouteOnMap(routeData);
+    }
+  }
+} catch(e) {}
 
 // Avatar is now loaded from server; no localStorage listener needed.
 
