@@ -889,6 +889,42 @@
   .arrivals-view-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .arrivals-view-btn:active { transform: translateY(0); }
 
+  /* ── Contact Widget ── */
+  .contact-widget {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .contact-widget-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1; min-width: 0; justify-content: center;
+  }
+  .contact-widget-btn:hover { transform: translateY(-1px); }
+  .contact-widget-btn:active { transform: translateY(0); }
+  .contact-widget-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .contact-widget-btn.call-btn {
+    background: #22c55e; color: #fff; border-color: #22c55e;
+  }
+  .contact-widget-btn.call-btn:hover { background: #16a34a; border-color: #16a34a; }
+  .contact-widget-btn.text-btn {
+    background: #3b82f6; color: #fff; border-color: #3b82f6;
+  }
+  .contact-widget-btn.text-btn:hover { background: #2563eb; border-color: #2563eb; }
+  .contact-widget-btn.emergency-btn {
+    background: #ef4444; color: #fff; border-color: #ef4444;
+  }
+  .contact-widget-btn.emergency-btn:hover { background: #dc2626; border-color: #dc2626; }
+  .contact-widget-btn .btn-label { display: flex; flex-direction: column; align-items: flex-start; }
+  .contact-widget-btn .btn-title { font-weight: 700; font-size: 13px; line-height: 1.2; }
+  .contact-widget-btn .btn-sub { font-size: 10px; font-weight: 500; opacity: 0.85; line-height: 1.2; }
+
   /* ── Map Markers ── */
   .metro-marker { display: flex; align-items: center; justify-content: center; }
   .metro-marker-inner {
@@ -3386,13 +3422,43 @@ function parseMd(t) {
   }).join('');
   return t;
 }
+function buildContactWidget(text) {
+  const phoneSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>`;
+  const textSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`;
+  const sirenSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+  // Detect phone numbers in text
+  const phones = text.match(/\d[\d\-() ]{7,}\d/g) || [];
+  const cleaned = phones.map(p => p.replace(/[^0-9]/g, ''));
+  const hasCall = cleaned.length > 0;
+  const hasText = cleaned.length > 1;
+  const has911 = /\b911\b/.test(text);
+  if (!hasCall && !has911) return '';
+  let html = '<div class="contact-widget">';
+  if (hasCall) {
+    html += `<a class="contact-widget-btn call-btn" href="tel:${cleaned[0]}">${phoneSvg}<span class="btn-label"><span class="btn-title">Call Metro Security</span><span class="btn-sub">${phones[0].trim()}</span></span></a>`;
+  }
+  if (hasText) {
+    html += `<a class="contact-widget-btn text-btn" href="sms:${cleaned[1]}">${textSvg}<span class="btn-label"><span class="btn-title">Text Metro Security</span><span class="btn-sub">${phones[1].trim()}</span></span></a>`;
+  }
+  if (has911) {
+    html += `<a class="contact-widget-btn emergency-btn" href="tel:911">${sirenSvg}<span class="btn-label"><span class="btn-title">Call 911</span><span class="btn-sub">Emergency</span></span></a>`;
+  }
+  html += '</div>';
+  return html;
+}
+
 function appendMsgEl(text, type) {
   // Remove welcome screen when first message is added
   const welcome = chatOverlay.querySelector('.chat-welcome');
   if (welcome) welcome.remove();
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
-  if (type === 'ai') m.innerHTML = `<div class="ai-label">Metro Safe AI</div>${parseMd(text)}`;
-  else m.textContent = text;
+  if (type === 'ai') {
+    let html = `<div class="ai-label">Metro Safe AI</div>${parseMd(text)}`;
+    html += buildContactWidget(text);
+    m.innerHTML = html;
+  } else {
+    m.textContent = text;
+  }
   chatOverlay.appendChild(m);
 }
 

@@ -875,7 +875,8 @@ METRO_SYSTEM_PROMPT = """You are Metro Safe LA, a friendly and knowledgeable AI 
    - Station locations, connections, and transfer points
    - Safety information, hours of operation, and general ridership tips
    - Real-time safety advisories and community-reported conditions
-   - Metro Security contact: 1-888-950-7233 (non-emergency)
+   - Metro Security call: 1-818-950-7233 (non-emergency)
+   - Metro Security text: 1-213-788-2777 (non-emergency)
 
 2. **LA Tourist Information** — You help visitors explore Los Angeles:
    - Popular attractions and how to reach them via Metro
