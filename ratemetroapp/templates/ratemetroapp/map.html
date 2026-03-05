@@ -1041,12 +1041,14 @@
     transform: scale(1.1) !important;
   }
   [data-theme="light"] .leaflet-popup-close-button {
-    color: #333 !important;
-    background: rgba(255,255,255,0.75) !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+    color: #fff !important;
+    background: rgba(0,0,0,0.5) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    border: 1.5px solid rgba(255,255,255,0.4) !important;
   }
   [data-theme="light"] .leaflet-popup-close-button:hover {
-    background: rgba(255,255,255,0.95) !important;
+    background: rgba(0,0,0,0.7) !important;
+    border-color: rgba(255,255,255,0.6) !important;
   }
 
   @media (max-width: 480px) {
@@ -1068,7 +1070,7 @@
       background: rgba(0,0,0,0.55) !important;
     }
     [data-theme="light"] .leaflet-popup-close-button {
-      background: rgba(255,255,255,0.8) !important;
+      background: rgba(0,0,0,0.55) !important;
     }
   }
   
@@ -1856,7 +1858,7 @@
       </div>
 
       <div class="rating-category">
-        <div class="rating-category-label">👮 Staff Present — Did you see staff?</div>
+        <div class="rating-category-label">👮 Staff Visibility — Did you see staff?</div>
         <div class="rating-thumbs" data-category="staff">
           <button class="rating-thumb-btn thumb-up" data-value="yes">👍 Yes</button>
           <button class="rating-thumb-btn thumb-down" data-value="no">👎 No</button>
@@ -2476,7 +2478,7 @@ function getStationRating(stationName) {
   // Staff summary
   const staffYes = staffRatings.filter(r => r.staff === 'yes').length;
   const staffTotal = staffRatings.length;
-  const staffLabel = staffTotal > 0 ? (staffYes >= staffTotal / 2 ? 'Yes' : 'No') : null;
+  const staffLabel = staffTotal > 0 ? Math.round((staffYes / staffTotal) * 100) : null;
 
   return {
     avg: Math.round(overallAvg).toString(),
@@ -2684,7 +2686,7 @@ function buildPopupHTML(station, rating, userHasRated = false, arrivals = undefi
       </div>`;
     if (safety > 0) ratingHTML += `<div class="popup-rating-item">🛡️ Safety: <span class="rating-stars-inline">${renderStars(Math.round(safety), '11px')}</span> ${safety.toFixed(1)}/5</div>`;
     if (cleanliness > 0) ratingHTML += `<div class="popup-rating-item">🧹 Cleanliness: <span class="rating-stars-inline">${renderStars(Math.round(cleanliness), '11px')}</span> ${cleanliness.toFixed(1)}/5</div>`;
-    if (staff) ratingHTML += `<div class="popup-rating-item">👮 Staff Present: ${staff}</div>`;
+    if (staff !== null && staff !== undefined) ratingHTML += `<div class="popup-rating-item">👮 Staff Visibility: ${staff}%</div>`;
     ratingHTML += `</div>`;
   } else {
     ratingHTML = `<div class="popup-rating"><div class="popup-rating-value">No ratings yet</div></div>`;

@@ -437,7 +437,7 @@
         <span id="summaryCleanVal"></span>
       </div>
       <div class="summary-stat" id="summaryStaffRow" style="display:none;">
-        <span class="summary-stat-label">👮 Staff present</span>
+        <span class="summary-stat-label">👮 Staff Visibility</span>
         <span id="summaryStaffVal"></span>
       </div>
     </div>
@@ -579,7 +579,7 @@ function renderCards(ratings) {
       <div class="card-details">
         <span class="card-detail">🛡️ Safety: ${r.safety}/5</span>
         <span class="card-detail">🧹 Clean: ${r.cleanliness}/5</span>
-        ${r.staff ? `<span class="card-detail">👮 Staff: ${r.staff === 'yes' ? '👍 Yes' : '👎 No'}</span>` : ''}
+        ${r.staff ? `<span class="card-detail">👮 Staff: ${r.staff === 'yes' ? 'Yes' : 'No'}</span>` : ''}
       </div>
       ${r.description ? `<div class="card-description">${r.description}</div>` : ''}
       ${(r.media && r.media.length) ? r.media.map(m => `<div class="card-photo">${m.type === 'video' ? `<video src="${m.url}" controls playsinline></video>` : `<img src="${m.url}" alt="Photo" onclick="openLightbox(this.src)">`}</div>`).join('') : ''}
@@ -638,8 +638,8 @@ async function loadReviews() {
       document.getElementById('summarySafetyVal').textContent = summary.safety || '—';
       document.getElementById('summaryCleanStars').innerHTML = renderStars(summary.cleanliness || 0);
       document.getElementById('summaryCleanVal').textContent = summary.cleanliness || '—';
-      if (summary.staff) {
-        document.getElementById('summaryStaffVal').textContent = summary.staff;
+      if (summary.staff !== null && summary.staff !== undefined) {
+        document.getElementById('summaryStaffVal').textContent = summary.staff + '%';
         document.getElementById('summaryStaffRow').style.display = 'flex';
       }
       document.getElementById('summaryCard').style.display = 'flex';

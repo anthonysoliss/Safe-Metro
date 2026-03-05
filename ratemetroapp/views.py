@@ -510,7 +510,7 @@ def get_station_ratings(request):
     staff_pct  = None
     if staff_vals:
         yes_count = sum(1 for s in staff_vals if s == 'yes')
-        staff_pct = 'Yes' if yes_count >= len(staff_vals) / 2 else 'No'
+        staff_pct = round((yes_count / len(staff_vals)) * 100)
 
     user_has_rated = (
         request.user.is_authenticated and
