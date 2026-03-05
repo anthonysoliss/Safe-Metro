@@ -970,7 +970,7 @@
     border-radius: 12px !important;
     backdrop-filter: blur(24px) saturate(1.4) !important;
     box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) !important;
-    max-width: min(260px, calc(100vw - 48px)) !important;
+    max-width: min(320px, calc(100vw - 48px)) !important;
   }
   [data-theme="light"] .leaflet-popup-content-wrapper {
     background: rgba(255,255,255,0.96) !important;
@@ -987,8 +987,8 @@
     overflow: hidden !important;
     word-wrap: break-word !important;
   }
-  .leaflet-popup-content .popup-station-img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; display: block; }
-  .popup-carousel { position: relative; width: 100%; height: 90px; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+  .leaflet-popup-content .popup-station-img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; display: block; }
+  .popup-carousel { position: relative; width: 100%; height: 120px; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
   .popup-carousel-track { display: flex; height: 100%; transition: transform 0.3s ease; }
   .popup-carousel-slide { min-width: 100%; height: 100%; }
   .popup-carousel-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1022,18 +1022,54 @@
   .popup-arrival-dest { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .popup-arrival-time { font-weight: 600; white-space: nowrap; color: var(--accent); }
   .popup-arrivals-loading { font-size: 10px; color: var(--text-muted); font-style: italic; }
-  .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 16px !important; padding: 4px 6px !important; width: 20px !important; height: 20px !important; line-height: 1 !important; }
+  .leaflet-popup-close-button {
+    width: 26px !important; height: 26px !important;
+    display: flex !important; align-items: center; justify-content: center;
+    top: 6px !important; right: 6px !important;
+    padding: 0 !important;
+    font-size: 18px !important; font-weight: 700 !important; line-height: 1 !important;
+    color: #fff !important;
+    background: rgba(0,0,0,0.45) !important;
+    border-radius: 50% !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 10 !important;
+    transition: background 0.2s, transform 0.15s !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  }
+  .leaflet-popup-close-button:hover {
+    background: rgba(0,0,0,0.7) !important;
+    transform: scale(1.1) !important;
+  }
+  [data-theme="light"] .leaflet-popup-close-button {
+    color: #333 !important;
+    background: rgba(255,255,255,0.75) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  }
+  [data-theme="light"] .leaflet-popup-close-button:hover {
+    background: rgba(255,255,255,0.95) !important;
+  }
 
   @media (max-width: 480px) {
-    .leaflet-popup-content-wrapper { max-width: min(260px, calc(100vw - 32px)) !important; border-radius: 10px !important; }
-    .leaflet-popup-content { font-size: 12px !important; margin: 10px 12px !important; }
+    .leaflet-popup-content-wrapper { max-width: min(300px, calc(100vw - 24px)) !important; border-radius: 10px !important; }
+    .leaflet-popup-content { font-size: 12px !important; margin: 10px 10px !important; }
+    .leaflet-popup-content .popup-station-img { height: 100px; }
+    .popup-carousel { height: 100px; }
     .leaflet-popup-content .popup-title { font-size: 13px; }
     .leaflet-popup-content .popup-badge { font-size: 9px; padding: 1px 5px; }
     .popup-rating-stars .star { font-size: 12px; }
     .popup-rating-value { font-size: 11px; }
     .popup-rating-item { font-size: 10px; gap: 3px; }
     .popup-rating-item .rating-stars-inline .star { font-size: 10px; }
-    .popup-rating-btn { font-size: 11px; padding: 6px 10px; margin-top: 5px; }
+    .popup-rating-btn { font-size: 11px; padding: 8px 10px; margin-top: 5px; }
+    .leaflet-popup-close-button {
+      width: 32px !important; height: 32px !important;
+      top: 4px !important; right: 4px !important;
+      font-size: 20px !important;
+      background: rgba(0,0,0,0.55) !important;
+    }
+    [data-theme="light"] .leaflet-popup-close-button {
+      background: rgba(255,255,255,0.8) !important;
+    }
   }
   
   /* Rating Modal */
@@ -2679,15 +2715,15 @@ function buildPopupHTML(station, rating, userHasRated = false, arrivals = undefi
   const viewRatingsBtn = count > 0
     ? `<a class="popup-rating-btn" href="/station-reviews/?station=${encodeURIComponent(station.name)}" style="margin-top:6px;display:block;text-align:center;text-decoration:none;" onclick="sessionStorage.setItem('returnToStation','${stationNameEscaped}')">View All Ratings (${count})</a>`
     : '';
+  const defaultImg = '{% static "ratemetroapp/images/default-station.svg" %}';
+  const displayImages = images.length > 0 ? images : Array.from({length: 5}, () => ({url: defaultImg, alt: station.name}));
   let imageHTML = '';
-  if (images.length > 1) {
-    const slides = images.map(img => `<div class="popup-carousel-slide"><img src="${img.url}" alt="${img.alt}"></div>`).join('');
-    const dots = images.map((_, i) => `<button class="popup-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></button>`).join('');
+  if (displayImages.length > 1) {
+    const slides = displayImages.map(img => `<div class="popup-carousel-slide"><img src="${img.url}" alt="${img.alt}"></div>`).join('');
+    const dots = displayImages.map((_, i) => `<button class="popup-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></button>`).join('');
     imageHTML = `<div class="popup-carousel" data-carousel><div class="popup-carousel-track">${slides}</div><div class="popup-carousel-dots">${dots}</div></div>`;
-  } else if (images.length === 1) {
-    imageHTML = `<img class="popup-station-img" src="${images[0].url}" alt="${images[0].alt}">`;
   } else {
-    imageHTML = `<img class="popup-station-img" src="{% static 'ratemetroapp/images/default-station.svg' %}" alt="${station.name}">`;
+    imageHTML = `<img class="popup-station-img" src="${displayImages[0].url}" alt="${displayImages[0].alt}">`;
   }
   return `${imageHTML}<div class="popup-title">${station.name}</div><div class="popup-badges">${badges}</div>${arrivalsHTML}${ratingHTML}${rateBtn}${viewRatingsBtn}`;
 }
@@ -2705,7 +2741,7 @@ function createMarkers(filterLine = 'all') {
     });
     const rating = getStationRating(station.name);
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(buildPopupHTML(station, rating, false, null), { maxWidth: 260, minWidth: 180, autoPanPadding: [20, 20] });
+    marker.bindPopup(buildPopupHTML(station, rating, false, null), { maxWidth: 320, minWidth: 240, autoPanPadding: [20, 20] });
     marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
     marker.stationData = station;
     // Fetch fresh ratings + arrivals from backend each time popup opens

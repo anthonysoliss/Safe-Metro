@@ -500,20 +500,23 @@ function initBannerCarousel(container) {
 
 async function loadBannerImages() {
   if (!stationName) return;
+  const defaultImg = '{% static "ratemetroapp/images/default-station.svg" %}';
+  let images = [];
   try {
     const res = await fetch(`/api/station-images/?station=${encodeURIComponent(stationName)}`);
     const data = await res.json();
-    if (data.status !== 'ok' || !data.images || data.images.length === 0) return;
-    const banner = document.getElementById('stationBanner');
-    if (data.images.length === 1) {
-      banner.innerHTML = `<img src="${data.images[0].url}" alt="${data.images[0].alt}">`;
-    } else {
-      const slides = data.images.map(img => `<div class="banner-carousel-slide"><img src="${img.url}" alt="${img.alt}"></div>`).join('');
-      const dots = data.images.map((_, i) => `<button class="banner-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></button>`).join('');
-      banner.innerHTML = `<div class="banner-carousel"><div class="banner-carousel-track">${slides}</div><div class="banner-carousel-dots">${dots}</div></div>`;
-      initBannerCarousel(banner.querySelector('.banner-carousel'));
-    }
-  } catch (e) { /* keep default SVG */ }
+    if (data.status === 'ok' && data.images) images = data.images;
+  } catch (e) { /* use defaults */ }
+  const displayImages = images.length > 0 ? images : Array.from({length: 5}, () => ({url: defaultImg, alt: stationName}));
+  const banner = document.getElementById('stationBanner');
+  if (displayImages.length === 1) {
+    banner.innerHTML = `<img src="${displayImages[0].url}" alt="${displayImages[0].alt}">`;
+  } else {
+    const slides = displayImages.map(img => `<div class="banner-carousel-slide"><img src="${img.url}" alt="${img.alt}"></div>`).join('');
+    const dots = displayImages.map((_, i) => `<button class="banner-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></button>`).join('');
+    banner.innerHTML = `<div class="banner-carousel"><div class="banner-carousel-track">${slides}</div><div class="banner-carousel-dots">${dots}</div></div>`;
+    initBannerCarousel(banner.querySelector('.banner-carousel'));
+  }
 }
 loadBannerImages();
 
