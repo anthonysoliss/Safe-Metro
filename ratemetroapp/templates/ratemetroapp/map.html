@@ -2426,7 +2426,7 @@ const metroStations = [
   { name: "Harbor Freeway",              lines: ["C"],            lat: 33.9287, lng: -118.2808 },
   { name: "Vermont/Athens",              lines: ["C"],            lat: 33.9287, lng: -118.2914 },
   { name: "Hawthorne/Lennox",            lines: ["C"],            lat: 33.9335, lng: -118.3520 },
-  { name: "Aviation/Imperial",           lines: ["C","K"],        lat: 33.9271, lng: -118.3793 },
+  { name: "Aviation/Imperial",           lines: ["C"],            lat: 33.9271, lng: -118.3793 },
   { name: "Aviation/Century",            lines: ["C","K"],        lat: 33.9454, lng: -118.3782 },
   { name: "LAX/Metro Transit Center",    lines: ["C","K"],        lat: 33.9508, lng: -118.3780 },
   // ── D Line (Purple) — Union Station ↔ Westwood/VA Hospital ──
@@ -2502,7 +2502,7 @@ const lineRoutes = {
   D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western","Wilshire/La Brea","Wilshire/Fairfax","Wilshire/La Cienega","Wilshire/Rodeo","Century City/Constellation","Westwood/VA Hospital"],
   E: ["Downtown Santa Monica","17th St/SMC","26th St/Bergamot","Expo/Bundy","Expo/Sepulveda","Westwood/Rancho Park","Palms","Culver City","La Cienega/Jefferson","Expo/La Brea","Expo/Crenshaw","Farmdale","Expo/Western","Expo/Vermont","Expo Park/USC","Jefferson/USC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Pico/Aliso","Mariachi Plaza/Boyle Heights","Soto","Indiana","Maravilla","East LA Civic Center","Atlantic"],
   G: ["North Hollywood","Woodman","Laurel Canyon","Valley College","Van Nuys","Sepulveda","Woodley","Balboa","Reseda","Tampa","Pierce College","De Soto","Roscoe","Nordhoff","Chatsworth"],
-  K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Imperial","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Crenshaw","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
+  K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Crenshaw","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
 };
 
 let activeLinePolyline = null;
@@ -2667,20 +2667,47 @@ let userMarker = null, stationMarkers = [], activeFilter = 'all';
 let landmarkMarkers = [];
 
 const LA_LANDMARKS = [
+  // Iconic Landmarks
   { name: 'Hollywood Sign', lat: 34.1341, lng: -118.3215, icon: '🎬', anim: 'landmark-bob' },
   { name: 'Griffith Observatory', lat: 34.1184, lng: -118.3004, icon: '🔭', anim: 'landmark-float' },
   { name: 'Santa Monica Pier', lat: 34.0094, lng: -118.4973, icon: '🎡', anim: 'landmark-pulse' },
-  { name: 'LAX', lat: 33.9425, lng: -118.4081, icon: '✈️', anim: 'landmark-bob' },
-  { name: 'Dodger Stadium', lat: 34.0739, lng: -118.2400, icon: '⚾', anim: 'landmark-float' },
-  { name: 'Crypto.com Arena', lat: 34.0430, lng: -118.2673, icon: '🏀', anim: 'landmark-pulse' },
-  { name: 'The Getty Center', lat: 34.0780, lng: -118.4741, icon: '🏛️', anim: 'landmark-bob' },
+  { name: 'Hollywood Walk of Fame', lat: 34.1017, lng: -118.3269, icon: '⭐', anim: 'landmark-pulse' },
+  { name: 'TCL Chinese Theatre', lat: 34.1022, lng: -118.3409, icon: '🎭', anim: 'landmark-bob' },
+  { name: 'Beverly Hills Sign', lat: 34.0736, lng: -118.4004, icon: '💎', anim: 'landmark-float' },
+  { name: 'Rodeo Drive', lat: 34.0673, lng: -118.4003, icon: '🛍️', anim: 'landmark-pulse' },
+  { name: 'Sunset Strip', lat: 34.0901, lng: -118.3863, icon: '🌅', anim: 'landmark-bob' },
+  // Beaches & Outdoor
   { name: 'Venice Beach', lat: 33.9850, lng: -118.4695, icon: '🏖️', anim: 'landmark-float' },
-  { name: 'Universal Studios', lat: 34.1381, lng: -118.3534, icon: '🎢', anim: 'landmark-pulse' },
+  { name: 'Malibu Pier', lat: 34.0259, lng: -118.6768, icon: '🌊', anim: 'landmark-bob' },
+  { name: 'Runyon Canyon', lat: 34.1060, lng: -118.3485, icon: '🥾', anim: 'landmark-float' },
+  // Museums & Culture
+  { name: 'The Getty Center', lat: 34.0780, lng: -118.4741, icon: '🏛️', anim: 'landmark-bob' },
   { name: 'Walt Disney Concert Hall', lat: 34.0553, lng: -118.2498, icon: '🎵', anim: 'landmark-bob' },
-  { name: 'SoFi Stadium', lat: 33.9534, lng: -118.3392, icon: '🏟️', anim: 'landmark-float' },
   { name: 'The Broad Museum', lat: 34.0544, lng: -118.2505, icon: '🎨', anim: 'landmark-pulse' },
   { name: 'La Brea Tar Pits', lat: 34.0638, lng: -118.3554, icon: '🦣', anim: 'landmark-bob' },
+  { name: 'LACMA', lat: 34.0639, lng: -118.3592, icon: '🖼️', anim: 'landmark-float' },
+  { name: 'Natural History Museum', lat: 34.0171, lng: -118.2886, icon: '🦕', anim: 'landmark-pulse' },
+  { name: 'California Science Center', lat: 34.0149, lng: -118.2862, icon: '🚀', anim: 'landmark-bob' },
+  { name: 'The Grammy Museum', lat: 34.0452, lng: -118.2691, icon: '🎤', anim: 'landmark-float' },
+  // Sports & Entertainment
+  { name: 'Dodger Stadium', lat: 34.0739, lng: -118.2400, icon: '⚾', anim: 'landmark-float' },
+  { name: 'Crypto.com Arena', lat: 34.0430, lng: -118.2673, icon: '🏀', anim: 'landmark-pulse' },
+  { name: 'SoFi Stadium', lat: 33.9534, lng: -118.3392, icon: '🏟️', anim: 'landmark-float' },
+  { name: 'Universal Studios', lat: 34.1381, lng: -118.3534, icon: '🎢', anim: 'landmark-pulse' },
+  { name: 'Rose Bowl', lat: 34.1613, lng: -118.1676, icon: '🏈', anim: 'landmark-bob' },
+  { name: 'BMO Stadium', lat: 34.0126, lng: -118.2841, icon: '⚽', anim: 'landmark-float' },
+  // Historic & Neighborhoods
   { name: 'Olvera Street', lat: 34.0566, lng: -118.2380, icon: '🪅', anim: 'landmark-float' },
+  { name: 'Watts Towers', lat: 33.9389, lng: -118.2414, icon: '🗼', anim: 'landmark-pulse' },
+  { name: 'Union Station', lat: 34.0561, lng: -118.2365, icon: '🚂', anim: 'landmark-bob' },
+  { name: 'The Original Farmers Market', lat: 34.0720, lng: -118.3615, icon: '🍊', anim: 'landmark-float' },
+  { name: 'Grand Central Market', lat: 34.0509, lng: -118.2488, icon: '🥘', anim: 'landmark-pulse' },
+  // Transport & Other
+  { name: 'LAX', lat: 33.9425, lng: -118.4081, icon: '✈️', anim: 'landmark-bob' },
+  { name: 'Los Angeles City Hall', lat: 34.0537, lng: -118.2430, icon: '🏛️', anim: 'landmark-float' },
+  { name: 'Staples Center / LA Live', lat: 34.0448, lng: -118.2653, icon: '🎉', anim: 'landmark-pulse' },
+  { name: 'Angels Flight Railway', lat: 34.0511, lng: -118.2502, icon: '🚋', anim: 'landmark-bob' },
+  { name: 'Echo Park Lake', lat: 34.0781, lng: -118.2606, icon: '🦢', anim: 'landmark-float' },
 ];
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
