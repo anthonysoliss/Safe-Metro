@@ -32,6 +32,7 @@ def map_view(request):
         'is_authenticated': request.user.is_authenticated,
         'username': request.user.username if request.user.is_authenticated else None,
         'avatar_url': avatar_url,
+        'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY,
     }
     return render(request, 'ratemetroapp/map.html', context)
 
@@ -1003,7 +1004,10 @@ When the user asks about train times, schedule, next trains, or arrivals at a st
 Copy the arrivals exactly from the CURRENT USER CONTEXT "Live trains at ..." data. Do not invent or modify times.
 Use the station name, line letter, headsign, minutes_away, and color values exactly as provided in the context.
 Only include the [ARRIVALS] block for train time/schedule/arrival questions, NOT for directions or general info.
-If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station."""
+If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station.
+
+Google Transit Route Data — IMPORTANT:
+When the CURRENT USER CONTEXT includes a "Google Transit Route" section, use those exact times, line names, and stop counts in your response. This data comes from Google's live transit API and is more accurate than general knowledge. Prefer Google route data over your built-in knowledge for travel times and departure/arrival times. Format the route using your standard numbered-step direction format, incorporating the departure and arrival times from the Google data."""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -1111,12 +1115,12 @@ def _build_user_context(request, data, user_message=''):
             pass
 
     # Fetch arrivals and travel times for stations mentioned in the user message
+    mentioned_stations = []
     if user_message:
         from .gtfs_service import get_travel_times, get_schedule_at_station
         try:
             all_stations = Station.objects.all()
             msg_lower = user_message.lower()
-            mentioned_stations = []
             for s in all_stations:
                 if _station_mentioned(s.name, msg_lower):
                     mentioned_stations.append(s.name)
@@ -1203,7 +1207,146 @@ def _build_user_context(request, data, user_message=''):
         except Exception:
             pass
 
+    # --- Google Routes API for directions requests ---
+    if user_message:
+        directions_context = _get_google_directions_context(user_message, data, mentioned_stations)
+        if directions_context:
+            parts.append(directions_context)
+
     return "\n".join(parts)
+
+
+def _is_directions_request(msg_lower):
+    """Check if a user message is asking for transit directions."""
+    direction_phrases = [
+        "how do i get to", "how to get to", "how can i get to",
+        "directions to", "directions from",
+        "take me to", "get me to",
+        "travel to", "travel from",
+        "go to", "go from",
+        "ride to", "ride from",
+        "get to", "get from",
+        "route to", "route from",
+        "trip to", "trip from",
+        "commute to", "commute from",
+        "way to get to", "best way to",
+        "how long to get to", "how far to",
+        "navigate to",
+        "from here to",
+    ]
+    for phrase in direction_phrases:
+        if phrase in msg_lower:
+            return True
+    # Also match "from X to Y" pattern
+    if re.search(r'\bfrom\b.+\bto\b', msg_lower):
+        return True
+    return False
+
+
+def _extract_destination_from_message(msg_lower, mentioned_stations):
+    """Extract the destination station from a directions request."""
+    # Look for "to <station>" pattern
+    for station in mentioned_stations:
+        s_lower = station.lower()
+        s_norm = s_lower.replace('/', ' ')
+        # Check "to <station>" or "get to <station>"
+        if re.search(rf'\bto\s+(?:the\s+)?{re.escape(s_norm)}', msg_lower.replace('/', ' ')):
+            return station
+        if re.search(rf'\bto\s+(?:the\s+)?{re.escape(s_lower)}', msg_lower):
+            return station
+    # Fallback: last mentioned station is usually the destination
+    if mentioned_stations:
+        return mentioned_stations[-1]
+    return None
+
+
+def _extract_origin_from_message(msg_lower, mentioned_stations, destination):
+    """Extract the origin station from a directions request."""
+    for station in mentioned_stations:
+        if station == destination:
+            continue
+        s_lower = station.lower()
+        s_norm = s_lower.replace('/', ' ')
+        if re.search(rf'\bfrom\s+(?:the\s+)?{re.escape(s_norm)}', msg_lower.replace('/', ' ')):
+            return station
+        if re.search(rf'\bfrom\s+(?:the\s+)?{re.escape(s_lower)}', msg_lower):
+            return station
+    # Return first non-destination station
+    for station in mentioned_stations:
+        if station != destination:
+            return station
+    return None
+
+
+def _get_google_directions_context(user_message, data, mentioned_stations):
+    """Get Google Routes transit directions if the message is a directions request."""
+    from .google_routes import get_transit_route, format_route_for_context
+
+    msg_lower = user_message.lower()
+    if not _is_directions_request(msg_lower):
+        return None
+
+    # Find mentioned stations if not passed in
+    if mentioned_stations is None:
+        mentioned_stations = []
+        try:
+            all_stations = Station.objects.all()
+            for s in all_stations:
+                if _station_mentioned(s.name, msg_lower):
+                    mentioned_stations.append(s.name)
+        except Exception:
+            pass
+
+    # Determine origin and destination
+    destination = _extract_destination_from_message(msg_lower, mentioned_stations)
+
+    # Try to get origin from message or user location
+    origin = _extract_origin_from_message(msg_lower, mentioned_stations, destination)
+
+    # If no explicit origin, use the user's closest station from location data
+    user_lat = data.get('lat')
+    user_lng = data.get('lng')
+    if not origin and user_lat and user_lng:
+        try:
+            user_lat_f = float(user_lat)
+            user_lng_f = float(user_lng)
+            stations = Station.objects.all()
+            closest = None
+            closest_dist = float('inf')
+            for s in stations:
+                dist = _haversine_miles(user_lat_f, user_lng_f, s.latitude, s.longitude)
+                if dist < closest_dist:
+                    closest_dist = dist
+                    closest = s.name
+            origin = closest
+        except (ValueError, TypeError):
+            pass
+
+    # If no explicit destination but user mentions one station + directions keywords,
+    # use that station as destination and user location as origin
+    if not destination and len(mentioned_stations) == 1:
+        destination = mentioned_stations[0]
+
+    # If still missing origin, try using lat/lng directly with Google
+    if not origin and user_lat and user_lng:
+        origin_loc = {"lat": user_lat, "lng": user_lng}
+    elif origin:
+        origin_loc = origin + " Metro Station, Los Angeles, CA"
+    else:
+        return None
+
+    if not destination:
+        return None
+
+    destination_loc = destination + " Metro Station, Los Angeles, CA"
+
+    api_key = settings.GOOGLE_MAPS_API_KEY
+    route_data = get_transit_route(origin_loc, destination_loc, api_key)
+    if not route_data:
+        return None
+
+    origin_label = origin if origin else "your location"
+    return format_route_for_context(route_data, origin_label, destination)
 
 
 @csrf_exempt

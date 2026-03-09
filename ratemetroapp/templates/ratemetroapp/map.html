@@ -10,6 +10,8 @@
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}"></script>
+<script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -61,9 +63,11 @@
   .leaflet-container { background: #121218; }
   [data-theme="light"] .leaflet-container { background: #e8e8ed; }
 
-  .leaflet-tile-pane { filter: brightness(0.65) contrast(1.1) saturate(1.4); }
-  [data-theme="light"] .leaflet-tile-pane { filter: none; }
   .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+  .gmnoprint, .gm-style-cc, .gm-style a[href^="https://maps.google.com"], .gm-style a[href^="https://www.google.com/maps"] { display: none !important; }
+  .gm-style .gm-style-mtc, .gm-style .gm-bundled-control { display: none !important; }
+  .gm-style img[src*="google"], .gm-style img[alt="Google"] { display: none !important; }
+  .leaflet-google-mutant a[href^="https://www.google.com"] { display: none !important; }
 
   /* ── Hamburger Nav ── */
   .hamburger-nav {
@@ -1072,6 +1076,8 @@
   .popup-line-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; font-size: 9px; font-weight: 700; flex-shrink: 0; }
   .popup-arrival-dest { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .popup-arrival-time { font-weight: 600; white-space: nowrap; color: var(--accent); }
+  .popup-arrival-eta { font-weight: 600; white-space: nowrap; color: var(--accent); display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+  .popup-arrival-clock { font-size: 9px; font-weight: 400; color: var(--text-muted); }
   .popup-arrivals-loading { font-size: 10px; color: var(--text-muted); font-style: italic; }
   .leaflet-popup-close-button {
     width: 26px !important; height: 26px !important;
@@ -1453,6 +1459,8 @@
   .station-time-pills { display: flex; gap: 4px; }
   .station-time-pill { font-size: 10px; font-variant-numeric: tabular-nums; background: rgba(255,255,255,0.07); border-radius: 4px; padding: 2px 6px; color: var(--text-secondary); white-space: nowrap; }
   .station-time-pill.soon { color: var(--accent); font-weight: 600; background: rgba(212,160,23,0.12); }
+  .station-time-eta { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .station-time-clock { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
   [data-theme="light"] .station-time-pill { background: rgba(0,0,0,0.06); }
   [data-theme="light"] .station-time-pill.soon { background: rgba(212,160,23,0.15); }
   .leaflet-popup-tip { background: rgba(22, 22, 34, 0.95) !important; border: 1px solid rgba(255,255,255,0.06) !important; box-shadow: none !important; }
@@ -2663,17 +2671,45 @@ const LA_LANDMARKS = [
 
 const map = L.map('map', { center: [defaultLat, defaultLng], zoom: 12, zoomControl: false, attributionControl: false });
 
-const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const gmapDarkStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a9a' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2a2a3e' }] },
+  { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#64648a' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#22223a' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a9a' }] },
+  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#1a2e1a' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#5a8a5a' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a3e' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a9a' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a3a50' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#22223a' }] },
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#a0a0b0' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1a2e' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a5a7a' }] },
+];
+const gmapLightStyle = [];
+
+function createGoogleLayer(theme) {
+  return L.gridLayer.googleMutant({
+    type: 'roadmap',
+    maxZoom: 21,
+    styles: theme === 'light' ? gmapLightStyle : gmapDarkStyle,
+  });
+}
+
 const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-let tileLayer = L.tileLayer(currentTheme === 'light' ? lightTileUrl : darkTileUrl, { maxZoom: 19 }).addTo(map);
+let tileLayer = createGoogleLayer(currentTheme).addTo(map);
 
 window.addEventListener('storage', function(e) {
   if (e.key === 'ratemetro-theme') {
     const newTheme = e.newValue || 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     map.removeLayer(tileLayer);
-    tileLayer = L.tileLayer(newTheme === 'light' ? lightTileUrl : darkTileUrl, { maxZoom: 19 }).addTo(map);
+    tileLayer = createGoogleLayer(newTheme).addTo(map);
   }
 });
 
@@ -2753,10 +2789,11 @@ function buildPopupHTML(station, rating, userHasRated = false, arrivals = undefi
     const rows = arrivals.slice(0, 5).map(a => {
       const textColor = a.line === 'E' || a.line === 'G' ? '#000' : '#fff';
       const minLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+      const clockTime = a.time ? `<span class="popup-arrival-clock">${a.time}</span>` : '';
       return `<div class="popup-arrival-row">
         <span class="popup-line-badge" style="background:${a.color};color:${textColor}">${a.line}</span>
         <span class="popup-arrival-dest">${a.headsign}</span>
-        <span class="popup-arrival-time">${minLabel}</span>
+        <span class="popup-arrival-eta">${minLabel}${clockTime}</span>
       </div>`;
     }).join('');
     arrivalsHTML = `<div class="popup-arrivals"><div class="popup-arrivals-title">Upcoming Trains</div>${rows}</div>`;
@@ -2959,10 +2996,11 @@ function renderStationTimesHTML(arrivals) {
   const rows = arrivals.slice(0, 3).map(a => {
     const textColor = a.line === 'E' || a.line === 'G' ? '#000' : '#fff';
     const minLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+    const clockTime = a.time ? `<span class="station-time-clock">${a.time}</span>` : '';
     return `<div class="station-time-row">
       <span class="popup-line-badge" style="background:${a.color};color:${textColor};width:14px;height:14px;font-size:8px">${a.line}</span>
       <span class="station-time-dir" style="color:${a.color};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.headsign}</span>
-      <span class="station-time-pill soon">${minLabel}</span>
+      <span class="station-time-eta"><span class="station-time-pill soon">${minLabel}</span>${clockTime}</span>
     </div>`;
   }).join('');
   return `<div class="station-times">${rows}</div>`;
@@ -3082,6 +3120,55 @@ function closePanel() { stationPill.classList.remove('active'); stationPanel.cla
 stationPill.addEventListener('click', () => stationPanel.classList.contains('open') ? closePanel() : openPanel());
 panelBackdrop.addEventListener('click', closePanel);
 stationSearch.addEventListener('input', e => renderStationList(e.target.value));
+
+// ── Real-time arrival refresh (every 30s) ──
+setInterval(() => {
+  // Refresh station list arrivals if panel is open
+  if (stationPanel.classList.contains('open')) {
+    // Clear cached arrivals so they re-fetch
+    Object.keys(_arrivalsCache).forEach(k => { _arrivalsCache[k]._ts = 0; });
+    fetchStationTimesForList();
+  }
+  // Refresh the open popup if any
+  const openMarker = stationMarkers.find(m => m.isPopupOpen());
+  if (openMarker) {
+    const name = openMarker.stationData.name;
+    fetch(DJANGO_URLS.stationArrivals + '?station=' + encodeURIComponent(name))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.status === 'ok') {
+          _arrivalsCache[name] = data;
+          _arrivalsCache[name]._ts = Date.now();
+          if (openMarker.isPopupOpen()) {
+            const popup = openMarker.getPopup();
+            const el = popup.getElement();
+            if (el) {
+              const arrivalsDiv = el.querySelector('.popup-arrivals');
+              if (arrivalsDiv) {
+                const arrivals = data.arrivals || [];
+                if (arrivals.length === 0) {
+                  arrivalsDiv.innerHTML = '<div class="popup-arrivals-loading">No upcoming trains</div>';
+                } else {
+                  const rows = arrivals.slice(0, 5).map(a => {
+                    const textColor = a.line === 'E' || a.line === 'G' ? '#000' : '#fff';
+                    const minLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+                    const clockTime = a.time ? `<span class="popup-arrival-clock">${a.time}</span>` : '';
+                    return `<div class="popup-arrival-row">
+                      <span class="popup-line-badge" style="background:${a.color};color:${textColor}">${a.line}</span>
+                      <span class="popup-arrival-dest">${a.headsign}</span>
+                      <span class="popup-arrival-eta">${minLabel}${clockTime}</span>
+                    </div>`;
+                  }).join('');
+                  arrivalsDiv.innerHTML = `<div class="popup-arrivals-title">Upcoming Trains</div>${rows}`;
+                }
+              }
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }
+}, 30000);
 
 // ── User Location ──
 function updateCoords(lat, lng) {

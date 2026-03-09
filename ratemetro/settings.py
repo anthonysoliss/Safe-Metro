@@ -146,3 +146,6 @@ FEEDBACK_EMAIL = 'feedback@ratemetro.com'
 
 # Anthropic API
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+
+# Google Maps API
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
