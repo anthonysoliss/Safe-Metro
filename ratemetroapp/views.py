@@ -999,10 +999,11 @@ Only include the [ROUTE] block for actual routing directions, NOT for general in
 Structured Arrivals Data — IMPORTANT:
 When the user asks about train times, schedule, next trains, or arrivals at a station, append a machine-readable JSON block at the very end of your response in this exact format:
 
-[ARRIVALS]{"station":"Station Name","arrivals":[{"line":"E","headsign":"Downtown Santa Monica","minutes_away":5,"color":"#fdb913"}]}[/ARRIVALS]
+[ARRIVALS]{"station":"Station Name","arrivals":[{"line":"E","headsign":"Downtown Santa Monica","minutes_away":5,"time":"2:30 PM","color":"#fdb913"}]}[/ARRIVALS]
 
 Copy the arrivals exactly from the CURRENT USER CONTEXT "Live trains at ..." data. Do not invent or modify times.
-Use the station name, line letter, headsign, minutes_away, and color values exactly as provided in the context.
+Use the station name, line letter, headsign, minutes_away, time (the actual clock time like "2:30 PM"), and color values exactly as provided in the context.
+The context format is: "E Line to Downtown Santa Monica at 2:30 PM (5 min away, color:#fdb913)" — extract each field from that.
 Only include the [ARRIVALS] block for train time/schedule/arrival questions, NOT for directions or general info.
 If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station.
 
@@ -1105,7 +1106,7 @@ def _build_user_context(request, data, user_message=''):
                     nearest_name = nearby[0][1].split(' [')[0]  # extract station name before [Lines: ...]
                     nearest_arrivals = get_arrivals(nearest_name, limit=5)
                     if nearest_arrivals:
-                        arr_strs = [f"{a['line']} Line to {a['headsign']} in {a['minutes_away']} min" for a in nearest_arrivals]
+                        arr_strs = [f"{a['line']} Line to {a['headsign']} at {a['time']} ({a['minutes_away']} min away, color:{a['color']})" for a in nearest_arrivals]
                         parts.append(f"Live trains at {nearest_name}: " + "; ".join(arr_strs))
                 except Exception:
                     pass
@@ -1128,7 +1129,7 @@ def _build_user_context(request, data, user_message=''):
                         mentioned_arrivals = get_arrivals(s.name, limit=5)
                         if mentioned_arrivals:
                             arr_strs = [
-                                f"{a['line']} Line to {a['headsign']} in {a['minutes_away']} min (color:{a['color']})"
+                                f"{a['line']} Line to {a['headsign']} at {a['time']} ({a['minutes_away']} min away, color:{a['color']})"
                                 for a in mentioned_arrivals
                             ]
                             parts.append(f"Live trains at {s.name}: " + "; ".join(arr_strs))

@@ -876,7 +876,21 @@
   .arrivals-time {
     font-size: 13px; font-weight: 700; flex-shrink: 0;
     font-variant-numeric: tabular-nums;
+    display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2;
   }
+  .arrivals-time-clock {
+    font-size: 10px; font-weight: 400; color: var(--text-muted);
+  }
+  .arrivals-widget-refresh {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--text-muted); font-style: italic;
+    padding: 0 16px 6px; justify-content: flex-end;
+  }
+  .arrivals-widget-refresh .refresh-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+    animation: refreshPulse 2s ease infinite;
+  }
+  @keyframes refreshPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   .arrivals-widget-footer {
     padding: 10px 16px 14px;
     border-top: 1px solid var(--border);
@@ -3805,49 +3819,75 @@ function showRouteWidget(routeData) {
   });
 }
 
-function showArrivalsWidget(data) {
+function buildArrivalsWidgetHTML(data) {
   const arrivals = data.arrivals;
-  if (!arrivals || arrivals.length === 0) return;
-
-  // Collect unique line colors for header dots
+  if (!arrivals || arrivals.length === 0) return '';
   const uniqueLines = [...new Set(arrivals.map(a => a.line))];
+  const stationName = data.station || '';
 
-  const widget = document.createElement('div');
-  widget.className = 'arrivals-widget';
-
-  // Header with station name + line color dots
-  let html = `<div class="arrivals-widget-header"><h3>${data.station || 'Train Times'}<span class="line-dots">`;
+  let html = `<div class="arrivals-widget-header"><h3>${stationName || 'Train Times'}<span class="line-dots">`;
   uniqueLines.forEach(l => {
     const info = metroLines[l];
     if (info) html += `<span class="line-dot-sm" style="background:${info.color}"></span>`;
   });
   html += `</span></h3><button class="arrivals-widget-close" onclick="this.closest('.arrivals-widget').remove()">&times;</button></div>`;
 
-  // Arrival rows
   html += `<div class="arrivals-widget-rows">`;
   arrivals.forEach(a => {
     const color = a.color || '#888';
-    // Determine text color for badge — light colors need dark text
     const badgeText = ['#fdb913', '#f58220'].includes(color) ? '#1a1a2e' : '#fff';
     const timeLabel = a.minutes_away === 0 ? 'Now' : a.minutes_away + ' min';
+    const clockTime = a.time ? `<span class="arrivals-time-clock">${a.time}</span>` : '';
     html += `<div class="arrivals-row">`;
     html += `<span class="arrivals-line-badge" style="background:${color};color:${badgeText}">${a.line}</span>`;
     html += `<span class="arrivals-headsign">${a.headsign}</span>`;
-    html += `<span class="arrivals-time" style="color:${color}">${timeLabel}</span>`;
+    html += `<span class="arrivals-time" style="color:${color}">${timeLabel}${clockTime}</span>`;
     html += `</div>`;
   });
   html += `</div>`;
 
-  // Footer with View on Map button
-  const stationName = data.station || '';
+  html += `<div class="arrivals-widget-refresh"><span class="refresh-dot"></span> Live — updates every 30s</div>`;
   html += `<div class="arrivals-widget-footer"><button class="arrivals-view-btn" onclick="viewStationOnMap('${stationName.replace(/'/g, "\\'")}')">View on Map</button></div>`;
 
-  widget.innerHTML = html;
+  return html;
+}
+
+function showArrivalsWidget(data) {
+  const arrivals = data.arrivals;
+  if (!arrivals || arrivals.length === 0) return;
+
+  const widget = document.createElement('div');
+  widget.className = 'arrivals-widget';
+  widget.dataset.station = data.station || '';
+  widget.innerHTML = buildArrivalsWidgetHTML(data);
   chatOverlay.appendChild(widget);
   requestAnimationFrame(() => {
     chatOverlay.scrollTop = chatOverlay.scrollHeight;
   });
 }
+
+// Auto-refresh arrivals widget in chat every 30s
+setInterval(() => {
+  const widget = document.querySelector('.arrivals-widget[data-station]');
+  if (!widget) return;
+  const station = widget.dataset.station;
+  if (!station) return;
+  fetch(DJANGO_URLS.stationArrivals + '?station=' + encodeURIComponent(station))
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.status === 'ok' && data.arrivals && data.arrivals.length > 0) {
+        // Update cache
+        _arrivalsCache[station] = data;
+        _arrivalsCache[station]._ts = Date.now();
+        // Re-render widget contents in place
+        const existing = document.querySelector('.arrivals-widget[data-station="' + CSS.escape(station) + '"]');
+        if (existing) {
+          existing.innerHTML = buildArrivalsWidgetHTML(data);
+        }
+      }
+    })
+    .catch(() => {});
+}, 30000);
 
 function viewStationOnMap(stationName) {
   dismissChat();
