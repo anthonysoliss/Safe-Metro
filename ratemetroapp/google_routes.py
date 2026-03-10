@@ -155,6 +155,65 @@ def _parse_duration(duration_str):
         return 0
 
 
+def get_walking_route(origin, destination, api_key):
+    """
+    Get walking directions from origin to destination using Google Routes API.
+
+    Args:
+        origin: dict with lat/lng keys or address string
+        destination: dict with lat/lng keys or address string
+        api_key: Google Maps API key
+
+    Returns:
+        Dict with duration_minutes and distance_text, or None on error.
+    """
+    url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+        "X-Goog-FieldMask": (
+            "routes.duration,"
+            "routes.distanceMeters,"
+            "routes.localizedValues"
+        ),
+    }
+
+    body = {
+        "origin": _build_waypoint(origin),
+        "destination": _build_waypoint(destination),
+        "travelMode": "WALK",
+    }
+
+    try:
+        resp = requests.post(url, json=body, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
+
+    routes = data.get("routes", [])
+    if not routes:
+        return None
+
+    route = routes[0]
+    duration_seconds = _parse_duration(route.get("duration", "0s"))
+    duration_minutes = round(duration_seconds / 60)
+    distance_meters = route.get("distanceMeters", 0)
+
+    # Convert to miles
+    distance_miles = round(distance_meters / 1609.34, 1)
+
+    localized = route.get("localizedValues", {})
+    distance_text = localized.get("distance", {}).get("text", f"{distance_miles} mi")
+
+    return {
+        "duration_minutes": duration_minutes,
+        "distance_text": distance_text,
+        "distance_miles": distance_miles,
+    }
+
+
 def format_route_for_context(route_data, origin_name, destination_name):
     """
     Format a parsed route into a human-readable string for the AI context.

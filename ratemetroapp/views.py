@@ -978,6 +978,8 @@ Guidelines:
   - Greet signed-in users by their username on the first message only
   - If the user asks for their coordinates or location data, share it
   - ALWAYS start directions from the user's closest station
+  - When the context includes "Walking to [station]" info, include this as step 1 of your directions (e.g. "Walk 5 min to Maravilla station (0.4 mi)")
+  - When the user asks "give me directions" or similar without specifying a destination, tell them their nearest station and walking time, then ask where they want to go
 
 Structured Route Data — IMPORTANT:
 Whenever you give step-by-step Metro directions (riding from one station to another), you MUST append a machine-readable JSON block at the very end of your response in this exact format:
@@ -1010,7 +1012,19 @@ Only include the [ARRIVALS] block for train time/schedule/arrival questions, NOT
 If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station.
 
 Google Transit Route Data — IMPORTANT:
-When the CURRENT USER CONTEXT includes a "Google Transit Route" section, use those exact times, line names, and stop counts in your response. This data comes from Google's live transit API and is more accurate than general knowledge. Prefer Google route data over your built-in knowledge for travel times and departure/arrival times. Format the route using your standard numbered-step direction format, incorporating the departure and arrival times from the Google data."""
+When the CURRENT USER CONTEXT includes a "Google Transit Route" section, use those exact times, line names, and stop counts in your response. This data comes from Google's live transit API and is more accurate than general knowledge. Prefer Google route data over your built-in knowledge for travel times and departure/arrival times. Format the route using your standard numbered-step direction format, incorporating the departure and arrival times from the Google data.
+
+Structured Walking Data — IMPORTANT:
+When the CURRENT USER CONTEXT includes "Walking to [station]" data, and the user asks about directions, nearest station, or how to get somewhere, append a machine-readable JSON block at the very end of your response (after any [ROUTE] block) in this exact format:
+
+[WALKING]{"station":"Station Name","duration_minutes":5,"distance":"0.4 mi","lines":["E"]}[/WALKING]
+
+- "station": exact station name matching the nearest station
+- "duration_minutes": walking time in minutes from the context
+- "distance": distance string from the context
+- "lines": array of line letter codes available at that station (from the context "Lines:" info)
+
+Always include the [WALKING] block when the context has walking data AND the user asks about directions, nearest station, or getting to a station. Include it alongside [ROUTE] blocks when giving full transit directions."""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -1110,6 +1124,23 @@ def _build_user_context(request, data, user_message=''):
                     if nearest_arrivals:
                         arr_strs = [f"{a['line']} Line to {a['headsign']} at {a['time']} ({a['minutes_away']} min away, color:{a['color']})" for a in nearest_arrivals]
                         parts.append(f"Live trains at {nearest_name}: " + "; ".join(arr_strs))
+                except Exception:
+                    pass
+
+                # Get walking directions to nearest station
+                try:
+                    from .google_routes import get_walking_route
+                    nearest_name = nearby[0][1].split(' [')[0]
+                    nearest_station_obj = Station.objects.get(name=nearest_name)
+                    walk_data = get_walking_route(
+                        {"lat": user_lat, "lng": user_lng},
+                        {"lat": nearest_station_obj.latitude, "lng": nearest_station_obj.longitude},
+                        settings.GOOGLE_MAPS_API_KEY,
+                    )
+                    if walk_data:
+                        parts.append(
+                            f"Walking to {nearest_name}: {walk_data['duration_minutes']} min walk ({walk_data['distance_text']})"
+                        )
                 except Exception:
                     pass
             else:
@@ -1223,7 +1254,7 @@ def _is_directions_request(msg_lower):
     """Check if a user message is asking for transit directions."""
     direction_phrases = [
         "how do i get to", "how to get to", "how can i get to",
-        "directions to", "directions from",
+        "directions to", "directions from", "give me directions", "get directions",
         "take me to", "get me to",
         "travel to", "travel from",
         "go to", "go from",
@@ -1236,6 +1267,8 @@ def _is_directions_request(msg_lower):
         "how long to get to", "how far to",
         "navigate to",
         "from here to",
+        "how do i get there", "how to get there",
+        "nearest station", "closest station", "walk to the station",
     ]
     for phrase in direction_phrases:
         if phrase in msg_lower:
@@ -1440,6 +1473,16 @@ def api_chat(request):
                 arrivals_data = None
             ai_text_clean = ai_text_clean[:arrivals_match.start()].rstrip()
 
+        # Parse structured walking data if present
+        walking_data = None
+        walking_match = re.search(r'\[WALKING\](.*?)\[/WALKING\]', ai_text_clean, re.DOTALL)
+        if walking_match:
+            try:
+                walking_data = json.loads(walking_match.group(1))
+            except (json.JSONDecodeError, ValueError):
+                walking_data = None
+            ai_text_clean = ai_text_clean[:walking_match.start()].rstrip()
+
         # Save full text (with route/arrivals blocks) to DB for AI context continuity
         if conversation:
             ChatMessage.objects.create(conversation=conversation, role='assistant', content=ai_text)
@@ -1454,6 +1497,8 @@ def api_chat(request):
             resp['route_data'] = route_data
         if arrivals_data:
             resp['arrivals_data'] = arrivals_data
+        if walking_data:
+            resp['walking_data'] = walking_data
 
         return JsonResponse(resp)
 
