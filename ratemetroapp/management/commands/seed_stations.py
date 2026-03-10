@@ -52,7 +52,7 @@ STATIONS = [
     # C Line (Green) — Norwalk ↔ LAX/Metro Transit Center
     {"name": "Norwalk",                    "lines": ["C"],             "lat": 33.914119, "lng": -118.104075},
     {"name": "Lakewood Blvd",              "lines": ["C"],             "lat": 33.913091, "lng": -118.140185},
-    {"name": "Long Beach Blvd",            "lines": ["C"],             "lat": 33.924864, "lng": -118.209991},
+    {"name": "Lynwood",                    "lines": ["C"],             "lat": 33.924864, "lng": -118.209991},
     {"name": "Avalon",                     "lines": ["C"],             "lat": 33.927464, "lng": -118.265221},
     {"name": "Harbor Freeway",             "lines": ["C"],             "lat": 33.928725, "lng": -118.280791},
     {"name": "Vermont/Athens",             "lines": ["C"],             "lat": 33.928705, "lng": -118.291386},
