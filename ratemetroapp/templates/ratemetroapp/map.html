@@ -3676,14 +3676,23 @@ function buildContactWidget(text) {
   return `<div class="contact-widget"><div class="contact-widget-header">${shieldSvg}<span>Quick Contact</span></div><div class="contact-widget-body">${rows.join('<div class="contact-widget-divider"></div>')}</div></div>`;
 }
 
+function stripStructuredBlocks(text) {
+  return text
+    .replace(/\[ROUTE\][\s\S]*?\[\/ROUTE\]/g, '')
+    .replace(/\[ARRIVALS\][\s\S]*?\[\/ARRIVALS\]/g, '')
+    .replace(/\[WALKING\][\s\S]*?\[\/WALKING\]/g, '')
+    .trim();
+}
+
 function appendMsgEl(text, type) {
   // Remove welcome screen when first message is added
   const welcome = chatOverlay.querySelector('.chat-welcome');
   if (welcome) welcome.remove();
   const m = document.createElement('div'); m.className = `chat-msg ${type}`;
   if (type === 'ai') {
-    let html = `<div class="ai-label">Metro Safe AI</div>${parseMd(text)}`;
-    html += buildContactWidget(text);
+    const cleanText = stripStructuredBlocks(text);
+    let html = `<div class="ai-label">Metro Safe AI</div>${parseMd(cleanText)}`;
+    html += buildContactWidget(cleanText);
     m.innerHTML = html;
   } else {
     m.textContent = text;
@@ -3732,6 +3741,7 @@ async function openSession(id, {show = true} = {}) {
   if (show) {
     chatOverlay.classList.add('visible');
     chatBackdrop.classList.add('visible');
+    try { localStorage.setItem('metroChatVisible', 'true'); } catch(e) {}
   }
   requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
 }
@@ -3790,6 +3800,7 @@ function addMsg(text, type, routeData, arrivalsData, walkingData) {
   appendMsgEl(text, type);
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
+  try { localStorage.setItem('metroChatVisible', 'true'); } catch(e) {}
   chatOverlay.scrollTop = chatOverlay.scrollHeight;
 }
 function showTyping() {
@@ -4152,10 +4163,13 @@ function startRouteNavigation(routeData) {
 let walkingPolyline = null;
 let walkingMarkers = [];
 
-function clearWalkingFromMap() {
+function clearWalkingFromMap(removeStorage) {
   if (walkingPolyline) { map.removeLayer(walkingPolyline); walkingPolyline = null; }
   walkingMarkers.forEach(m => map.removeLayer(m));
   walkingMarkers = [];
+  if (removeStorage !== false) {
+    try { localStorage.removeItem('metroActiveWalking'); } catch(e) {}
+  }
 }
 
 function showWalkingWidget(walkingData) {
@@ -4199,9 +4213,12 @@ function showWalkingWidget(walkingData) {
 }
 
 function drawWalkingRouteOnMap(walkingData) {
-  clearWalkingFromMap();
+  clearWalkingFromMap(false);  // Clear visuals but keep localStorage
   clearRouteFromMap();
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+
+  // Save to localStorage so it persists across reload
+  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData)); } catch(e) {}
 
   const stationInfo = stationByName[walkingData.station];
   if (!stationInfo || !userLocationKnown) return;
@@ -4538,9 +4555,10 @@ updateChatHistoryUserInfo();
 
 // Load chat sessions from the database for authenticated users
 loadServerSessions().then(async () => {
-  // Pre-load the last active session so it's ready when user clicks, but don't show it
+  // Restore the last active session — show it if the user was in a chat before reload
   if (activeSessionId && chatSessions.find(s => s.id === activeSessionId)) {
-    await openSession(activeSessionId, {show: false});
+    const hadActiveChat = localStorage.getItem('metroChatVisible') === 'true';
+    await openSession(activeSessionId, {show: hadActiveChat});
   }
 });
 
@@ -4550,8 +4568,28 @@ try {
   if (savedRoute) {
     const routeData = JSON.parse(savedRoute);
     if (routeData && routeData.steps) {
-      // Draw route without touching the chat overlay
       drawRouteOnMap(routeData);
+    }
+  }
+} catch(e) {}
+
+// Restore active walking route on map if user had clicked "Show on Map" before refresh
+try {
+  const savedWalking = localStorage.getItem('metroActiveWalking');
+  if (savedWalking) {
+    const walkingData = JSON.parse(savedWalking);
+    if (walkingData && walkingData.station) {
+      // Wait for user location before drawing (need coordinates for the path)
+      let walkRetries = 0;
+      const tryDraw = () => {
+        if (userLocationKnown) {
+          drawWalkingRouteOnMap(walkingData);
+        } else if (walkRetries < 30) { // try for up to 15 seconds
+          walkRetries++;
+          setTimeout(tryDraw, 500);
+        }
+      };
+      tryDraw();
     }
   }
 } catch(e) {}
@@ -4632,6 +4670,7 @@ new MutationObserver(() => {
 function dismissChat() {
   chatOverlay.classList.remove('visible');
   chatBackdrop.classList.remove('visible');
+  try { localStorage.setItem('metroChatVisible', 'false'); } catch(e) {}
 }
 chatBackBtn.addEventListener('click', dismissChat);
 chatBackdrop.addEventListener('click', dismissChat);

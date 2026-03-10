@@ -1565,6 +1565,7 @@ def api_chat_conversation(request, conversation_id):
         text = m.content
         route_data = None
         arrivals_data = None
+        walking_data = None
         # Strip route/arrivals blocks from assistant messages and extract data
         if m.role == 'assistant':
             route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', text, re.DOTALL)
@@ -1581,6 +1582,13 @@ def api_chat_conversation(request, conversation_id):
                 except (json.JSONDecodeError, ValueError):
                     pass
                 text = text[:arrivals_match.start()].rstrip()
+            walking_match = re.search(r'\[WALKING\](.*?)\[/WALKING\]', text, re.DOTALL)
+            if walking_match:
+                try:
+                    walking_data = json.loads(walking_match.group(1))
+                except (json.JSONDecodeError, ValueError):
+                    pass
+                text = text[:walking_match.start()].rstrip()
         msg_obj = {
             'type': 'user' if m.role == 'user' else 'ai',
             'text': text,
@@ -1589,6 +1597,8 @@ def api_chat_conversation(request, conversation_id):
             msg_obj['route_data'] = route_data
         if arrivals_data:
             msg_obj['arrivals_data'] = arrivals_data
+        if walking_data:
+            msg_obj['walking_data'] = walking_data
         msgs.append(msg_obj)
     return JsonResponse({
         'status': 'ok',
