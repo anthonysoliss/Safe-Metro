@@ -2568,7 +2568,7 @@ const metroStations = [
   { name: "Downtown Inglewood",          lines: ["K"],            lat: 33.9672, lng: -118.3515 },
   { name: "Fairview Heights",            lines: ["K"],            lat: 33.9752, lng: -118.3361 },
   { name: "Hyde Park",                   lines: ["K"],            lat: 33.9882, lng: -118.3308 },
-  { name: "Crenshaw",                    lines: ["K"],            lat: 33.9252, lng: -118.3264 },
+  { name: "Crenshaw",                    lines: ["C"],            lat: 33.9252, lng: -118.3264 },
   { name: "Leimert Park",                lines: ["K"],            lat: 34.0046, lng: -118.3327 },
   { name: "Martin Luther King Jr",       lines: ["K"],            lat: 34.0113, lng: -118.3358 },
   // Expo/Crenshaw shared with E Line
@@ -2593,11 +2593,11 @@ const metroStations = [
 const lineRoutes = {
   A: ["Downtown Long Beach","5th Street","Anaheim Street","Pacific Coast Hwy","Willow Street","Wardlow","Del Amo","Artesia","Compton","Willowbrook/Rosa Parks","103rd St/Watts Towers","Firestone","Florence","Slauson","Vernon","Washington","San Pedro Street","Grand/LATTC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Union Station","Chinatown","Lincoln/Cypress","Heritage Square/Arroyo","Southwest Museum","Highland Park","South Pasadena","Fillmore","Del Mar","Memorial Park","Lake","Allen","Sierra Madre Villa","Arcadia","Monrovia","Duarte/City of Hope","Irwindale","Azusa Downtown","APU/Citrus College","Glendora","San Dimas","La Verne/Fairplex","Pomona North"],
   B: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Vermont/Beverly","Vermont/Santa Monica","Vermont/Sunset","Hollywood/Western","Hollywood/Vine","Hollywood/Highland","Universal City/Studio City","North Hollywood"],
-  C: ["Norwalk","Lakewood Blvd","Lynwood","Willowbrook/Rosa Parks","Avalon","Harbor Freeway","Vermont/Athens","Hawthorne/Lennox","Aviation/Imperial","Aviation/Century","LAX/Metro Transit Center"],
+  C: ["Norwalk","Lakewood Blvd","Lynwood","Willowbrook/Rosa Parks","Avalon","Harbor Freeway","Vermont/Athens","Crenshaw","Hawthorne/Lennox","Aviation/Imperial","Aviation/Century","LAX/Metro Transit Center"],
   D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western","Wilshire/La Brea","Wilshire/Fairfax","Wilshire/La Cienega","Wilshire/Rodeo","Century City/Constellation","Westwood/VA Hospital"],
   E: ["Downtown Santa Monica","17th St/SMC","26th St/Bergamot","Expo/Bundy","Expo/Sepulveda","Westwood/Rancho Park","Palms","Culver City","La Cienega/Jefferson","Expo/La Brea","Expo/Crenshaw","Farmdale","Expo/Western","Expo/Vermont","Expo Park/USC","Jefferson/USC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Pico/Aliso","Mariachi Plaza/Boyle Heights","Soto","Indiana","Maravilla","East LA Civic Center","Atlantic"],
   G: ["North Hollywood","Woodman","Laurel Canyon","Valley College","Van Nuys","Sepulveda","Woodley","Balboa","Reseda","Tampa","Pierce College","De Soto","Roscoe","Nordhoff","Chatsworth"],
-  K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Crenshaw","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
+  K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
 };
 
 let activeLinePolyline = null;
