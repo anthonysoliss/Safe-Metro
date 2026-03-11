@@ -588,11 +588,14 @@
     background: var(--accent); border: none; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 2px; flex-shrink: 0;
-    cursor: pointer; transition: all 0.2s ease; opacity: 0.4;
+    cursor: pointer; transition: all 0.2s ease, transform 0.15s ease; opacity: 0.4;
   }
   .send-btn.active { opacity: 1; }
   .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
-  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--bg-dark); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--bg-dark); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: opacity 0.15s ease; }
+  .send-btn.stop { background: #ff3b30; opacity: 1; }
+  .send-btn.stop svg { stroke: #fff; }
+  .send-btn.stop:hover { box-shadow: 0 0 20px rgba(255, 59, 48, 0.4); }
 
   /* ── Chat Back Button ── */
   .chat-back-btn {
@@ -3566,7 +3569,12 @@ function getFreshLocation() {
   });
 }
 
+let _aiAbortController = null;
+let _aiStopped = false;
+
 async function getAIResponse(msg) {
+  _aiAbortController = new AbortController();
+  _aiStopped = false;
   const session = getActiveSession();
   const history = session ? session.messages.slice(-10) : [];
   const payload = { message: msg, history: history };
@@ -3575,18 +3583,23 @@ async function getAIResponse(msg) {
     payload.conversation_id = session.conversation_id;
   }
   // Get fresh GPS location for every chat message
-  const loc = await getFreshLocation();
-  if (loc) {
-    payload.lat = loc.lat;
-    payload.lng = loc.lng;
-  }
+  try {
+    const loc = await getFreshLocation();
+    if (loc) {
+      payload.lat = loc.lat;
+      payload.lng = loc.lng;
+    }
+  } catch(e) { /* location fetch failed or aborted, continue without it */ }
+  if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
   try {
     const res = await fetch('/api/chat/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: _aiAbortController.signal,
     });
     const data = await res.json();
+    if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
     if (data.status === 'ok') {
       // Store server conversation_id on the active session
       if (data.conversation_id && session) {
@@ -3597,7 +3610,12 @@ async function getAIResponse(msg) {
     }
     return { reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null, arrivals_data: null, walking_data: null };
   } catch (e) {
+    if (e.name === 'AbortError') {
+      return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
+    }
     return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null, arrivals_data: null, walking_data: null };
+  } finally {
+    _aiAbortController = null;
   }
 }
 // ── Chat Sessions ──
@@ -3819,11 +3837,69 @@ function showTyping() {
   t.innerHTML = `<div class="ai-label">Metro Safe AI</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
   chatOverlay.appendChild(t); chatOverlay.scrollTop = chatOverlay.scrollHeight;
 }
+const _sendSvg = '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
+const _stopSvg = '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>';
+
+function setStopMode(on) {
+  const svg = sendBtn.querySelector('svg');
+  if (on) {
+    sendBtn.classList.add('stop');
+    svg.innerHTML = _stopSvg;
+  } else {
+    sendBtn.classList.remove('stop');
+    svg.innerHTML = _sendSvg;
+  }
+}
+
+let _pendingQuestion = '';
+
+function fadeOutAndRemove(el) {
+  el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(-6px) scale(0.97)';
+  setTimeout(() => el.remove(), 300);
+}
+
+function stopAI() {
+  _aiStopped = true;
+  if (_aiAbortController) _aiAbortController.abort();
+
+  // Switch button back to send
+  setStopMode(false);
+
+  // Fade out typing indicator
+  const typingEl = document.getElementById('typingMsg');
+  if (typingEl) fadeOutAndRemove(typingEl);
+
+  // Fade out the user message bubble
+  const msgs = chatOverlay.querySelectorAll('.chat-msg.user');
+  if (msgs.length) fadeOutAndRemove(msgs[msgs.length - 1]);
+
+  // Remove from session history
+  const session = getActiveSession();
+  if (session && session.messages.length && session.messages[session.messages.length - 1].type === 'user') {
+    session.messages.pop();
+    saveSessions(chatSessions);
+  }
+
+  // Restore question to the input bar
+  chatInput.value = _pendingQuestion;
+  chatInput.style.height = 'auto';
+  chatInput.style.height = chatInput.scrollHeight + 'px';
+  sendBtn.classList.toggle('active', _pendingQuestion.length > 0);
+  _pendingQuestion = '';
+}
+
 async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
+  _pendingQuestion = text;
   addMsg(text, 'user'); chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.classList.remove('active');
   showTyping();
+  setStopMode(true);
   const result = await getAIResponse(text);
+  if (result.aborted || _aiStopped) return;
+  _pendingQuestion = '';
+  setStopMode(false);
   document.getElementById('typingMsg')?.remove();
 
   const hasRoute = result.route_data && result.route_data.steps;
@@ -3848,7 +3924,9 @@ async function sendMessage() {
     showWalkingWidget(result.walking_data);
   }
 }
-sendBtn.addEventListener('click', sendMessage);
+sendBtn.addEventListener('click', () => {
+  if (sendBtn.classList.contains('stop')) { stopAI(); } else { sendMessage(); }
+});
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
 // Tapping the chat overlay (empty area) or the chat bar should focus the input
