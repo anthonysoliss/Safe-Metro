@@ -1365,13 +1365,14 @@
   .confirm-modal-header h3 {
     font-size: 20px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: #f0f0f5;
     margin-bottom: 8px;
   }
   .confirm-modal-header p {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.75);
     line-height: 1.5;
+    white-space: pre-line;
   }
   .confirm-modal-actions {
     display: flex;
@@ -1697,7 +1698,9 @@
   [data-theme="light"] .chat-msg.ai { background: transparent; color: #fff; }
   [data-theme="light"] .modal-overlay .modal-content { background: var(--surface); border-color: var(--border); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
   [data-theme="light"] .sign-in-prompt-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
-  [data-theme="light"] .confirm-modal-content { background: var(--surface); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .confirm-modal-content { background: rgba(255, 255, 255, 0.97); box-shadow: 0 24px 64px rgba(0,0,0,0.15); }
+  [data-theme="light"] .confirm-modal-header h3 { color: #1c1c1e; }
+  [data-theme="light"] .confirm-modal-header p { color: #333; }
   [data-theme="light"] .rating-form select,
   [data-theme="light"] .rating-form textarea,
   [data-theme="light"] .rating-form input[type="file"] { background: rgba(0,0,0,0.04); border-color: var(--border); color: var(--text-primary); }
@@ -1756,7 +1759,8 @@
   /* Station item active state */
   [data-theme="light"] .station-item:active { background: rgba(0,0,0,0.06); }
 
-  /* Confirm modal cancel hover */
+  /* Confirm modal cancel button */
+  [data-theme="light"] .confirm-modal-btn.cancel { color: #1c1c1e; }
   [data-theme="light"] .confirm-modal-btn.cancel:hover { background: rgba(0,0,0,0.05); }
 
   /* Metro marker hover */
