@@ -1053,6 +1053,8 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.6);
   }
   .metro-marker:hover .metro-marker-inner { transform: scale(1.4); border-color: rgba(255,255,255,0.5); }
+  .metro-marker.coming-soon { opacity: 0.5; }
+  .metro-marker.coming-soon .metro-marker-inner { border-width: 2px; }
 
   .destination-flag-icon {
     background: none !important;
@@ -2527,12 +2529,12 @@ const metroStations = [
   // ── D Line (Purple) — Union Station ↔ Westwood/VA Hospital ──
   { name: "Wilshire/Normandie",          lines: ["D"],            lat: 34.0616, lng: -118.3009 },
   { name: "Wilshire/Western",            lines: ["D"],            lat: 34.0621, lng: -118.3089 },
-  { name: "Wilshire/La Brea",            lines: ["D"],            lat: 34.0619, lng: -118.3440 },
-  { name: "Wilshire/Fairfax",            lines: ["D"],            lat: 34.0631, lng: -118.3623 },
-  { name: "Wilshire/La Cienega",         lines: ["D"],            lat: 34.0655, lng: -118.3768 },
-  { name: "Wilshire/Rodeo",              lines: ["D"],            lat: 34.0668, lng: -118.3983 },
-  { name: "Century City/Constellation",  lines: ["D"],            lat: 34.0597, lng: -118.4150 },
-  { name: "Westwood/VA Hospital",        lines: ["D"],            lat: 34.0527, lng: -118.4530 },
+  { name: "Wilshire/La Brea",            lines: ["D"],            lat: 34.0619, lng: -118.3440, comingSoon: true },
+  { name: "Wilshire/Fairfax",            lines: ["D"],            lat: 34.0631, lng: -118.3623, comingSoon: true },
+  { name: "Wilshire/La Cienega",         lines: ["D"],            lat: 34.0655, lng: -118.3768, comingSoon: true },
+  { name: "Wilshire/Rodeo",              lines: ["D"],            lat: 34.0668, lng: -118.3983, comingSoon: true },
+  { name: "Century City/Constellation",  lines: ["D"],            lat: 34.0597, lng: -118.4150, comingSoon: true },
+  { name: "Westwood/VA Hospital",        lines: ["D"],            lat: 34.0527, lng: -118.4530, comingSoon: true },
   // ── E Line (Expo) — Downtown Santa Monica ↔ Atlantic ──
   { name: "Downtown Santa Monica",       lines: ["E"],            lat: 34.0140, lng: -118.4913 },
   { name: "17th St/SMC",                 lines: ["E"],            lat: 34.0232, lng: -118.4804 },
@@ -2596,7 +2598,7 @@ const lineRoutes = {
   A: ["Downtown Long Beach","5th Street","Anaheim Street","Pacific Coast Hwy","Willow Street","Wardlow","Del Amo","Artesia","Compton","Willowbrook/Rosa Parks","103rd St/Watts Towers","Firestone","Florence","Slauson","Vernon","Washington","San Pedro Street","Grand/LATTC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Union Station","Chinatown","Lincoln/Cypress","Heritage Square/Arroyo","Southwest Museum","Highland Park","South Pasadena","Fillmore","Del Mar","Memorial Park","Lake","Allen","Sierra Madre Villa","Arcadia","Monrovia","Duarte/City of Hope","Irwindale","Azusa Downtown","APU/Citrus College","Glendora","San Dimas","La Verne/Fairplex","Pomona North"],
   B: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Vermont/Beverly","Vermont/Santa Monica","Vermont/Sunset","Hollywood/Western","Hollywood/Vine","Hollywood/Highland","Universal City/Studio City","North Hollywood"],
   C: ["Norwalk","Lakewood Blvd","Lynwood","Willowbrook/Rosa Parks","Avalon","Harbor Freeway","Vermont/Athens","Crenshaw","Hawthorne/Lennox","Aviation/Imperial","Aviation/Century","LAX/Metro Transit Center"],
-  D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western","Wilshire/La Brea","Wilshire/Fairfax","Wilshire/La Cienega","Wilshire/Rodeo","Century City/Constellation","Westwood/VA Hospital"],
+  D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western"],
   E: ["Downtown Santa Monica","17th St/SMC","26th St/Bergamot","Expo/Bundy","Expo/Sepulveda","Westwood/Rancho Park","Palms","Culver City","La Cienega/Jefferson","Expo/La Brea","Expo/Crenshaw","Farmdale","Expo/Western","Expo/Vermont","Expo Park/USC","Jefferson/USC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Pico/Aliso","Mariachi Plaza/Boyle Heights","Soto","Indiana","Maravilla","East LA Civic Center","Atlantic"],
   G: ["North Hollywood","Woodman","Laurel Canyon","Valley College","Van Nuys","Sepulveda","Woodley","Balboa","Reseda","Tampa","Pierce College","De Soto","Canoga","Sherman Way","Roscoe","Nordhoff","Chatsworth"],
   K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
@@ -2967,16 +2969,22 @@ function createMarkers(filterLine = 'all') {
   const filtered = filterLine === 'all' ? metroStations : metroStations.filter(s => s.lines.includes(filterLine));
   filtered.forEach(station => {
     const color = getStationColor(station);
+    const isSoon = station.comingSoon;
     const icon = L.divIcon({
-      className: 'metro-marker',
-      html: `<div class="metro-marker-inner" style="background:${color};"></div>`,
+      className: isSoon ? 'metro-marker coming-soon' : 'metro-marker',
+      html: `<div class="metro-marker-inner" style="background:${isSoon ? 'transparent' : color};border-color:${isSoon ? color : '#fff'};${isSoon ? 'border-style:dashed;' : ''}"></div>`,
       iconSize: [14, 14], iconAnchor: [7, 7],
     });
     const rating = getStationRating(station.name);
     const marker = L.marker([station.lat, station.lng], { icon }).addTo(map);
-    marker.bindPopup(buildPopupHTML(station, rating, false, null), { maxWidth: 320, minWidth: 240, autoPanPadding: [20, 20] });
-    marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
+    if (isSoon) {
+      marker.bindTooltip(station.name + ' (Coming Soon)', { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
+    } else {
+      marker.bindPopup(buildPopupHTML(station, rating, false, null), { maxWidth: 320, minWidth: 240, autoPanPadding: [20, 20] });
+      marker.bindTooltip(station.name, { direction: 'top', offset: [0, -8], opacity: 1, className: 'station-tooltip' });
+    }
     marker.stationData = station;
+    if (isSoon) { stationMarkers.push(marker); return; }
     // Fetch fresh ratings + arrivals from backend each time popup opens
     marker.on('popupopen', async function() {
       const marker = this;
@@ -3200,15 +3208,17 @@ function renderStationList(searchQuery = '') {
 
   listEl.innerHTML = filtered.map(station => {
     const badges = station.lines.map(l => `<span class="station-line-badge" style="background:${metroLines[l].color}22;color:${metroLines[l].color}">${l}</span>`).join('');
+    const isSoon = station.comingSoon;
     const rating = getStationRating(station.name);
-    const ratingDisplay = rating.count > 0
+    const ratingDisplay = !isSoon && rating.count > 0
       ? `<div class="station-rating-display"><div class="station-rating-stars">${renderStars(parseFloat(rating.avg), '11px')}</div><div class="station-rating-count">${rating.avg}</div></div>`
       : '';
-    const cachedArrivals = getStationTimesFromCache(station);
+    const cachedArrivals = !isSoon ? getStationTimesFromCache(station) : null;
     const timesHtml = cachedArrivals ? renderStationTimesHTML(cachedArrivals) : '';
-    return `<div class="station-item" data-lat="${station.lat}" data-lng="${station.lng}" data-name="${station.name}">
-      <div class="station-color-bar" style="background:${getStationColor(station)}"></div>
-      <div class="station-info"><div class="station-name">${station.name}</div><div class="station-line-label">${badges}</div>${ratingDisplay}<div class="station-times-live">${timesHtml}</div></div>
+    const soonBadge = isSoon ? '<span style="font-size:11px;color:var(--text-muted);font-style:italic;margin-left:6px;">Coming Soon</span>' : '';
+    return `<div class="station-item${isSoon ? ' coming-soon' : ''}" data-lat="${station.lat}" data-lng="${station.lng}" data-name="${station.name}">
+      <div class="station-color-bar" style="background:${getStationColor(station)};${isSoon ? 'opacity:0.35;border-style:dashed;' : ''}"></div>
+      <div class="station-info"><div class="station-name" style="${isSoon ? 'opacity:0.5;' : ''}">${station.name}${soonBadge}</div><div class="station-line-label">${badges}</div>${ratingDisplay}<div class="station-times-live">${timesHtml}</div></div>
       <svg class="station-arrow" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`;
   }).join('');
