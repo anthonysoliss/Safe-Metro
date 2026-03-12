@@ -968,11 +968,21 @@ When a user asks about coordinating arrivals from multiple stations to one desti
 6. If travel time data is missing for an origin (says "no direct route"), explain they need a transfer and estimate the total time.
 7. ALWAYS use the travel time data from the context — do not guess travel times.
 
+Station Safety — IMPORTANT:
+When the user asks about station safety, how safe a station is, or whether a station is safe:
+1. Check the "Recent reviews for [station]" data in the CURRENT USER CONTEXT. This contains real user reviews with safety ratings, cleanliness ratings, staff presence, and written descriptions.
+2. Also check the aggregate ratings in the "Nearby stations" data (avg safety and cleanliness scores).
+3. Base your safety assessment on ACTUAL user reviews and ratings — do not make up or guess safety info.
+4. Summarize what reviewers have said: mention common themes (e.g. "clean", "well-lit", "staff present", "feels sketchy at night").
+5. Include the average safety score (e.g. "Users rate it 4.2/5 for safety").
+6. If there are no reviews for a station, say so honestly — don't guess.
+7. When giving directions, if a station along the route has notably low safety ratings (below 3/5), mention it briefly so the user is aware.
+
 Guidelines:
 - Be warm but concise — every word should earn its place
 - If someone asks about emergencies, direct them to call 911
 - If a question is unrelated to LA Metro or LA tourism, politely redirect
-- Never make up real-time data (delays, crime stats) — speak in general terms
+- Never make up real-time data (delays, crime stats) — base safety info on actual user reviews only
 - Use a casual tone
 - Lead directions with action verbs: "Board...", "Ride to...", "Get off at...", "Switch to..."
 - Include travel time estimates (e.g. "~20 min")
@@ -1166,6 +1176,47 @@ def _build_user_context(request, data, user_message=''):
         except (ValueError, TypeError):
             pass
 
+    # --- Station reviews for safety context ---
+    # Fetch recent reviews for nearby stations so AI can assess safety
+    def _get_station_reviews(station_name, limit=5):
+        """Get recent reviews with descriptions for a station."""
+        try:
+            reviews = Rating.objects.filter(
+                station__name=station_name,
+                description__isnull=False,
+            ).exclude(description='').select_related('user').order_by('-created_at')[:limit]
+            if not reviews:
+                return None
+            review_strs = []
+            for r in reviews:
+                username = r.user.username if r.user else 'anonymous'
+                staff_str = f", staff:{r.staff_present}" if r.staff_present else ""
+                review_strs.append(
+                    f"[{username}] safety:{r.safety}/5, cleanliness:{r.cleanliness}/5{staff_str} — \"{r.description}\""
+                )
+            return "; ".join(review_strs)
+        except Exception:
+            return None
+
+    # Add reviews for top 3 nearby stations
+    if user_lat is not None and user_lng is not None:
+        try:
+            stations_qs = Station.objects.prefetch_related('lines').annotate(
+                rating_count_val=Count('ratings'),
+            )
+            nearby_for_reviews = []
+            for s in stations_qs:
+                dist = _haversine_miles(float(user_lat), float(user_lng), s.latitude, s.longitude)
+                if dist <= 5 and s.rating_count_val and s.rating_count_val > 0:
+                    nearby_for_reviews.append((dist, s.name))
+            nearby_for_reviews.sort()
+            for _, sname in nearby_for_reviews[:3]:
+                reviews_str = _get_station_reviews(sname)
+                if reviews_str:
+                    parts.append(f"Recent reviews for {sname}: {reviews_str}")
+        except Exception:
+            pass
+
     # Fetch arrivals and travel times for stations mentioned in the user message
     mentioned_stations = []
     if user_message:
@@ -1186,6 +1237,10 @@ def _build_user_context(request, data, user_message=''):
                             parts.append(f"Live trains at {s.name}: " + "; ".join(arr_strs))
                     except Exception:
                         pass
+                    # Also fetch reviews for mentioned stations
+                    reviews_str = _get_station_reviews(s.name)
+                    if reviews_str:
+                        parts.append(f"Recent reviews for {s.name}: {reviews_str}")
 
             # If 2+ stations mentioned, compute travel times between them
             # Detect a destination/meetup station (look for keywords like "at", "to", "arrive")
