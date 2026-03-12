@@ -3589,7 +3589,7 @@ async function getAIResponse(msg) {
   _aiAbortController = new AbortController();
   _aiStopped = false;
   const session = getActiveSession();
-  const history = session ? session.messages.slice(-10) : [];
+  const history = session ? session.messages.slice(-20) : [];
   const payload = { message: msg, history: history };
   // Send conversation_id so the server can persist to DB
   if (session && session.conversation_id) {

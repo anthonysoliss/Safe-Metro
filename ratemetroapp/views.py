@@ -913,22 +913,26 @@ Line Descriptions (current as of 2025 — post-Regional Connector):
 - K Line (Crenshaw): Expo/Crenshaw ↔ Redondo Beach via Inglewood, Westchester, LAX, El Segundo. Stops at Martin Luther King Jr, Leimert Park, Hyde Park, Fairview Heights, Downtown Inglewood, Westchester/Veterans, LAX/Metro Transit Center, Aviation/Century, Mariposa, El Segundo, Douglas, Redondo Beach. Transfer to E Line at Expo/Crenshaw. Transfer to C Line at Aviation/Century or LAX/Metro Transit Center. Serves SoFi Stadium area (Downtown Inglewood station). Note: The station called "Crenshaw" is on the C Line, NOT the K Line.
 
 Wayfinding Rules — ALWAYS follow these when giving directions:
-1. ALWAYS use the user's current location and the "Nearby stations" list to find their CLOSEST station as the starting point
-2. Pick the route with the fewest transfers — direct lines beat transfers every time
-3. If two routes have equal transfers, pick the one starting from the closer station
-4. Mention the specific LINE LETTER AND COLOR for every segment (e.g. "Take the E (Expo) Line")
-5. Name every transfer station explicitly (e.g. "Transfer to the B (Red) Line at 7th St/Metro Center")
-6. When someone is in East LA, Boyle Heights, or near Maravilla/Atlantic/Soto/Indiana stations — they are on the E Line, NOT the old Gold/L Line
-7. When someone is in Pasadena, Highland Park, Azusa, or SGV — they are on the A Line, NOT the old Gold/L Line
-8. The A and E lines share 3 Regional Connector stations in DTLA: Grand Ave Arts/Bunker Hill, Historic Broadway, Little Tokyo/Arts District
-9. For Hollywood destinations, the B (Red) Line is usually the best — transfer at 7th St/Metro Center or Union Station
-10. For Santa Monica/Westside, use the E (Expo) Line
-11. For LAX, use K Line or C Line to LAX/Metro Transit Center or Aviation/Century
-12. Never refer to the "L Line" or "Gold Line" — it no longer exists. Use A Line or E Line instead
-13. The E Line does NOT go to Union Station. If someone on the E Line needs Union Station, they MUST transfer: either to the A Line at Little Tokyo/Arts District, or to the B/D Line at 7th St/Metro Center
-14. Only the A, B, and D lines serve Union Station. Never route someone to Union Station on any other line
-15. For Redondo Beach, El Segundo, Douglas, or Mariposa — use the K (Crenshaw) Line. These stations are NOT on the C Line. From the E Line, transfer to K Line at Expo/Crenshaw
-16. The C Line and K Line connect at Aviation/Century and LAX/Metro Transit Center. Aviation/Imperial is C Line only
+1. ALWAYS check the "Nearby stations" list in the CURRENT USER CONTEXT first. Use the CLOSEST station to the user as the starting point — do NOT assume or guess which station is closest. Compare distances carefully.
+2. Before recommending ANY route, VERIFY that each station you mention actually exists on the line you say it does. Cross-check against the line descriptions and station lists above. Never assume a station is on a line without checking.
+3. Pick the route with the fewest transfers — direct lines beat transfers every time.
+4. If two routes have equal transfers, pick the one starting from the closer station (check distances in the Nearby stations list).
+5. Mention the specific LINE LETTER AND COLOR for every segment (e.g. "Take the E (Expo) Line").
+6. Name every transfer station explicitly (e.g. "Transfer to the B (Red) Line at 7th St/Metro Center").
+7. VERIFY transfer stations: only suggest transfers at stations that are actually served by BOTH lines. Check the station lists above to confirm.
+8. When someone is in East LA, Boyle Heights, or near Maravilla/Atlantic/Soto/Indiana stations — they are on the E Line, NOT the old Gold/L Line.
+9. When someone is in Pasadena, Highland Park, Azusa, or SGV — they are on the A Line, NOT the old Gold/L Line.
+10. The A and E lines share 3 Regional Connector stations in DTLA: Grand Ave Arts/Bunker Hill, Historic Broadway, Little Tokyo/Arts District.
+11. For Hollywood destinations, the B (Red) Line is usually the best — transfer at 7th St/Metro Center or Union Station.
+12. For Santa Monica/Westside, use the E (Expo) Line.
+13. For LAX, use K Line or C Line to LAX/Metro Transit Center or Aviation/Century.
+14. Never refer to the "L Line" or "Gold Line" — it no longer exists. Use A Line or E Line instead.
+15. The E Line does NOT go to Union Station. If someone on the E Line needs Union Station, they MUST transfer: either to the A Line at Little Tokyo/Arts District, or to the B/D Line at 7th St/Metro Center.
+16. Only the A, B, and D lines serve Union Station. Never route someone to Union Station on any other line.
+17. For Redondo Beach, El Segundo, Douglas, or Mariposa — use the K (Crenshaw) Line. These stations are NOT on the C Line. From the E Line, transfer to K Line at Expo/Crenshaw.
+18. The C Line and K Line connect at Aviation/Century and LAX/Metro Transit Center. Aviation/Imperial is C Line only.
+19. The D Line currently ends at Wilshire/Western. Do NOT route anyone to Wilshire/La Brea, Wilshire/Fairfax, Wilshire/La Cienega, Wilshire/Rodeo, Century City/Constellation, or Westwood/VA Hospital — those stations are NOT yet open.
+20. DOUBLE-CHECK your entire route before responding: for each segment, confirm the start station, end station, and line are all correct. If you are unsure about any station or connection, say so rather than guessing.
 
 Response Format Rules — CRITICAL:
 - You are writing for a mobile chat bubble. Keep it SHORT.
@@ -979,7 +983,8 @@ Guidelines:
   - If the user asks for their coordinates or location data, share it
   - ALWAYS start directions from the user's closest station
   - When the context includes "Walking to [station]" info, include this as step 1 of your directions (e.g. "Walk 5 min to Maravilla station (0.4 mi)")
-  - When the user asks "give me directions" or similar without specifying a destination, tell them their nearest station and walking time, then ask where they want to go
+  - When the user asks "give me directions" or similar without specifying a destination, check the conversation history first. If you previously told them about a nearest station, give walking directions to that station and include the [WALKING] block. Then ask where they want to go from there.
+  - ALWAYS include the [WALKING] block when the context has walking data and the user asks about directions, nearest station, or getting somewhere. The walking widget is important for the user experience — never skip it.
 
 Structured Route Data — IMPORTANT:
 Whenever you give step-by-step Metro directions (riding from one station to another), you MUST append a machine-readable JSON block at the very end of your response in this exact format:
@@ -1024,7 +1029,19 @@ When the CURRENT USER CONTEXT includes "Walking to [station]" data, and the user
 - "distance": distance string from the context
 - "lines": array of line letter codes available at that station (from the context "Lines:" info)
 
-Always include the [WALKING] block when the context has walking data AND the user asks about directions, nearest station, or getting to a station. Include it alongside [ROUTE] blocks when giving full transit directions."""
+CRITICAL: You MUST include the [WALKING] block in ALL of these situations:
+- User asks about nearest/closest station
+- User asks about the next nearest or another nearby station
+- User asks for directions (even without a destination)
+- User asks how to get somewhere
+- User says "give me directions" or similar follow-up after you told them their nearest station
+- Any time you mention walking to a station and the context has walking data
+Include it alongside [ROUTE] blocks when giving full transit directions. The walking widget is a key feature — users expect to see it whenever walking is involved.
+
+The context may include multiple "Walking to" and "Walking to (alt)" entries for the top 3 nearest stations. Use the correct one based on which station the user is asking about. For example, if they ask about the "next nearest" station, use the walking data for the 2nd closest station.
+
+Conversation Memory — IMPORTANT:
+You receive the full conversation history. When the user asks a follow-up like "give me directions" or "how do I get there", ALWAYS check previous messages for context. If you already told them their nearest station, use that as the starting point. Never ask them to repeat information they already gave you or that you already told them."""
 
 
 def _haversine_miles(lat1, lng1, lat2, lng2):
@@ -1117,32 +1134,33 @@ def _build_user_context(request, data, user_message=''):
                 parts.append(f"Closest station: {nearby[0][1]}")
                 parts.append("Nearby stations: " + "; ".join(info for _, info in nearby[:10]))
 
-                # Fetch live arrivals for nearest station
-                try:
-                    nearest_name = nearby[0][1].split(' [')[0]  # extract station name before [Lines: ...]
-                    nearest_arrivals = get_arrivals(nearest_name, limit=5)
-                    if nearest_arrivals:
-                        arr_strs = [f"{a['line']} Line to {a['headsign']} at {a['time']} ({a['minutes_away']} min away, color:{a['color']})" for a in nearest_arrivals]
-                        parts.append(f"Live trains at {nearest_name}: " + "; ".join(arr_strs))
-                except Exception:
-                    pass
-
-                # Get walking directions to nearest station
-                try:
-                    from .google_routes import get_walking_route
-                    nearest_name = nearby[0][1].split(' [')[0]
-                    nearest_station_obj = Station.objects.get(name=nearest_name)
-                    walk_data = get_walking_route(
-                        {"lat": user_lat, "lng": user_lng},
-                        {"lat": nearest_station_obj.latitude, "lng": nearest_station_obj.longitude},
-                        settings.GOOGLE_MAPS_API_KEY,
-                    )
-                    if walk_data:
-                        parts.append(
-                            f"Walking to {nearest_name}: {walk_data['duration_minutes']} min walk ({walk_data['distance_text']})"
+                # Fetch live arrivals and walking directions for top 3 nearest stations
+                from .google_routes import get_walking_route
+                for i, (dist, info) in enumerate(nearby[:3]):
+                    station_name = info.split(' [')[0]
+                    # Live arrivals
+                    try:
+                        station_arrivals = get_arrivals(station_name, limit=5)
+                        if station_arrivals:
+                            arr_strs = [f"{a['line']} Line to {a['headsign']} at {a['time']} ({a['minutes_away']} min away, color:{a['color']})" for a in station_arrivals]
+                            parts.append(f"Live trains at {station_name}: " + "; ".join(arr_strs))
+                    except Exception:
+                        pass
+                    # Walking directions
+                    try:
+                        station_obj = Station.objects.get(name=station_name)
+                        walk_data = get_walking_route(
+                            {"lat": user_lat, "lng": user_lng},
+                            {"lat": station_obj.latitude, "lng": station_obj.longitude},
+                            settings.GOOGLE_MAPS_API_KEY,
                         )
-                except Exception:
-                    pass
+                        if walk_data:
+                            label = "Walking to" if i == 0 else "Walking to (alt)"
+                            parts.append(
+                                f"{label} {station_name}: {walk_data['duration_minutes']} min walk ({walk_data['distance_text']})"
+                            )
+                    except Exception:
+                        pass
             else:
                 parts.append("No Metro stations within 5 miles of user.")
         except (ValueError, TypeError):
@@ -1255,6 +1273,8 @@ def _is_directions_request(msg_lower):
     direction_phrases = [
         "how do i get to", "how to get to", "how can i get to",
         "directions to", "directions from", "give me directions", "get directions",
+        "give me the directions", "get the directions",
+        "the directions", "show directions", "show me directions",
         "take me to", "get me to",
         "travel to", "travel from",
         "go to", "go from",
@@ -1269,6 +1289,7 @@ def _is_directions_request(msg_lower):
         "from here to",
         "how do i get there", "how to get there",
         "nearest station", "closest station", "walk to the station",
+        "give me direction", "give direction",
     ]
     for phrase in direction_phrases:
         if phrase in msg_lower:
@@ -1427,7 +1448,7 @@ def api_chat(request):
         else:
             # Anonymous: use client-supplied history
             messages = []
-            for msg in conversation_history[-10:]:
+            for msg in conversation_history[-20:]:
                 role = 'user' if msg.get('type') == 'user' else 'assistant'
                 messages.append({'role': role, 'content': msg.get('text', '')})
             messages.append({'role': 'user', 'content': user_message})
@@ -1439,7 +1460,7 @@ def api_chat(request):
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
         response = client.messages.create(
-            model='claude-sonnet-4-5',
+            model='claude-sonnet-4-6',
             max_tokens=2048,
             system=system_prompt,
             messages=messages,
