@@ -4099,7 +4099,7 @@ function showRouteWidget(routeData, walkingData, destWalking) {
   widget.className = 'route-widget';
 
   // Header
-  let html = `<div class="route-widget-header"><h3>Your Route</h3><button class="route-widget-close" onclick="this.closest('.route-widget').remove()">&times;</button></div>`;
+  let html = `<div class="route-widget-header"><h3>Your Route</h3></div>`;
 
   // Summary bar
   html += `<div class="route-widget-summary">`;
@@ -4202,7 +4202,7 @@ function buildArrivalsWidgetHTML(data) {
     const info = metroLines[l];
     if (info) html += `<span class="line-dot-sm" style="background:${info.color}"></span>`;
   });
-  html += `</span></h3><button class="arrivals-widget-close" onclick="this.closest('.arrivals-widget').remove()">&times;</button></div>`;
+  html += `</span></h3></div>`;
 
   html += `<div class="arrivals-widget-rows">`;
   arrivals.forEach(a => {
@@ -4549,7 +4549,7 @@ function showWalkingWidget(walkingData) {
   const stationInfo = stationByName[walkingData.station];
   const lines = walkingData.lines || [];
 
-  let html = `<div class="walking-widget-header"><h3>Walk to Station</h3><button class="walking-widget-close" onclick="this.closest('.walking-widget').remove()">&times;</button></div>`;
+  let html = `<div class="walking-widget-header"><h3>Walk to Station</h3></div>`;
 
   html += `<div class="walking-widget-body">`;
   html += `<div class="walking-widget-info">`;
