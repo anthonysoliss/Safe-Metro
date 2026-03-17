@@ -3900,7 +3900,7 @@ function showChatWelcome() {
 function startNewSession() {
   activeSessionId = null;
   try { _chatStore().removeItem(ACTIVE_SESSION_KEY); } catch(e) {}
-  try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
+  try { sessionStorage.removeItem('metroActiveRoute'); } catch(e) {}
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
   clearWalkingFromMap();
@@ -4076,7 +4076,7 @@ function clearRouteFromMap() {
     stationMarkers.forEach(m => m.addTo(map));
   }
   // Clear saved active route
-  try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
+  try { sessionStorage.removeItem('metroActiveRoute'); } catch(e) {}
 }
 
 function getStopCount(line, from, to) {
@@ -4282,7 +4282,7 @@ function drawRouteOnMap(routeData, skipFitBounds) {
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
 
   // Save active route so it persists across refresh (after clear so it doesn't get removed)
-  try { localStorage.setItem('metroActiveRoute', JSON.stringify(routeData)); } catch(e) {}
+  try { sessionStorage.setItem('metroActiveRoute', JSON.stringify(routeData)); } catch(e) {}
 
   const allBounds = [];
   const steps = routeData.steps;
@@ -4403,8 +4403,8 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
   drawRouteOnMap(routeData, true);
 
   // Persist walking + dest data AFTER drawRouteOnMap (which clears old localStorage)
-  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData || null)); } catch(e) {}
-  try { localStorage.setItem('metroActiveDestWalk', JSON.stringify(destWalking || null)); } catch(e) {}
+  try { sessionStorage.setItem('metroActiveWalking', JSON.stringify(walkingData || null)); } catch(e) {}
+  try { sessionStorage.setItem('metroActiveDestWalk', JSON.stringify(destWalking || null)); } catch(e) {}
 
   // Collect all bounds for final zoom
   const allBounds = [];
@@ -4534,7 +4534,7 @@ function clearDestWalkFromMap() {
   if (destWalkPolyline) { map.removeLayer(destWalkPolyline); destWalkPolyline = null; }
   destWalkMarkers.forEach(m => map.removeLayer(m));
   destWalkMarkers = [];
-  try { localStorage.removeItem('metroActiveDestWalk'); } catch(e) {}
+  try { sessionStorage.removeItem('metroActiveDestWalk'); } catch(e) {}
 }
 
 function clearWalkingFromMap(removeStorage) {
@@ -4542,7 +4542,7 @@ function clearWalkingFromMap(removeStorage) {
   walkingMarkers.forEach(m => map.removeLayer(m));
   walkingMarkers = [];
   if (removeStorage !== false) {
-    try { localStorage.removeItem('metroActiveWalking'); } catch(e) {}
+    try { sessionStorage.removeItem('metroActiveWalking'); } catch(e) {}
   }
 }
 
@@ -4603,7 +4603,7 @@ function drawWalkingRouteOnMap(walkingData) {
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
 
   // Save to localStorage so it persists across reload
-  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData)); } catch(e) {}
+  try { sessionStorage.setItem('metroActiveWalking', JSON.stringify(walkingData)); } catch(e) {}
 
   const stationInfo = stationByName[walkingData.station];
   if (!stationInfo || !userLocationKnown) return;
@@ -4955,14 +4955,14 @@ loadServerSessions().then(async () => {
 // Restore active route on map if user had clicked "Get Started" before refresh
 // Restores the full journey: walking to station + transit + walking to destination
 try {
-  const savedRoute = localStorage.getItem('metroActiveRoute');
+  const savedRoute = sessionStorage.getItem('metroActiveRoute');
   if (savedRoute) {
     const routeData = JSON.parse(savedRoute);
     if (routeData && routeData.steps) {
       let savedWalking = null;
       let savedDestWalk = null;
-      try { savedWalking = JSON.parse(localStorage.getItem('metroActiveWalking')); } catch(e) {}
-      try { savedDestWalk = JSON.parse(localStorage.getItem('metroActiveDestWalk')); } catch(e) {}
+      try { savedWalking = JSON.parse(sessionStorage.getItem('metroActiveWalking')); } catch(e) {}
+      try { savedDestWalk = JSON.parse(sessionStorage.getItem('metroActiveDestWalk')); } catch(e) {}
 
       const hasWalking = savedWalking && savedWalking.station;
 
@@ -4988,7 +4988,7 @@ try {
     }
   } else {
     // No saved route — check for standalone walking (e.g. user asked "nearest station?")
-    const savedWalking = localStorage.getItem('metroActiveWalking');
+    const savedWalking = sessionStorage.getItem('metroActiveWalking');
     if (savedWalking) {
       const walkingData = JSON.parse(savedWalking);
       if (walkingData && walkingData.station) {
