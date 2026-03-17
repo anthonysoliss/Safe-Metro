@@ -769,6 +769,28 @@
     font-size: 10px; font-weight: 700; flex-shrink: 0;
   }
   .route-widget-summary .summary-label { margin-left: auto; }
+  .route-walk-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .route-walk-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .route-walk-icon { font-size: 16px; }
+  .route-walk-label {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .route-walk-meta {
+    margin-left: auto; font-size: 11px; color: #34c759; font-weight: 600;
+  }
+  .route-walk-steps {
+    padding: 4px 0 0 26px;
+    max-height: 120px; overflow-y: auto;
+  }
+  .route-walk-steps::-webkit-scrollbar { width: 3px; }
+  .route-walk-steps::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .route-walk-steps .walk-step { padding: 3px 0; }
   .route-widget-steps { padding: 12px 16px; }
   .route-step {
     display: flex; gap: 12px; position: relative;
@@ -959,6 +981,33 @@
     width: 20px; height: 20px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .walking-steps {
+    padding: 8px 16px 4px;
+    border-top: 1px solid var(--border);
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .walking-steps::-webkit-scrollbar { width: 3px; }
+  .walking-steps::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .walk-step {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0;
+    font-size: 12px; color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .walk-step-num {
+    min-width: 18px; height: 18px;
+    background: rgba(52,199,89,0.15); color: #34c759;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .walk-step-text { flex: 1; }
+  .walk-step-dist {
+    font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; flex-shrink: 0;
   }
   .walking-widget-footer {
     padding: 10px 16px 14px;
@@ -2600,7 +2649,7 @@ const lineRoutes = {
   B: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Vermont/Beverly","Vermont/Santa Monica","Vermont/Sunset","Hollywood/Western","Hollywood/Vine","Hollywood/Highland","Universal City/Studio City","North Hollywood"],
   C: ["Norwalk","Lakewood Blvd","Lynwood","Willowbrook/Rosa Parks","Avalon","Harbor Freeway","Vermont/Athens","Crenshaw","Hawthorne/Lennox","Aviation/Imperial","Aviation/Century","LAX/Metro Transit Center"],
   D: ["Union Station","Civic Center/Grand Park","Pershing Square","7th St/Metro Center","Westlake/MacArthur Park","Wilshire/Vermont","Wilshire/Normandie","Wilshire/Western"],
-  E: ["Downtown Santa Monica","17th St/SMC","26th St/Bergamot","Expo/Bundy","Expo/Sepulveda","Westwood/Rancho Park","Palms","Culver City","La Cienega/Jefferson","Expo/La Brea","Expo/Crenshaw","Farmdale","Expo/Western","Expo/Vermont","Expo Park/USC","Jefferson/USC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Pico/Aliso","Mariachi Plaza/Boyle Heights","Soto","Indiana","Maravilla","East LA Civic Center","Atlantic"],
+  E: ["Downtown Santa Monica","17th St/SMC","26th St/Bergamot","Expo/Bundy","Expo/Sepulveda","Westwood/Rancho Park","Palms","Culver City","La Cienega/Jefferson","Expo/La Brea","Farmdale","Expo/Crenshaw","Expo/Western","Expo/Vermont","Expo Park/USC","Jefferson/USC","Pico","7th St/Metro Center","Grand Ave Arts/Bunker Hill","Historic Broadway","Little Tokyo/Arts District","Pico/Aliso","Mariachi Plaza/Boyle Heights","Soto","Indiana","Maravilla","East LA Civic Center","Atlantic"],
   G: ["North Hollywood","Woodman","Laurel Canyon","Valley College","Van Nuys","Sepulveda","Woodley","Balboa","Reseda","Tampa","Pierce College","De Soto","Canoga","Sherman Way","Roscoe","Nordhoff","Chatsworth"],
   K: ["Redondo Beach","Douglas","El Segundo","Mariposa","Aviation/Century","LAX/Metro Transit Center","Westchester/Veterans","Downtown Inglewood","Fairview Heights","Hyde Park","Leimert Park","Martin Luther King Jr","Expo/Crenshaw"],
 };
@@ -3158,12 +3207,17 @@ function renderStationTimesHTML(arrivals) {
   return `<div class="station-times">${rows}</div>`;
 }
 
+let _fetchTimesInProgress = false;
 async function fetchStationTimesForList() {
-  const items = document.querySelectorAll('#stationList .station-item');
+  if (_fetchTimesInProgress) return; // prevent overlapping fetches
+  _fetchTimesInProgress = true;
+  const items = document.querySelectorAll('#stationList .station-item:not(.coming-soon)');
   const fetches = [];
+  const fetched = new Set(); // avoid duplicate requests for same station
   items.forEach(item => {
     const name = item.dataset.name;
-    if (!name) return;
+    if (!name || fetched.has(name)) return;
+    fetched.add(name);
     const cached = _arrivalsCache[name];
     if (cached && Date.now() - cached._ts < 60000) {
       const timesEl = item.querySelector('.station-times-live');
@@ -3177,14 +3231,17 @@ async function fetchStationTimesForList() {
           if (data && data.status === 'ok') {
             _arrivalsCache[name] = data;
             _arrivalsCache[name]._ts = Date.now();
-            const timesEl = item.querySelector('.station-times-live');
-            if (timesEl) timesEl.innerHTML = renderStationTimesHTML(data.arrivals);
+            // Update all items with this station name
+            document.querySelectorAll(`#stationList .station-item[data-name="${CSS.escape(name)}"] .station-times-live`).forEach(el => {
+              el.innerHTML = renderStationTimesHTML(data.arrivals);
+            });
           }
         })
         .catch(() => {})
     );
   });
   await Promise.allSettled(fetches);
+  _fetchTimesInProgress = false;
 }
 
 // ── Station List ──
@@ -3604,45 +3661,67 @@ async function getAIResponse(msg) {
     }
   } catch(e) { /* location fetch failed or aborted, continue without it */ }
   if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
+  const _emptyResult = { reply: null, route_data: null, arrivals_data: null, walking_data: null };
   try {
-    const res = await fetch('/api/chat/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: _aiAbortController.signal,
-    });
-    const data = await res.json();
-    if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
-    if (data.status === 'ok') {
-      // Store server conversation_id on the active session
-      if (data.conversation_id && session) {
-        session.conversation_id = data.conversation_id;
-        saveSessions(chatSessions);
+    for (let _attempt = 0; _attempt < 2; _attempt++) {
+      try {
+        const res = await fetch('/api/chat/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: _aiAbortController.signal,
+        });
+        if (_aiStopped) return { ..._emptyResult, aborted: true };
+        // Retry once on 503 (server overloaded)
+        if (res.status === 503 && _attempt === 0) {
+          await new Promise(r => setTimeout(r, 2000));
+          if (_aiStopped) return { ..._emptyResult, aborted: true };
+          continue;
+        }
+        const data = await res.json();
+        if (_aiStopped) return { ..._emptyResult, aborted: true };
+        if (data.status === 'ok') {
+          if (data.conversation_id && session) {
+            session.conversation_id = data.conversation_id;
+            saveSessions(chatSessions);
+          }
+          return { reply: data.reply, route_data: data.route_data || null, arrivals_data: data.arrivals_data || null, walking_data: data.walking_data || null };
+        }
+        return { reply: data.message || 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null, arrivals_data: null, walking_data: null };
+      } catch (e) {
+        if (e.name === 'AbortError') return { ..._emptyResult, aborted: true };
+        if (_attempt === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
+        return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null, arrivals_data: null, walking_data: null };
       }
-      return { reply: data.reply, route_data: data.route_data || null, arrivals_data: data.arrivals_data || null, walking_data: data.walking_data || null };
     }
-    return { reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null, arrivals_data: null, walking_data: null };
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      return { reply: null, route_data: null, arrivals_data: null, walking_data: null, aborted: true };
-    }
-    return { reply: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.', route_data: null, arrivals_data: null, walking_data: null };
+    return { ..._emptyResult, reply: 'Sorry, I\'m having trouble right now. Please try again in a moment.' };
   } finally {
     _aiAbortController = null;
   }
 }
 // ── Chat Sessions ──
 const CHAT_SESSIONS_KEY = 'metroSafeChatSessions';
+const ACTIVE_SESSION_KEY = 'metroActiveSessionId';
+// Authenticated users: persist in localStorage (server-backed anyway)
+// Anonymous users: use sessionStorage so history is only for this tab/session
+function _chatStore() { return isAuthenticated ? localStorage : sessionStorage; }
 function loadSessions() {
-  try { const s = localStorage.getItem(CHAT_SESSIONS_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+  try { const s = _chatStore().getItem(CHAT_SESSIONS_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
 function saveSessions(sessions) {
-  try { localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions)); } catch(e) {}
+  try { _chatStore().setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions)); } catch(e) {}
+}
+
+// On load: clean up any stale anonymous chat data from localStorage
+// (anonymous sessions now use sessionStorage only)
+if (!isAuthenticated) {
+  try { localStorage.removeItem(CHAT_SESSIONS_KEY); } catch(e) {}
+  try { localStorage.removeItem(ACTIVE_SESSION_KEY); } catch(e) {}
 }
 
 let chatSessions = loadSessions() || [];
 let activeSessionId = null;
-try { activeSessionId = localStorage.getItem('metroActiveSessionId') || null; } catch(e) {}
+try { activeSessionId = _chatStore().getItem(ACTIVE_SESSION_KEY) || null; } catch(e) {}
 let chatSessionsLoaded = false;
 
 function getActiveSession() { return chatSessions.find(s => s.id === activeSessionId) || null; }
@@ -3746,7 +3825,7 @@ async function openSession(id, {show = true} = {}) {
   const session = chatSessions.find(s => s.id === id);
   if (!session) return;
   activeSessionId = id;
-  try { localStorage.setItem('metroActiveSessionId', id); } catch(e) {}
+  try { _chatStore().setItem(ACTIVE_SESSION_KEY, id); } catch(e) {}
   chatOverlay.innerHTML = '';
 
   // If this is a server-backed session with no messages loaded yet, fetch them
@@ -3774,12 +3853,15 @@ async function openSession(id, {show = true} = {}) {
     if (msg.arrivals_data && msg.arrivals_data.arrivals) lastArrivalsData = msg.arrivals_data;
     if (msg.walking_data && msg.walking_data.station) lastWalkingData = msg.walking_data;
   });
-  // Show the most recent route widget if any
-  if (lastRouteData) showRouteWidget(lastRouteData);
+  // Show the most recent route widget (with walking integrated if both exist)
+  if (lastRouteData) {
+    showRouteWidget(lastRouteData, lastWalkingData);
+  } else if (lastWalkingData) {
+    // Standalone walking widget only when no route
+    showWalkingWidget(lastWalkingData);
+  }
   // Show the most recent arrivals widget if any
   if (lastArrivalsData) showArrivalsWidget(lastArrivalsData);
-  // Show the most recent walking widget if any
-  if (lastWalkingData) showWalkingWidget(lastWalkingData);
   if (show) {
     chatOverlay.classList.add('visible');
     chatBackdrop.classList.add('visible');
@@ -3813,7 +3895,7 @@ function showChatWelcome() {
 
 function startNewSession() {
   activeSessionId = null;
-  try { localStorage.removeItem('metroActiveSessionId'); } catch(e) {}
+  try { _chatStore().removeItem(ACTIVE_SESSION_KEY); } catch(e) {}
   try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
@@ -3828,7 +3910,7 @@ function addMsg(text, type, routeData, arrivalsData, walkingData) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
     activeSessionId = id;
-    try { localStorage.setItem('metroActiveSessionId', id); } catch(e) {}
+    try { _chatStore().setItem(ACTIVE_SESSION_KEY, id); } catch(e) {}
   }
   const session = getActiveSession();
   if (session) {
@@ -3922,19 +4004,25 @@ async function sendMessage() {
   if (hasRoute) {
     addMsg(result.reply, 'ai', result.route_data, null, hasWalking ? result.walking_data : null);
     document.querySelectorAll('.route-widget').forEach(el => el.remove());
-    showRouteWidget(result.route_data);
+    document.querySelectorAll('.walking-widget').forEach(el => el.remove());
+    // Walking is integrated into the route widget — one combined widget
+    showRouteWidget(result.route_data, hasWalking ? result.walking_data : null);
   } else if (hasArrivals) {
     addMsg(result.reply, 'ai', null, result.arrivals_data, hasWalking ? result.walking_data : null);
     document.querySelectorAll('.arrivals-widget').forEach(el => el.remove());
     showArrivalsWidget(result.arrivals_data);
+    // Show standalone walking widget only when no route
+    if (hasWalking) {
+      document.querySelectorAll('.walking-widget').forEach(el => el.remove());
+      showWalkingWidget(result.walking_data);
+    }
   } else {
     addMsg(result.reply, 'ai', null, null, hasWalking ? result.walking_data : null);
-  }
-
-  // Show walking widget if present (always, alongside other widgets)
-  if (hasWalking) {
-    document.querySelectorAll('.walking-widget').forEach(el => el.remove());
-    showWalkingWidget(result.walking_data);
+    // Show standalone walking widget only when no route (e.g. "nearest station?")
+    if (hasWalking) {
+      document.querySelectorAll('.walking-widget').forEach(el => el.remove());
+      showWalkingWidget(result.walking_data);
+    }
   }
 }
 sendBtn.addEventListener('click', () => {
@@ -3995,7 +4083,7 @@ function getStopCount(line, from, to) {
   return Math.abs(ti - fi);
 }
 
-function showRouteWidget(routeData) {
+function showRouteWidget(routeData, walkingData) {
   const steps = routeData.steps;
   if (!steps || steps.length === 0) return;
 
@@ -4017,7 +4105,26 @@ function showRouteWidget(routeData) {
   });
   html += `<span class="summary-label">${transferCount > 0 ? transferCount + ' transfer' + (transferCount > 1 ? 's' : '') : 'Direct'}</span></div>`;
 
-  // Steps
+  // Walking section (if walking data provided — integrated into route widget)
+  if (walkingData && walkingData.station) {
+    html += `<div class="route-walk-section">`;
+    html += `<div class="route-walk-header">`;
+    html += `<span class="route-walk-icon">🚶</span>`;
+    html += `<span class="route-walk-label">Walk to ${walkingData.station}</span>`;
+    html += `<span class="route-walk-meta">${walkingData.duration_minutes} min · ${walkingData.distance || ''}</span>`;
+    html += `</div>`;
+    if (walkingData.steps && walkingData.steps.length > 0) {
+      html += `<div class="route-walk-steps">`;
+      walkingData.steps.forEach((ws, idx) => {
+        const dist = ws.distance ? `<span class="walk-step-dist">${ws.distance}</span>` : '';
+        html += `<div class="walk-step"><span class="walk-step-num">${idx + 1}</span><span class="walk-step-text">${ws.instruction}</span>${dist}</div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Route Steps
   html += `<div class="route-widget-steps">`;
   steps.forEach((step, i) => {
     const isLast = i === steps.length - 1;
@@ -4051,14 +4158,15 @@ function showRouteWidget(routeData) {
 
   widget.innerHTML = html;
   chatOverlay.appendChild(widget);
-  // Scroll after DOM paint so full widget height is measured
   requestAnimationFrame(() => {
     chatOverlay.scrollTop = chatOverlay.scrollHeight;
   });
 
-  // Attach event to Get Started button
+  // Attach event to Get Started button — show both walking route + transit route on map
+  const _walkData = walkingData;
   widget.querySelector('#routeStartBtn').addEventListener('click', () => {
     startRouteNavigation(routeData);
+    if (_walkData && _walkData.station) drawWalkingRouteOnMap(_walkData);
   });
 }
 
@@ -4305,6 +4413,16 @@ function showWalkingWidget(walkingData) {
     html += `</div>`;
   }
   html += `</div></div></div>`;
+
+  // Turn-by-turn walking steps
+  if (walkingData.steps && walkingData.steps.length > 0) {
+    html += `<div class="walking-steps">`;
+    walkingData.steps.forEach((step, idx) => {
+      const dist = step.distance ? `<span class="walk-step-dist">${step.distance}</span>` : '';
+      html += `<div class="walk-step"><span class="walk-step-num">${idx + 1}</span><span class="walk-step-text">${step.instruction}</span>${dist}</div>`;
+    });
+    html += `</div>`;
+  }
 
   html += `<div class="walking-widget-footer"><button class="walking-show-map-btn" id="walkingShowMapBtn">Show on Map</button></div>`;
 

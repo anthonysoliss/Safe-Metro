@@ -165,7 +165,7 @@ def get_walking_route(origin, destination, api_key):
         api_key: Google Maps API key
 
     Returns:
-        Dict with duration_minutes and distance_text, or None on error.
+        Dict with duration_minutes, distance_text, and turn-by-turn steps, or None on error.
     """
     url = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
@@ -175,7 +175,10 @@ def get_walking_route(origin, destination, api_key):
         "X-Goog-FieldMask": (
             "routes.duration,"
             "routes.distanceMeters,"
-            "routes.localizedValues"
+            "routes.localizedValues,"
+            "routes.legs.steps.navigationInstruction,"
+            "routes.legs.steps.localizedValues,"
+            "routes.legs.steps.distanceMeters"
         ),
     }
 
@@ -207,10 +210,25 @@ def get_walking_route(origin, destination, api_key):
     localized = route.get("localizedValues", {})
     distance_text = localized.get("distance", {}).get("text", f"{distance_miles} mi")
 
+    # Extract turn-by-turn walking steps
+    walk_steps = []
+    for leg in route.get("legs", []):
+        for step in leg.get("steps", []):
+            nav = step.get("navigationInstruction", {})
+            instruction = nav.get("instructions", "")
+            if not instruction:
+                continue
+            step_dist = step.get("localizedValues", {}).get("distance", {}).get("text", "")
+            walk_steps.append({
+                "instruction": instruction,
+                "distance": step_dist,
+            })
+
     return {
         "duration_minutes": duration_minutes,
         "distance_text": distance_text,
         "distance_miles": distance_miles,
+        "steps": walk_steps,
     }
 
 

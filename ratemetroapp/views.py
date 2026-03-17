@@ -909,7 +909,7 @@ COMPLETE STATION LISTS — ONLY use station names from these lists. NEVER invent
 - B Line (Red): Union Station, Civic Center/Grand Park, Pershing Square, 7th St/Metro Center, Westlake/MacArthur Park, Wilshire/Vermont, Vermont/Beverly, Vermont/Santa Monica, Vermont/Sunset, Hollywood/Western, Hollywood/Vine, Hollywood/Highland, Universal City/Studio City, North Hollywood. (14 stations total)
 - C Line (Green): Norwalk, Lakewood Blvd, Lynwood, Willowbrook/Rosa Parks, Avalon, Harbor Freeway, Vermont/Athens, Crenshaw, Hawthorne/Lennox, Aviation/Imperial, Aviation/Century, LAX/Metro Transit Center. Transfer to K Line at Aviation/Century or LAX/Metro Transit Center.
 - D Line (Purple): Union Station, Civic Center/Grand Park, Pershing Square, 7th St/Metro Center, Westlake/MacArthur Park, Wilshire/Vermont, Wilshire/Normandie, Wilshire/Western. Currently ends at Wilshire/Western. Future stations (Wilshire/La Brea, Wilshire/Fairfax, Wilshire/La Cienega, Wilshire/Rodeo, Century City/Constellation, Westwood/VA Hospital) are coming soon but NOT yet open.
-- E Line (Expo): Downtown Santa Monica, 17th St/SMC, 26th St/Bergamot, Expo/Bundy, Expo/Sepulveda, Westwood/Rancho Park, Palms, Culver City, La Cienega/Jefferson, Expo/La Brea, Expo/Crenshaw, Farmdale, Expo/Western, Expo/Vermont, Expo Park/USC, Jefferson/USC, Pico, 7th St/Metro Center, Grand Ave Arts/Bunker Hill, Historic Broadway, Little Tokyo/Arts District, Pico/Aliso, Mariachi Plaza/Boyle Heights, Soto, Indiana, Maravilla, East LA Civic Center, Atlantic. IMPORTANT: The E Line does NOT stop at Union Station. To reach Union Station from the E Line, transfer to the A Line at Little Tokyo/Arts District or transfer to the B/D Line at 7th St/Metro Center.
+- E Line (Expo): Downtown Santa Monica, 17th St/SMC, 26th St/Bergamot, Expo/Bundy, Expo/Sepulveda, Westwood/Rancho Park, Palms, Culver City, La Cienega/Jefferson, Expo/La Brea, Farmdale, Expo/Crenshaw, Expo/Western, Expo/Vermont, Expo Park/USC, Jefferson/USC, Pico, 7th St/Metro Center, Grand Ave Arts/Bunker Hill, Historic Broadway, Little Tokyo/Arts District, Pico/Aliso, Mariachi Plaza/Boyle Heights, Soto, Indiana, Maravilla, East LA Civic Center, Atlantic. IMPORTANT: The E Line does NOT stop at Union Station. To reach Union Station from the E Line, transfer to the A Line at Little Tokyo/Arts District or transfer to the B/D Line at 7th St/Metro Center.
 - G Line (Orange): North Hollywood, Woodman, Laurel Canyon, Valley College, Van Nuys, Sepulveda, Woodley, Balboa, Reseda, Tampa, Pierce College, De Soto, Canoga, Sherman Way, Roscoe, Nordhoff, Chatsworth. BRT (bus rapid transit) through the San Fernando Valley.
 - K Line (Crenshaw): Expo/Crenshaw, Martin Luther King Jr, Leimert Park, Hyde Park, Fairview Heights, Downtown Inglewood, Westchester/Veterans, LAX/Metro Transit Center, Aviation/Century, Mariposa, El Segundo, Douglas, Redondo Beach. Transfer to E Line at Expo/Crenshaw. Transfer to C Line at Aviation/Century or LAX/Metro Transit Center. Serves SoFi Stadium area (Downtown Inglewood station). Note: The station called "Crenshaw" is on the C Line, NOT the K Line.
 
@@ -943,7 +943,10 @@ Response Format Rules — CRITICAL:
 - NEVER use emojis, asterisks for emphasis, or markdown headers.
 - For directions, use a numbered list. Each step = one short sentence starting with an action verb.
 - Example of a good direction response (text part):
-  1. Walk 5 min to Maravilla station (0.4 mi).
+  1. Walk 5 min to Maravilla station (0.4 mi):
+     - Head south on S Mednik Ave (200 ft)
+     - Turn left on E Cesar E Chavez Ave (0.2 mi)
+     - Station entrance is on your right
   2. Board the Expo (E) Line toward Downtown Santa Monica.
   3. Ride to 7th St/Metro Center (8 stops, ~25 min).
   4. Switch to the Red (B) Line toward North Hollywood.
@@ -951,7 +954,7 @@ Response Format Rules — CRITICAL:
   Total: ~45 min, 1 transfer.
   Then at the END of your response, ALWAYS append the data blocks:
   [ROUTE]{"steps":[{"type":"ride","line":"E","from":"Maravilla","to":"7th St/Metro Center"},{"type":"transfer","line":null,"from":"7th St/Metro Center","to":"7th St/Metro Center"},{"type":"ride","line":"B","from":"7th St/Metro Center","to":"North Hollywood"}]}[/ROUTE]
-  [WALKING]{"station":"Maravilla","duration_minutes":5,"distance":"0.4 mi","lines":["E"]}[/WALKING]
+  [WALKING]{"station":"Maravilla","duration_minutes":5,"distance":"0.4 mi","lines":["E"],"steps":[{"instruction":"Head south on S Mednik Ave","distance":"200 ft"},{"instruction":"Turn left on E Cesar E Chavez Ave","distance":"0.2 mi"}]}[/WALKING]
   NEVER forget the [ROUTE] and [WALKING] blocks — they power the UI widgets.
 - For non-direction questions, reply in 1-3 plain sentences. No bullet points unless listing items.
 - NEVER repeat the user's question back to them.
@@ -1001,9 +1004,9 @@ Guidelines:
   - Greet signed-in users by their username on the first message only
   - If the user asks for their coordinates or location data, share it
   - ALWAYS start directions from the user's closest station
-  - When the context includes "Walking to [station]" info, include this as step 1 of your directions (e.g. "Walk 5 min to Maravilla station (0.4 mi)")
+  - ALWAYS include walking directions as step 1 whenever giving transit directions and the user is NOT already at a station. The user needs to know how to physically walk to the starting station. The "Walking to [station]" data in the context includes turn-by-turn walking steps (e.g. "Head south on S Mednik Ave", "Turn left on E Cesar E Chavez Ave"). Include these walking steps in your response so the user knows exactly where to walk. Format them as sub-steps under step 1.
+  - ALWAYS include the [WALKING] block whenever transit directions include walking to a station. This is NOT optional — the walking widget is how users navigate to their starting station. Every route response MUST have both [ROUTE] and [WALKING] blocks.
   - When the user asks "give me directions" or similar without specifying a destination, check the conversation history first. If you previously told them about a nearest station, give walking directions to that station and include the [WALKING] block. Then ask where they want to go from there.
-  - ALWAYS include the [WALKING] block when the context has walking data and the user asks about directions, nearest station, or getting somewhere. The walking widget is important for the user experience — never skip it.
 
 Structured Route Data — CRITICAL (NEVER SKIP):
 Whenever you give step-by-step Metro directions (riding from one station to another), you MUST append a machine-readable JSON block at the very end of your response. This is NOT optional — if you mention riding a Metro line from station A to station B, you MUST include the [ROUTE] block. Without it, the user gets no route widget and the directions are useless. Use this exact format:
@@ -1042,23 +1045,28 @@ When the CURRENT USER CONTEXT includes a "Google Transit Route" section, use tho
 Structured Walking Data — IMPORTANT:
 When the CURRENT USER CONTEXT includes "Walking to [station]" data, and the user asks about directions, nearest station, or how to get somewhere, append a machine-readable JSON block at the very end of your response (after any [ROUTE] block) in this exact format:
 
-[WALKING]{"station":"Station Name","duration_minutes":5,"distance":"0.4 mi","lines":["E"]}[/WALKING]
+[WALKING]{"station":"Station Name","duration_minutes":5,"distance":"0.4 mi","lines":["E"],"steps":[{"instruction":"Head south on S Mednik Ave","distance":"200 ft"},{"instruction":"Turn left on E Cesar E Chavez Ave","distance":"0.2 mi"}]}[/WALKING]
 
 - "station": exact station name matching the nearest station
 - "duration_minutes": walking time in minutes from the context
 - "distance": distance string from the context
 - "lines": array of line letter codes available at that station (from the context "Lines:" info)
+- "steps": array of walking step objects from the context, each with "instruction" and "distance"
 
-CRITICAL: You MUST include the [WALKING] block in ALL of these situations:
+CRITICAL: You MUST include the [WALKING] block ANY TIME you give transit directions and the context has walking data. No exceptions. If the user asks "how do I get to X?" and the context shows they are not at a station, you MUST include both [ROUTE] and [WALKING]. The walking widget shows the user how to physically walk to their starting station — without it they have no way to begin their journey. Specific situations:
 - User asks about nearest/closest station
 - User asks about the next nearest or another nearby station
-- User asks for directions (even without a destination)
-- User asks how to get somewhere
-- User says "give me directions" or similar follow-up after you told them their nearest station
-- Any time you mention walking to a station and the context has walking data
-Include it alongside [ROUTE] blocks when giving full transit directions. The walking widget is a key feature — users expect to see it whenever walking is involved.
+- User asks for directions to anywhere (even without a destination)
+- User asks how to get somewhere (e.g. "how do I get to Hollywood?", "how do I get to LAX?")
+- User says "give me directions" or similar follow-up
+- Any time your response includes riding a Metro line from a station
 
 The context may include multiple "Walking to" and "Walking to (alt)" entries for the top 3 nearest stations. Use the correct one based on which station the user is asking about. For example, if they ask about the "next nearest" station, use the walking data for the 2nd closest station.
+
+Destination Walking — IMPORTANT:
+When the user asks to go to a specific PLACE (not a station) like a theater, restaurant, park, etc., you should also tell them how to walk from the destination station to their actual destination. After the last Metro step, add a final walking step like:
+  "6. Walk from [station] to [destination] (~X min). Head [direction] on [street]..."
+Use your knowledge of the area to give a brief walking direction from the station to the place. If you don't know the exact route, at minimum tell them the approximate walking distance/time and the general direction.
 
 Conversation Memory — IMPORTANT:
 You receive the full conversation history. When the user asks a follow-up like "give me directions" or "how do I get there", ALWAYS check previous messages for context. If you already told them their nearest station, use that as the starting point. Never ask them to repeat information they already gave you or that you already told them."""
@@ -1176,9 +1184,12 @@ def _build_user_context(request, data, user_message=''):
                         )
                         if walk_data:
                             label = "Walking to" if i == 0 else "Walking to (alt)"
-                            parts.append(
-                                f"{label} {station_name}: {walk_data['duration_minutes']} min walk ({walk_data['distance_text']})"
-                            )
+                            walk_info = f"{label} {station_name}: {walk_data['duration_minutes']} min walk ({walk_data['distance_text']})"
+                            # Include turn-by-turn steps
+                            if walk_data.get('steps'):
+                                step_strs = [f"  {j+1}. {s['instruction']}" + (f" ({s['distance']})" if s.get('distance') else "") for j, s in enumerate(walk_data['steps'])]
+                                walk_info += "\n" + "\n".join(step_strs)
+                            parts.append(walk_info)
                     except Exception:
                         pass
             else:
@@ -1537,42 +1548,71 @@ def api_chat(request):
         # Extract text from all text blocks (web search responses have mixed block types)
         ai_text = ''.join(block.text for block in response.content if block.type == 'text')
 
-        # Parse structured route data if present
+        # Parse all structured data blocks from the FULL ai_text before stripping
         route_data = None
-        ai_text_clean = ai_text
+        arrivals_data = None
+        walking_data = None
+
         route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
         if route_match:
             try:
                 route_data = json.loads(route_match.group(1))
             except (json.JSONDecodeError, ValueError):
                 route_data = None
-            # Strip the route block from display text
-            ai_text_clean = ai_text[:route_match.start()].rstrip()
 
-        # Parse structured arrivals data if present
-        arrivals_data = None
-        arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', ai_text_clean, re.DOTALL)
+        arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', ai_text, re.DOTALL)
         if arrivals_match:
             try:
                 arrivals_data = json.loads(arrivals_match.group(1))
             except (json.JSONDecodeError, ValueError):
                 arrivals_data = None
-            ai_text_clean = ai_text_clean[:arrivals_match.start()].rstrip()
 
-        # Parse structured walking data if present
-        walking_data = None
-        walking_match = re.search(r'\[WALKING\](.*?)\[/WALKING\]', ai_text_clean, re.DOTALL)
+        walking_match = re.search(r'\[WALKING\](.*?)\[/WALKING\]', ai_text, re.DOTALL)
         if walking_match:
             try:
                 walking_data = json.loads(walking_match.group(1))
             except (json.JSONDecodeError, ValueError):
                 walking_data = None
-            ai_text_clean = ai_text_clean[:walking_match.start()].rstrip()
+
+        # Strip all data blocks from display text
+        ai_text_clean = re.sub(r'\[ROUTE\].*?\[/ROUTE\]', '', ai_text, flags=re.DOTALL)
+        ai_text_clean = re.sub(r'\[ARRIVALS\].*?\[/ARRIVALS\]', '', ai_text_clean, flags=re.DOTALL)
+        ai_text_clean = re.sub(r'\[WALKING\].*?\[/WALKING\]', '', ai_text_clean, flags=re.DOTALL)
+        ai_text_clean = ai_text_clean.rstrip()
 
         # Save full text (with route/arrivals blocks) to DB for AI context continuity
         if conversation:
             ChatMessage.objects.create(conversation=conversation, role='assistant', content=ai_text)
             conversation.save()  # bump updated_at
+
+        # Fallback: if we have route_data but no walking_data, auto-generate it
+        # from user location and the route's starting station
+        if route_data and not walking_data:
+            try:
+                user_lat = float(data.get('lat', 0))
+                user_lng = float(data.get('lng', 0))
+                if user_lat and user_lng:
+                    ride_steps = [s for s in route_data.get('steps', []) if s.get('type') == 'ride']
+                    if ride_steps:
+                        start_station_name = ride_steps[0].get('from', '')
+                        start_station = Station.objects.filter(name=start_station_name).first()
+                        if start_station:
+                            from .google_routes import get_walking_route
+                            walk = get_walking_route(
+                                {"lat": user_lat, "lng": user_lng},
+                                {"lat": start_station.latitude, "lng": start_station.longitude},
+                                settings.GOOGLE_MAPS_API_KEY,
+                            )
+                            if walk:
+                                walking_data = {
+                                    "station": start_station_name,
+                                    "duration_minutes": walk["duration_minutes"],
+                                    "distance": walk["distance_text"],
+                                    "lines": list(start_station.lines.values_list("code", flat=True)),
+                                    "steps": walk.get("steps", []),
+                                }
+            except Exception:
+                pass
 
         resp = {
             'status': 'ok',
@@ -1592,6 +1632,10 @@ def api_chat(request):
         return JsonResponse({'status': 'error', 'message': 'AI service configuration error'}, status=500)
     except anthropic.RateLimitError:
         return JsonResponse({'status': 'error', 'message': 'AI is busy, please try again in a moment'}, status=429)
+    except anthropic.BadRequestError as e:
+        if 'credit balance' in str(e).lower():
+            return JsonResponse({'status': 'error', 'message': 'AI service credits depleted. Please contact the administrator.'}, status=503)
+        return JsonResponse({'status': 'error', 'message': 'AI service error'}, status=400)
     except anthropic.APIError as e:
         return JsonResponse({'status': 'error', 'message': 'AI service temporarily unavailable'}, status=503)
     except Exception as e:
@@ -1652,7 +1696,7 @@ def api_chat_conversation(request, conversation_id):
         route_data = None
         arrivals_data = None
         walking_data = None
-        # Strip route/arrivals blocks from assistant messages and extract data
+        # Parse all data blocks from full text, then strip them for display
         if m.role == 'assistant':
             route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', text, re.DOTALL)
             if route_match:
@@ -1660,21 +1704,23 @@ def api_chat_conversation(request, conversation_id):
                     route_data = json.loads(route_match.group(1))
                 except (json.JSONDecodeError, ValueError):
                     pass
-                text = text[:route_match.start()].rstrip()
             arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', text, re.DOTALL)
             if arrivals_match:
                 try:
                     arrivals_data = json.loads(arrivals_match.group(1))
                 except (json.JSONDecodeError, ValueError):
                     pass
-                text = text[:arrivals_match.start()].rstrip()
             walking_match = re.search(r'\[WALKING\](.*?)\[/WALKING\]', text, re.DOTALL)
             if walking_match:
                 try:
                     walking_data = json.loads(walking_match.group(1))
                 except (json.JSONDecodeError, ValueError):
                     pass
-                text = text[:walking_match.start()].rstrip()
+            # Strip all blocks from display text
+            text = re.sub(r'\[ROUTE\].*?\[/ROUTE\]', '', text, flags=re.DOTALL)
+            text = re.sub(r'\[ARRIVALS\].*?\[/ARRIVALS\]', '', text, flags=re.DOTALL)
+            text = re.sub(r'\[WALKING\].*?\[/WALKING\]', '', text, flags=re.DOTALL)
+            text = text.rstrip()
         msg_obj = {
             'type': 'user' if m.role == 'user' else 'ai',
             'text': text,
