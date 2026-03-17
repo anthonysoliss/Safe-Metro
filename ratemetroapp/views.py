@@ -1063,10 +1063,16 @@ CRITICAL: You MUST include the [WALKING] block ANY TIME you give transit directi
 
 The context may include multiple "Walking to" and "Walking to (alt)" entries for the top 3 nearest stations. Use the correct one based on which station the user is asking about. For example, if they ask about the "next nearest" station, use the walking data for the 2nd closest station.
 
-Destination Walking — IMPORTANT:
-When the user asks to go to a specific PLACE (not a station) like a theater, restaurant, park, etc., you should also tell them how to walk from the destination station to their actual destination. After the last Metro step, add a final walking step like:
-  "6. Walk from [station] to [destination] (~X min). Head [direction] on [street]..."
-Use your knowledge of the area to give a brief walking direction from the station to the place. If you don't know the exact route, at minimum tell them the approximate walking distance/time and the general direction.
+Destination Walking — CRITICAL:
+When the user asks to go to a specific PLACE (not a Metro station) — like a theater, restaurant, park, landmark, etc. — you MUST include a [DEST] block so we can fetch walking directions from the last Metro station to the actual destination. Format:
+
+[DEST]{"name":"Hollywood Sign","address":"Hollywood Sign, Los Angeles, CA"}[/DEST]
+
+- "name": short name of the destination
+- "address": full address or well-known place name with city (for Google geocoding)
+
+Include this block whenever the user's final destination is NOT a Metro station. Do NOT include it if the user is going to a Metro station itself.
+Also mention the last-mile walk in your text response (e.g. "From Hollywood/Western, walk ~25 min north to the Hollywood Sign").
 
 Conversation Memory — IMPORTANT:
 You receive the full conversation history. When the user asks a follow-up like "give me directions" or "how do I get there", ALWAYS check previous messages for context. If you already told them their nearest station, use that as the starting point. Never ask them to repeat information they already gave you or that you already told them."""
@@ -1574,10 +1580,19 @@ def api_chat(request):
             except (json.JSONDecodeError, ValueError):
                 walking_data = None
 
+        dest_data = None
+        dest_match = re.search(r'\[DEST\](.*?)\[/DEST\]', ai_text, re.DOTALL)
+        if dest_match:
+            try:
+                dest_data = json.loads(dest_match.group(1))
+            except (json.JSONDecodeError, ValueError):
+                dest_data = None
+
         # Strip all data blocks from display text
         ai_text_clean = re.sub(r'\[ROUTE\].*?\[/ROUTE\]', '', ai_text, flags=re.DOTALL)
         ai_text_clean = re.sub(r'\[ARRIVALS\].*?\[/ARRIVALS\]', '', ai_text_clean, flags=re.DOTALL)
         ai_text_clean = re.sub(r'\[WALKING\].*?\[/WALKING\]', '', ai_text_clean, flags=re.DOTALL)
+        ai_text_clean = re.sub(r'\[DEST\].*?\[/DEST\]', '', ai_text_clean, flags=re.DOTALL)
         ai_text_clean = ai_text_clean.rstrip()
 
         # Save full text (with route/arrivals blocks) to DB for AI context continuity
@@ -1614,6 +1629,33 @@ def api_chat(request):
             except Exception:
                 pass
 
+        # Fetch destination walking directions if AI provided a [DEST] block
+        dest_walking = None
+        if dest_data and route_data:
+            try:
+                from .google_routes import get_walking_route
+                ride_steps = [s for s in route_data.get('steps', []) if s.get('type') == 'ride']
+                if ride_steps:
+                    last_station_name = ride_steps[-1].get('to', '')
+                    last_station = Station.objects.filter(name=last_station_name).first()
+                    if last_station:
+                        dest_address = dest_data.get('address', dest_data.get('name', ''))
+                        walk = get_walking_route(
+                            {"lat": last_station.latitude, "lng": last_station.longitude},
+                            dest_address,
+                            settings.GOOGLE_MAPS_API_KEY,
+                        )
+                        if walk:
+                            dest_walking = {
+                                "from_station": last_station_name,
+                                "destination": dest_data.get('name', dest_address),
+                                "duration_minutes": walk["duration_minutes"],
+                                "distance": walk["distance_text"],
+                                "steps": walk.get("steps", []),
+                            }
+            except Exception:
+                pass
+
         resp = {
             'status': 'ok',
             'reply': ai_text_clean,
@@ -1625,6 +1667,8 @@ def api_chat(request):
             resp['arrivals_data'] = arrivals_data
         if walking_data:
             resp['walking_data'] = walking_data
+        if dest_walking:
+            resp['dest_walking'] = dest_walking
 
         return JsonResponse(resp)
 
