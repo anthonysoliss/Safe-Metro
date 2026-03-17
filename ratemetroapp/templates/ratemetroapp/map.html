@@ -4391,12 +4391,16 @@ function drawRouteOnMap(routeData, skipFitBounds) {
   }
 }
 
-function startRouteNavigation(routeData, walkingData, destWalking) {
-  dismissChat();
+function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
+  if (!isRestore) dismissChat();
   clearRouteFromMap();
   clearWalkingFromMap();
   clearDestWalkFromMap();
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+
+  // Persist all route data so refresh restores the full journey
+  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData || null)); } catch(e) {}
+  try { localStorage.setItem('metroActiveDestWalk', JSON.stringify(destWalking || null)); } catch(e) {}
 
   // Draw transit route (skip auto-fitBounds — we'll do combined fit at end)
   drawRouteOnMap(routeData, true);
@@ -4516,7 +4520,7 @@ function startRouteNavigation(routeData, walkingData, destWalking) {
     map.setView(allBounds[0], 13);
   }
 
-  showMapToast('Full route displayed on map', 'success');
+  if (!isRestore) showMapToast('Full route displayed on map', 'success');
 }
 
 // ── Walking Widget & Map Drawing ──
@@ -4529,6 +4533,7 @@ function clearDestWalkFromMap() {
   if (destWalkPolyline) { map.removeLayer(destWalkPolyline); destWalkPolyline = null; }
   destWalkMarkers.forEach(m => map.removeLayer(m));
   destWalkMarkers = [];
+  try { localStorage.removeItem('metroActiveDestWalk'); } catch(e) {}
 }
 
 function clearWalkingFromMap(removeStorage) {
@@ -4946,33 +4951,56 @@ loadServerSessions().then(async () => {
 });
 
 // Restore active route on map if user had clicked "Get Started" before refresh
+// Restores the full journey: walking to station + transit + walking to destination
 try {
   const savedRoute = localStorage.getItem('metroActiveRoute');
   if (savedRoute) {
     const routeData = JSON.parse(savedRoute);
     if (routeData && routeData.steps) {
-      drawRouteOnMap(routeData);
-    }
-  }
-} catch(e) {}
+      let savedWalking = null;
+      let savedDestWalk = null;
+      try { savedWalking = JSON.parse(localStorage.getItem('metroActiveWalking')); } catch(e) {}
+      try { savedDestWalk = JSON.parse(localStorage.getItem('metroActiveDestWalk')); } catch(e) {}
 
-// Restore active walking route on map if user had clicked "Show on Map" before refresh
-try {
-  const savedWalking = localStorage.getItem('metroActiveWalking');
-  if (savedWalking) {
-    const walkingData = JSON.parse(savedWalking);
-    if (walkingData && walkingData.station) {
-      // Wait for user location before drawing (need coordinates for the path)
-      let walkRetries = 0;
-      const tryDraw = () => {
-        if (userLocationKnown) {
-          drawWalkingRouteOnMap(walkingData);
-        } else if (walkRetries < 30) { // try for up to 15 seconds
-          walkRetries++;
-          setTimeout(tryDraw, 500);
-        }
-      };
-      tryDraw();
+      const hasWalking = savedWalking && savedWalking.station;
+
+      if (hasWalking) {
+        // Wait for user location before drawing the full route (need GPS for walking segment)
+        let walkRetries = 0;
+        const tryRestore = () => {
+          if (userLocationKnown) {
+            startRouteNavigation(routeData, savedWalking, savedDestWalk, true);
+          } else if (walkRetries < 30) { // try for up to 15 seconds
+            walkRetries++;
+            setTimeout(tryRestore, 500);
+          } else {
+            // GPS never arrived — draw transit-only so user at least sees the route
+            drawRouteOnMap(routeData);
+          }
+        };
+        tryRestore();
+      } else {
+        // No walking data — just draw the transit route
+        drawRouteOnMap(routeData);
+      }
+    }
+  } else {
+    // No saved route — check for standalone walking (e.g. user asked "nearest station?")
+    const savedWalking = localStorage.getItem('metroActiveWalking');
+    if (savedWalking) {
+      const walkingData = JSON.parse(savedWalking);
+      if (walkingData && walkingData.station) {
+        let walkRetries = 0;
+        const tryDraw = () => {
+          if (userLocationKnown) {
+            drawWalkingRouteOnMap(walkingData);
+          } else if (walkRetries < 30) {
+            walkRetries++;
+            setTimeout(tryDraw, 500);
+          }
+        };
+        tryDraw();
+      }
     }
   }
 } catch(e) {}
