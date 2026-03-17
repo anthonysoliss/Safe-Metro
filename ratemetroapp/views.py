@@ -1649,6 +1649,7 @@ def api_chat(request):
                             dest_walking = {
                                 "from_station": last_station_name,
                                 "destination": dest_data.get('name', dest_address),
+                                "address": dest_address,
                                 "duration_minutes": walk["duration_minutes"],
                                 "distance": walk["distance_text"],
                                 "steps": walk.get("steps", []),

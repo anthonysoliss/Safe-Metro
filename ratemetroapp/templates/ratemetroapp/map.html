@@ -4074,6 +4074,8 @@ function clearRouteFromMap() {
   }
   // Clear saved active route
   try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
+  // Also clear destination walking overlays if present
+  if (typeof clearDestWalkFromMap === 'function') clearDestWalkFromMap();
 }
 
 function getStopCount(line, from, to) {
@@ -4181,11 +4183,11 @@ function showRouteWidget(routeData, walkingData, destWalking) {
     chatOverlay.scrollTop = chatOverlay.scrollHeight;
   });
 
-  // Attach event to Get Started button — show both walking route + transit route on map
+  // Attach event to Get Started button — show all directions on map
   const _walkData = walkingData;
+  const _destWalk = destWalking;
   widget.querySelector('#routeStartBtn').addEventListener('click', () => {
-    startRouteNavigation(routeData);
-    if (_walkData && _walkData.station) drawWalkingRouteOnMap(_walkData);
+    startRouteNavigation(routeData, _walkData, _destWalk);
   });
 }
 
@@ -4272,7 +4274,7 @@ function viewStationOnMap(stationName) {
   }
 }
 
-function drawRouteOnMap(routeData) {
+function drawRouteOnMap(routeData, skipFitBounds) {
   // Clear previous route
   clearRouteFromMap();
   // Also clear the active line polyline if any
@@ -4379,23 +4381,155 @@ function drawRouteOnMap(routeData) {
     }
   });
 
-  // Zoom to fit
+  // Zoom to fit (skip if caller will handle bounds)
+  if (!skipFitBounds) {
+    if (allBounds.length > 1) {
+      map.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50], maxZoom: 14 });
+    } else if (allBounds.length === 1) {
+      map.setView(allBounds[0], 13);
+    }
+  }
+}
+
+function startRouteNavigation(routeData, walkingData, destWalking) {
+  dismissChat();
+  clearRouteFromMap();
+  clearWalkingFromMap();
+  clearDestWalkFromMap();
+  if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
+
+  // Draw transit route (skip auto-fitBounds — we'll do combined fit at end)
+  drawRouteOnMap(routeData, true);
+
+  // Collect all bounds for final zoom
+  const allBounds = [];
+  routePolylines.forEach(p => p.getLatLngs().forEach(ll => allBounds.push([ll.lat, ll.lng])));
+  routeMarkers.forEach(m => { const ll = m.getLatLng(); allBounds.push([ll.lat, ll.lng]); });
+
+  // If dest walking exists, replace the red end-flag with a transfer circle
+  // so the red flag can go at the actual final destination instead
+  if (destWalking && destWalking.from_station && routeMarkers.length > 0) {
+    const lastM = routeMarkers[routeMarkers.length - 1];
+    const ll = lastM.getLatLng();
+    map.removeLayer(lastM);
+    routeMarkers.pop();
+    // Add a transfer-style circle at the exit station
+    const exitCircle = L.circleMarker([ll.lat, ll.lng], {
+      radius: 8, fillColor: '#ff6b35', color: '#fff', weight: 2, fillOpacity: 1,
+    }).addTo(map).bindTooltip('Exit: ' + destWalking.from_station, { direction: 'top', offset: [0, -10] });
+    routeMarkers.push(exitCircle);
+  }
+
+  // ── Walking from user to start station (green dashed line) ──
+  if (walkingData && walkingData.station && userLocationKnown) {
+    const si = stationByName[walkingData.station];
+    if (si) {
+      const uLL = [userLat, userLng];
+      const sLL = [si.lat, si.lng];
+      allBounds.push(uLL);
+
+      if (window.google && google.maps && google.maps.DirectionsService) {
+        const svc = new google.maps.DirectionsService();
+        svc.route({
+          origin: new google.maps.LatLng(userLat, userLng),
+          destination: new google.maps.LatLng(si.lat, si.lng),
+          travelMode: google.maps.TravelMode.WALKING,
+        }, (res, st) => {
+          if (st === 'OK' && res.routes.length > 0) {
+            walkingPolyline = L.polyline(res.routes[0].overview_path.map(p => [p.lat(), p.lng()]), {
+              color: '#34c759', weight: 5, opacity: 0.85, dashArray: '8 8',
+            }).addTo(map);
+          } else {
+            walkingPolyline = L.polyline([uLL, sLL], { color: '#34c759', weight: 5, opacity: 0.85, dashArray: '8 8' }).addTo(map);
+          }
+        });
+      } else {
+        walkingPolyline = L.polyline([uLL, sLL], { color: '#34c759', weight: 5, opacity: 0.85, dashArray: '8 8' }).addTo(map);
+      }
+
+      // "You are here" marker
+      walkingMarkers.push(
+        L.circleMarker(uLL, { radius: 9, fillColor: '#34c759', color: '#fff', weight: 2.5, fillOpacity: 1 })
+          .addTo(map).bindTooltip('You are here', { direction: 'top', offset: [0, -10] })
+      );
+      // Walk duration label at midpoint
+      walkingMarkers.push(L.marker([(userLat + si.lat) / 2, (userLng + si.lng) / 2], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="background:rgba(13,13,24,0.85);color:#34c759;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;border:1px solid rgba(52,199,89,0.3);backdrop-filter:blur(8px)">${walkingData.duration_minutes} min walk</div>`,
+          iconSize: [0, 0], iconAnchor: [40, 10],
+        }),
+        interactive: false,
+      }).addTo(map));
+    }
+  }
+
+  // ── Walking from end station to destination (orange dashed line) ──
+  if (destWalking && destWalking.from_station) {
+    const fs = stationByName[destWalking.from_station];
+    if (fs) {
+      const fsLL = [fs.lat, fs.lng];
+      const addr = destWalking.address || destWalking.destination || '';
+
+      if (addr && window.google && google.maps && google.maps.DirectionsService) {
+        const svc = new google.maps.DirectionsService();
+        svc.route({
+          origin: new google.maps.LatLng(fs.lat, fs.lng),
+          destination: addr,
+          travelMode: google.maps.TravelMode.WALKING,
+        }, (res, st) => {
+          if (st === 'OK' && res.routes.length > 0) {
+            const path = res.routes[0].overview_path.map(p => [p.lat(), p.lng()]);
+            destWalkPolyline = L.polyline(path, { color: '#ff6b35', weight: 5, opacity: 0.85, dashArray: '8 8' }).addTo(map);
+            // Red flag at actual destination
+            const endPt = path[path.length - 1];
+            destWalkMarkers.push(L.marker(endPt, {
+              icon: L.divIcon({
+                className: 'destination-flag-icon',
+                html: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#ff3b30" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
+                iconSize: [28, 28], iconAnchor: [4, 28],
+              }),
+            }).addTo(map).bindTooltip(destWalking.destination, { direction: 'top', offset: [0, -10] }));
+            // Re-fit bounds to include destination
+            allBounds.push(endPt);
+            if (allBounds.length > 1) map.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50], maxZoom: 14 });
+          }
+        });
+      }
+
+      // Walk duration label near exit station
+      destWalkMarkers.push(L.marker(fsLL, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="background:rgba(13,13,24,0.85);color:#ff6b35;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;border:1px solid rgba(255,107,53,0.3);backdrop-filter:blur(8px)">${destWalking.duration_minutes} min walk</div>`,
+          iconSize: [0, 0], iconAnchor: [40, -15],
+        }),
+        interactive: false,
+      }).addTo(map));
+    }
+  }
+
+  // Fit map to show all segments
   if (allBounds.length > 1) {
     map.fitBounds(L.latLngBounds(allBounds), { padding: [50, 50], maxZoom: 14 });
   } else if (allBounds.length === 1) {
     map.setView(allBounds[0], 13);
   }
-}
 
-function startRouteNavigation(routeData) {
-  dismissChat();
-  drawRouteOnMap(routeData);
-  showMapToast('Route displayed on map', 'success');
+  showMapToast('Full route displayed on map', 'success');
 }
 
 // ── Walking Widget & Map Drawing ──
 let walkingPolyline = null;
 let walkingMarkers = [];
+let destWalkPolyline = null;
+let destWalkMarkers = [];
+
+function clearDestWalkFromMap() {
+  if (destWalkPolyline) { map.removeLayer(destWalkPolyline); destWalkPolyline = null; }
+  destWalkMarkers.forEach(m => map.removeLayer(m));
+  destWalkMarkers = [];
+}
 
 function clearWalkingFromMap(removeStorage) {
   if (walkingPolyline) { map.removeLayer(walkingPolyline); walkingPolyline = null; }
