@@ -3849,15 +3849,17 @@ async function openSession(id, {show = true} = {}) {
   let lastRouteData = null;
   let lastArrivalsData = null;
   let lastWalkingData = null;
+  let lastDestWalking = null;
   session.messages.forEach(msg => {
     appendMsgEl(msg.text, msg.type);
     if (msg.route_data && msg.route_data.steps) lastRouteData = msg.route_data;
     if (msg.arrivals_data && msg.arrivals_data.arrivals) lastArrivalsData = msg.arrivals_data;
     if (msg.walking_data && msg.walking_data.station) lastWalkingData = msg.walking_data;
+    if (msg.dest_walking) lastDestWalking = msg.dest_walking;
   });
   // Show the most recent route widget (with walking integrated if both exist)
   if (lastRouteData) {
-    showRouteWidget(lastRouteData, lastWalkingData);
+    showRouteWidget(lastRouteData, lastWalkingData, lastDestWalking);
   } else if (lastWalkingData) {
     // Standalone walking widget only when no route
     showWalkingWidget(lastWalkingData);
@@ -3907,7 +3909,7 @@ function startNewSession() {
   chatBackdrop.classList.add('visible');
 }
 
-function addMsg(text, type, routeData, arrivalsData, walkingData) {
+function addMsg(text, type, routeData, arrivalsData, walkingData, destWalking) {
   if (!activeSessionId) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
@@ -3920,6 +3922,7 @@ function addMsg(text, type, routeData, arrivalsData, walkingData) {
     if (routeData) msg.route_data = routeData;
     if (arrivalsData) msg.arrivals_data = arrivalsData;
     if (walkingData) msg.walking_data = walkingData;
+    if (destWalking) msg.dest_walking = destWalking;
     session.messages.push(msg);
     saveSessions(chatSessions);
   }
@@ -4004,7 +4007,7 @@ async function sendMessage() {
   const hasWalking = result.walking_data && result.walking_data.station;
 
   if (hasRoute) {
-    addMsg(result.reply, 'ai', result.route_data, null, hasWalking ? result.walking_data : null);
+    addMsg(result.reply, 'ai', result.route_data, null, hasWalking ? result.walking_data : null, result.dest_walking || null);
     document.querySelectorAll('.route-widget').forEach(el => el.remove());
     document.querySelectorAll('.walking-widget').forEach(el => el.remove());
     // All directions in one combined widget: walk to station + metro + walk to destination
@@ -4074,8 +4077,6 @@ function clearRouteFromMap() {
   }
   // Clear saved active route
   try { localStorage.removeItem('metroActiveRoute'); } catch(e) {}
-  // Also clear destination walking overlays if present
-  if (typeof clearDestWalkFromMap === 'function') clearDestWalkFromMap();
 }
 
 function getStopCount(line, from, to) {
@@ -4398,12 +4399,12 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
   clearDestWalkFromMap();
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
 
-  // Persist all route data so refresh restores the full journey
-  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData || null)); } catch(e) {}
-  try { localStorage.setItem('metroActiveDestWalk', JSON.stringify(destWalking || null)); } catch(e) {}
-
   // Draw transit route (skip auto-fitBounds — we'll do combined fit at end)
   drawRouteOnMap(routeData, true);
+
+  // Persist walking + dest data AFTER drawRouteOnMap (which clears old localStorage)
+  try { localStorage.setItem('metroActiveWalking', JSON.stringify(walkingData || null)); } catch(e) {}
+  try { localStorage.setItem('metroActiveDestWalk', JSON.stringify(destWalking || null)); } catch(e) {}
 
   // Collect all bounds for final zoom
   const allBounds = [];
@@ -4598,6 +4599,7 @@ function showWalkingWidget(walkingData) {
 function drawWalkingRouteOnMap(walkingData) {
   clearWalkingFromMap(false);  // Clear visuals but keep localStorage
   clearRouteFromMap();
+  clearDestWalkFromMap();
   if (activeLinePolyline) { map.removeLayer(activeLinePolyline); activeLinePolyline = null; }
 
   // Save to localStorage so it persists across reload
