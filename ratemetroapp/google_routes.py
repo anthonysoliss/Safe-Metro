@@ -248,6 +248,45 @@ def get_walking_route(origin, destination, api_key):
     }
 
 
+def get_last_mile_transit(origin, destination, api_key):
+    """
+    Try to find bus/shuttle transit for the last-mile segment.
+
+    Calls get_transit_route() with LESS_WALKING preference. If the result
+    contains at least one ride step (bus/shuttle), returns structured transit
+    data. Otherwise returns None so the caller can fall back to walking.
+
+    Returns:
+        Dict with mode='transit', transit_steps, total_duration_minutes,
+        and summary string, or None if no transit found.
+    """
+    route = get_transit_route(origin, destination, api_key, routing_preference="LESS_WALKING")
+    if not route or not route.get('steps'):
+        return None
+
+    ride_steps = [s for s in route['steps'] if s['type'] == 'ride']
+    if not ride_steps:
+        return None  # Walking-only result — caller should use get_walking_route
+
+    # Build summary from ride lines (e.g. "Bus 232" or "Shuttle C")
+    line_names = []
+    for rs in ride_steps:
+        vtype = rs.get('vehicle_type', '')
+        line = rs.get('line', '')
+        if vtype == 'BUS':
+            line_names.append(f"Bus {line}")
+        elif line:
+            line_names.append(line)
+    summary = ', '.join(line_names) if line_names else 'Transit'
+
+    return {
+        'mode': 'transit',
+        'transit_steps': route['steps'],
+        'total_duration_minutes': route['total_duration'],
+        'summary': summary,
+    }
+
+
 def format_route_for_context(route_data, origin_name, destination_name):
     """
     Format a parsed route into a human-readable string for the AI context.

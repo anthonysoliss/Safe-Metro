@@ -688,6 +688,19 @@
     cursor: pointer; transition: background 0.15s, transform 0.15s;
   }
   .chat-welcome-chip:hover { background: #f5c518; transform: translateY(-1px); }
+  .chat-auth-gate { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; width: 100%; max-width: 280px; }
+  .chat-auth-btn {
+    padding: 12px 24px; border-radius: 22px; font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer; transition: background 0.15s, transform 0.15s;
+  }
+  .chat-auth-btn.primary { background: #f5c518; color: #000; }
+  .chat-auth-btn.primary:hover { background: #e6b800; transform: translateY(-1px); }
+  .chat-auth-btn.secondary { background: rgba(255,255,255,0.15); color: #fff; }
+  .chat-auth-btn.secondary:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+  [data-theme="light"] .chat-auth-btn.primary { background: #000; color: #fff; }
+  [data-theme="light"] .chat-auth-btn.primary:hover { background: #222; }
+  [data-theme="light"] .chat-auth-btn.secondary { background: rgba(0,0,0,0.1); color: #000; }
+  [data-theme="light"] .chat-auth-btn.secondary:hover { background: rgba(0,0,0,0.2); }
   [data-theme="light"] .chat-welcome-title { color: #000; }
   [data-theme="light"] .chat-welcome-sub { color: #000; }
   [data-theme="light"] .chat-welcome-chip { background: #000; color: #fff; }
@@ -2262,6 +2275,20 @@
   </div>
 </div>
 
+<!-- Upgrade Modal -->
+<div class="confirm-modal" id="upgradeModal">
+  <div class="confirm-modal-content">
+    <div class="confirm-modal-header">
+      <h3>Upgrade to Pro</h3>
+      <p>You've used your 3 free questions. Upgrade to Pro for unlimited access to the ratemetro.com AI assistant.</p>
+    </div>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-btn cancel" onclick="closeUpgradeModal()">Maybe Later</button>
+      <button class="confirm-modal-btn confirm" onclick="handleUpgrade()">Upgrade — $4.99/mo</button>
+    </div>
+  </div>
+</div>
+
 <!-- Chat History Panel -->
 <div class="chat-history-backdrop" id="chatHistoryBackdrop"></div>
 <div class="chat-history-panel" id="chatHistoryPanel">
@@ -2403,6 +2430,11 @@ let isAuthenticated = {{ is_authenticated|yesno:"true,false" }};
 let currentUsername = '{{ username|default:"" }}';
 let currentAvatarUrl = '{{ avatar_url|default:"" }}';
 
+// Free tier question tracking
+let questionCount = parseInt(sessionStorage.getItem('metroQuestionCount') || '0');
+let guestPromptShown = sessionStorage.getItem('metroGuestDismissed') === 'true';
+const FREE_QUESTION_LIMIT = 3;
+
 // Check authentication status
 async function checkAuthentication() {
   try {
@@ -2482,6 +2514,20 @@ async function promptSignIn(action = 'save your data') {
     return true;
   }
   return false;
+}
+
+// Upgrade Modal Functions
+function showUpgradeModal() {
+  document.getElementById('upgradeModal').classList.add('active');
+}
+
+function closeUpgradeModal() {
+  document.getElementById('upgradeModal').classList.remove('active');
+}
+
+function handleUpgrade() {
+  closeUpgradeModal();
+  showMapToast('Coming soon!', 'success');
 }
 
 // Handle sign out
@@ -3986,25 +4032,45 @@ async function openSession(id, {show = true} = {}) {
 
 function showChatWelcome() {
   const logoUrl = '{% static "ratemetroapp/images/ratemetro.png" %}';
+  const showAuthGate = !isAuthenticated && !guestPromptShown;
+  const bottomSection = showAuthGate
+    ? `<div class="chat-welcome-sub">Sign in to save your chats and get the most out of ratemetro.com</div>
+       <div class="chat-auth-gate">
+         <button class="chat-auth-btn primary" id="chatAuthSignIn">Sign In</button>
+         <button class="chat-auth-btn secondary" id="chatAuthGuest">Continue as Guest</button>
+       </div>`
+    : `<div class="chat-welcome-sub">Your LA Metro guide. Ask about directions, train times, safety info, or places to visit.</div>
+       <div class="chat-welcome-chips">
+         <div class="chat-welcome-chip" data-prompt="What's the nearest station?">Nearest station</div>
+         <div class="chat-welcome-chip" data-prompt="How do I get to Hollywood?">Directions</div>
+         <div class="chat-welcome-chip" data-prompt="When is the next train?">Train times</div>
+         <div class="chat-welcome-chip" data-prompt="Safe tourist spots in LA?">Tourist tips</div>
+       </div>`;
   chatOverlay.innerHTML = `<div class="chat-welcome">
     <img class="chat-welcome-logo" src="${logoUrl}" alt="Ratemetro">
     <div class="chat-welcome-title">Ratemetro.com</div>
-    <div class="chat-welcome-sub">Your LA Metro guide. Ask about directions, train times, safety info, or places to visit.</div>
-    <div class="chat-welcome-chips">
-      <div class="chat-welcome-chip" data-prompt="What's the nearest station?">Nearest station</div>
-      <div class="chat-welcome-chip" data-prompt="How do I get to Hollywood?">Directions</div>
-      <div class="chat-welcome-chip" data-prompt="When is the next train?">Train times</div>
-      <div class="chat-welcome-chip" data-prompt="Safe tourist spots in LA?">Tourist tips</div>
-    </div>
+    ${bottomSection}
   </div>`;
-  chatOverlay.querySelectorAll('.chat-welcome-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const prompt = chip.dataset.prompt;
-      chatInput.value = prompt;
-      chatInput.focus();
-      chatInput.dispatchEvent(new Event('input'));
+
+  if (showAuthGate) {
+    document.getElementById('chatAuthSignIn')?.addEventListener('click', () => {
+      window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
     });
-  });
+    document.getElementById('chatAuthGuest')?.addEventListener('click', () => {
+      guestPromptShown = true;
+      sessionStorage.setItem('metroGuestDismissed', 'true');
+      showChatWelcome(); // Re-render with the normal chips
+    });
+  } else {
+    chatOverlay.querySelectorAll('.chat-welcome-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.dataset.prompt;
+        chatInput.value = prompt;
+        chatInput.focus();
+        chatInput.dispatchEvent(new Event('input'));
+      });
+    });
+  }
 }
 
 function startNewSession() {
@@ -4104,6 +4170,13 @@ function stopAI() {
 
 async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
+
+  // Question limit check
+  if (questionCount >= FREE_QUESTION_LIMIT) {
+    showUpgradeModal();
+    return;
+  }
+
   _pendingQuestion = text;
   addMsg(text, 'user'); chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.classList.remove('active');
   showTyping();
@@ -4113,6 +4186,14 @@ async function sendMessage() {
   _pendingQuestion = '';
   setStopMode(false);
   document.getElementById('typingMsg')?.remove();
+
+  // Update question count after successful response
+  if (isAuthenticated && result.question_count !== undefined) {
+    questionCount = result.question_count;
+  } else {
+    questionCount++;
+    sessionStorage.setItem('metroQuestionCount', questionCount.toString());
+  }
 
   const hasRoute = result.route_data && result.route_data.steps;
   const hasArrivals = result.arrivals_data && result.arrivals_data.arrivals;
@@ -4186,6 +4267,7 @@ chatInput.addEventListener('focus', () => {
       chatBackdrop.classList.add('visible');
     }
   }
+
 });
 
 // ── Pin Location ──
@@ -4315,6 +4397,16 @@ function showRouteWidget(routeData, walkingData, destWalking) {
   // Collect bus lines
   const busLines = [...new Set(steps.filter(s => s.type === 'ride' && s.vehicle_type === 'BUS').map(s => s.line))];
 
+  // Collect last-mile bus/shuttle lines from destWalking
+  const lastMileLines = [];
+  if (destWalking && destWalking.mode === 'transit' && destWalking.transit_steps) {
+    destWalking.transit_steps.forEach(ts => {
+      if (ts.type === 'ride' && ts.line && !usedLines.includes(ts.line)) {
+        lastMileLines.push(ts.line);
+      }
+    });
+  }
+
   // Summary bar
   html += `<div class="route-widget-summary">`;
   usedLines.forEach(l => {
@@ -4324,6 +4416,9 @@ function showRouteWidget(routeData, walkingData, destWalking) {
     } else if (busLines.includes(l)) {
       html += `<span class="bus-dot">Bus ${l}</span>`;
     }
+  });
+  lastMileLines.forEach(l => {
+    html += `<span class="bus-dot">Bus ${l}</span>`;
   });
   html += `<span class="summary-label">${transferCount > 0 ? transferCount + ' transfer' + (transferCount > 1 ? 's' : '') : 'Direct'}</span></div>`;
 
@@ -4376,23 +4471,56 @@ function showRouteWidget(routeData, walkingData, destWalking) {
   });
   html += `</div>`;
 
-  // === SECTION 3: Walk from destination station to final destination ===
+  // === SECTION 3: Last mile from destination station to final destination ===
   if (destWalking && destWalking.destination) {
-    html += `<div class="route-walk-section route-dest-walk">`;
-    html += `<div class="route-walk-header">`;
-    html += `<span class="route-walk-icon">📍</span>`;
-    html += `<span class="route-walk-label">Walk to ${destWalking.destination}</span>`;
-    html += `<span class="route-walk-meta">${destWalking.duration_minutes} min · ${destWalking.distance || ''}</span>`;
-    html += `</div>`;
-    if (destWalking.steps && destWalking.steps.length > 0) {
+    if (destWalking.mode === 'transit' && destWalking.transit_steps) {
+      // Transit last mile (bus/shuttle)
+      html += `<div class="route-walk-section route-dest-walk">`;
+      html += `<div class="route-walk-header">`;
+      html += `<span class="route-walk-icon">🚌</span>`;
+      html += `<span class="route-walk-label">${destWalking.summary || 'Transit'} to ${destWalking.destination}</span>`;
+      html += `<span class="route-walk-meta">${destWalking.duration_minutes} min</span>`;
+      html += `</div>`;
       html += `<div class="route-walk-steps">`;
-      destWalking.steps.forEach((ws, idx) => {
-        const dist = ws.distance ? `<span class="walk-step-dist">${ws.distance}</span>` : '';
-        html += `<div class="walk-step"><span class="walk-step-num">${idx + 1}</span><span class="walk-step-text">${ws.instruction}</span>${dist}</div>`;
+      let stepIdx = 1;
+      destWalking.transit_steps.forEach(ts => {
+        if (ts.type === 'ride') {
+          const vtype = ts.vehicle_type === 'BUS' ? 'Bus' : '';
+          const label = vtype ? `${vtype} ${ts.line}` : ts.line;
+          const stops = ts.num_stops ? `${ts.num_stops} stop${ts.num_stops > 1 ? 's' : ''}` : '';
+          const dur = ts.duration_minutes ? `~${ts.duration_minutes} min` : '';
+          const meta = [stops, dur].filter(Boolean).join(', ');
+          html += `<div class="walk-step"><span class="walk-step-num" style="background:#007AFF;color:#fff">${stepIdx}</span>`;
+          html += `<span class="walk-step-text"><strong>${label}</strong> ${ts.from_station} → ${ts.to_station}`;
+          if (meta) html += ` <span class="walk-step-dist">${meta}</span>`;
+          html += `</span></div>`;
+          stepIdx++;
+        } else if (ts.type === 'walk' && ts.duration_minutes > 0) {
+          html += `<div class="walk-step"><span class="walk-step-num">${stepIdx}</span>`;
+          html += `<span class="walk-step-text">Walk ${ts.duration_minutes} min</span></div>`;
+          stepIdx++;
+        }
       });
       html += `</div>`;
+      html += `</div>`;
+    } else {
+      // Walking last mile (existing behavior)
+      html += `<div class="route-walk-section route-dest-walk">`;
+      html += `<div class="route-walk-header">`;
+      html += `<span class="route-walk-icon">📍</span>`;
+      html += `<span class="route-walk-label">Walk to ${destWalking.destination}</span>`;
+      html += `<span class="route-walk-meta">${destWalking.duration_minutes} min · ${destWalking.distance || ''}</span>`;
+      html += `</div>`;
+      if (destWalking.steps && destWalking.steps.length > 0) {
+        html += `<div class="route-walk-steps">`;
+        destWalking.steps.forEach((ws, idx) => {
+          const dist = ws.distance ? `<span class="walk-step-dist">${ws.distance}</span>` : '';
+          html += `<div class="walk-step"><span class="walk-step-num">${idx + 1}</span><span class="walk-step-text">${ws.instruction}</span>${dist}</div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
     }
-    html += `</div>`;
   }
 
   // Footer with Get Started button
@@ -4729,7 +4857,7 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
     }
   }
 
-  // ── Walking from end station to destination (orange dashed line) ──
+  // ── Last mile from end station to destination ──
   if (destWalking && destWalking.from_station) {
     const fs = stationByName[destWalking.from_station];
     // Fall back to last ride step coordinates for bus stops
@@ -4740,16 +4868,24 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
       const fsLL = [fsLat, fsLng];
       const addr = destWalking.address || destWalking.destination || '';
 
+      const isTransitLastMile = destWalking.mode === 'transit';
+      const lineColor = isTransitLastMile ? '#007AFF' : '#ff6b35';
+      const travelMode = isTransitLastMile ? google.maps.TravelMode.TRANSIT : google.maps.TravelMode.WALKING;
+      const labelText = isTransitLastMile
+        ? `${destWalking.duration_minutes} min transit`
+        : `${destWalking.duration_minutes} min walk`;
+      const labelBorderColor = isTransitLastMile ? 'rgba(0,122,255,0.3)' : 'rgba(255,107,53,0.3)';
+
       if (addr && window.google && google.maps && google.maps.DirectionsService) {
         const svc = new google.maps.DirectionsService();
         svc.route({
           origin: new google.maps.LatLng(fsLat, fsLng),
           destination: addr,
-          travelMode: google.maps.TravelMode.WALKING,
+          travelMode: travelMode,
         }, (res, st) => {
           if (st === 'OK' && res.routes.length > 0) {
             const path = res.routes[0].overview_path.map(p => [p.lat(), p.lng()]);
-            destWalkPolyline = L.polyline(path, { color: '#ff6b35', weight: 5, opacity: 0.85, dashArray: '8 8' }).addTo(map);
+            destWalkPolyline = L.polyline(path, { color: lineColor, weight: 5, opacity: 0.85, dashArray: isTransitLastMile ? '12 6' : '8 8' }).addTo(map);
             // Red flag at actual destination
             const endPt = path[path.length - 1];
             destWalkMarkers.push(L.marker(endPt, {
@@ -4766,11 +4902,11 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
         });
       }
 
-      // Walk duration label near exit station
+      // Duration label near exit station
       destWalkMarkers.push(L.marker(fsLL, {
         icon: L.divIcon({
           className: '',
-          html: `<div style="background:rgba(13,13,24,0.85);color:#ff6b35;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;border:1px solid rgba(255,107,53,0.3);backdrop-filter:blur(8px)">${destWalking.duration_minutes} min walk</div>`,
+          html: `<div style="background:rgba(13,13,24,0.85);color:${lineColor};padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;border:1px solid ${labelBorderColor};backdrop-filter:blur(8px)">${labelText}</div>`,
           iconSize: [0, 0], iconAnchor: [40, -15],
         }),
         interactive: false,
@@ -5287,6 +5423,7 @@ window.addEventListener('DOMContentLoaded', function() {
       chatBackdrop.classList.add('visible');
     }, 600);
   }
+
 });
 
 // Profile dropdown

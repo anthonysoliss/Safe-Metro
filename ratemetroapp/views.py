@@ -1076,8 +1076,8 @@ CRITICAL: You MUST include the [WALKING] block ANY TIME you give transit directi
 
 The context may include multiple "Walking to" and "Walking to (alt)" entries for the top 3 nearest stations. Use the correct one based on which station the user is asking about. For example, if they ask about the "next nearest" station, use the walking data for the 2nd closest station.
 
-Destination Walking — CRITICAL (NEVER SKIP):
-When the user asks to go to a specific PLACE (not a Metro station) — like a theater, restaurant, park, airport, landmark, neighborhood, etc. — you MUST include a [DEST] block so we can fetch walking directions from the last Metro station to the actual destination. Without this block, the user only sees directions TO the station but NOT the final walk to where they actually want to go. Format:
+Destination Last Mile — CRITICAL (NEVER SKIP):
+When the user asks to go to a specific PLACE (not a Metro station) — like a theater, restaurant, park, airport, landmark, neighborhood, etc. — you MUST include a [DEST] block so we can fetch last-mile directions (bus/shuttle or walking) from the last Metro station to the actual destination. Without this block, the user only sees directions TO the station but NOT the final connection to where they actually want to go. Format:
 
 [DEST]{"name":"Hollywood Sign","address":"Hollywood Sign, Los Angeles, CA"}[/DEST]
 
@@ -1089,8 +1089,8 @@ ALWAYS include this block when the user's destination is a PLACE, not a Metro st
 - "How do I get to Hollywood?" → [DEST]{"name":"Hollywood Sign","address":"Hollywood Sign, Los Angeles, CA"}[/DEST]
 - "How do I get to Crypto.com Arena?" → [DEST]{"name":"Crypto.com Arena","address":"Crypto.com Arena, Los Angeles, CA"}[/DEST]
 Do NOT include it if the user is going to a Metro station itself (e.g. "How do I get to Union Station?").
-The [DEST] block powers the destination walking widget and draws the final walking segment on the map — without it the user's journey is incomplete.
-Also mention the last-mile walk in your text response (e.g. "From Hollywood/Western, walk ~25 min north to the Hollywood Sign").
+The [DEST] block powers the destination last-mile widget and draws the final segment on the map — without it the user's journey is incomplete.
+Also mention the last-mile connection in your text response — check what the transit context says (bus, shuttle, or walk). For example: "From Aviation/Century, take the free LAX shuttle" or "From Hollywood/Western, walk ~25 min north to the Hollywood Sign".
 
 Conversation Memory — IMPORTANT:
 You receive the full conversation history. When the user asks a follow-up like "give me directions" or "how do I get there", ALWAYS check previous messages for context. If you already told them their nearest station, use that as the starting point. Never ask them to repeat information they already gave you or that you already told them."""
@@ -2198,11 +2198,12 @@ def api_chat(request):
             except Exception:
                 pass
 
-        # Fetch destination walking directions if AI provided a [DEST] block
+        # Fetch destination last-mile directions if AI provided a [DEST] block
+        # Try bus/shuttle transit first; fall back to walking if no transit found
         dest_walking = None
         if dest_data and route_data:
             try:
-                from .google_routes import get_walking_route
+                from .google_routes import get_last_mile_transit, get_walking_route
                 ride_steps = [s for s in route_data.get('steps', []) if s.get('type') == 'ride']
                 if ride_steps:
                     last_step = ride_steps[-1]
@@ -2217,20 +2218,41 @@ def api_chat(request):
                         origin_coords = None
                     if origin_coords:
                         dest_address = dest_data.get('address', dest_data.get('name', ''))
-                        walk = get_walking_route(
+                        dest_name = dest_data.get('name', dest_address)
+
+                        # Try transit (bus/shuttle) first
+                        transit = get_last_mile_transit(
                             origin_coords,
                             dest_address,
                             settings.GOOGLE_MAPS_API_KEY,
                         )
-                        if walk:
+                        if transit:
                             dest_walking = {
+                                "mode": "transit",
                                 "from_station": last_station_name,
-                                "destination": dest_data.get('name', dest_address),
+                                "destination": dest_name,
                                 "address": dest_address,
-                                "duration_minutes": walk["duration_minutes"],
-                                "distance": walk["distance_text"],
-                                "steps": walk.get("steps", []),
+                                "duration_minutes": transit["total_duration_minutes"],
+                                "summary": transit["summary"],
+                                "transit_steps": transit["transit_steps"],
                             }
+                        else:
+                            # Fall back to walking
+                            walk = get_walking_route(
+                                origin_coords,
+                                dest_address,
+                                settings.GOOGLE_MAPS_API_KEY,
+                            )
+                            if walk:
+                                dest_walking = {
+                                    "mode": "walking",
+                                    "from_station": last_station_name,
+                                    "destination": dest_name,
+                                    "address": dest_address,
+                                    "duration_minutes": walk["duration_minutes"],
+                                    "distance": walk["distance_text"],
+                                    "steps": walk.get("steps", []),
+                                }
             except Exception:
                 pass
 
@@ -2251,6 +2273,12 @@ def api_chat(request):
             resp['pin_data'] = pin_data
         if show_pins:
             resp['show_pins'] = True
+
+        # Question count for free tier
+        if request.user.is_authenticated:
+            resp['question_count'] = ChatMessage.objects.filter(
+                conversation__user=request.user, role='user'
+            ).count()
 
         return JsonResponse(resp)
 
