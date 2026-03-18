@@ -526,9 +526,40 @@
   [data-theme="light"] .success-ring { background: rgba(48,209,88,0.1); border-color: rgba(48,209,88,0.25); }
   [data-theme="light"] .success-btn { background: var(--accent); color: #fff; }
   [data-theme="light"] .metro-dot-segment { opacity: 0.6; }
+
+  /* ── Error Toast ── */
+  .error-toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-120px);
+    z-index: 9999;
+    background: var(--danger);
+    color: #fff;
+    padding: 14px 24px 14px 16px;
+    border-radius: 14px;
+    font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(255, 59, 48, 0.35);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    opacity: 0;
+    max-width: calc(100% - 48px);
+  }
+  .error-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .error-toast svg {
+    width: 20px; height: 20px; flex-shrink: 0;
+    fill: none; stroke: #fff; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
 </style>
 </head>
 <body>
+
+<!-- Error Toast -->
+<div class="error-toast" id="errorToast">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <span id="errorToastMsg"></span>
+</div>
 
 <div class="bg-grid"></div>
 <div class="bg-glow-1"></div>
@@ -829,18 +860,12 @@ async function handleSignIn() {
       btn.textContent = originalText;
       // Show error message
       const errorMsg = data.message || 'Sign in failed. Please try again.';
-      alert(errorMsg);
-      // Also show error on the form fields
-      if (errorMsg.toLowerCase().includes('email')) {
-        showError('signinEmail', 'signinEmailErr');
-      } else if (errorMsg.toLowerCase().includes('password')) {
-        showError('signinPassword', 'signinPassErr');
-      }
+      showErrorToast(errorMsg);
     }
   } catch (error) {
     btn.disabled = false;
     btn.textContent = originalText;
-    alert('An error occurred. Please try again.');
+    showErrorToast('An error occurred. Please try again.');
     console.error('Sign in error:', error);
   }
 }
@@ -887,14 +912,23 @@ async function handleSignUp() {
     } else {
       btn.disabled = false;
       btn.textContent = originalText;
-      alert(data.message || 'Sign up failed. Please try again.');
+      showErrorToast(data.message || 'Sign up failed. Please try again.');
     }
   } catch (error) {
     btn.disabled = false;
     btn.textContent = originalText;
-    alert('An error occurred. Please try again.');
+    showErrorToast('An error occurred. Please try again.');
     console.error('Sign up error:', error);
   }
+}
+
+let toastTimer;
+function showErrorToast(msg) {
+  const toast = document.getElementById('errorToast');
+  document.getElementById('errorToastMsg').textContent = msg;
+  clearTimeout(toastTimer);
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
 }
 
 function showSuccess(title, sub) {
@@ -915,11 +949,11 @@ function goToMap() {
 }
 
 function showForgot() {
-  alert('Password reset coming soon. Check your email for a reset link.');
+  showErrorToast('Password reset coming soon. Check your email for a reset link.');
 }
 
 function socialAuth(provider) {
-  alert(`${provider} sign-in coming soon.`);
+  showErrorToast(`${provider} sign-in coming soon.`);
 }
 
 // Initialize tab on page load

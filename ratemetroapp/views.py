@@ -1357,10 +1357,16 @@ def _build_user_context(request, data, user_message=''):
         except Exception:
             pass
 
-    # --- Google Routes API for directions requests ---
+    # --- Directions: try RAPTOR first, fall back to Google Routes ---
     google_route_block = None
     if user_message:
-        directions_result = _get_google_directions_context(user_message, data, mentioned_stations)
+        # Try RAPTOR first (internal routing, no API call)
+        directions_result = _get_raptor_directions_context(user_message, data, mentioned_stations)
+
+        # Fallback to Google Routes if RAPTOR fails
+        if not directions_result:
+            directions_result = _get_google_directions_context(user_message, data, mentioned_stations)
+
         if directions_result:
             directions_context, google_route_block = directions_result
             parts.append(directions_context)
@@ -1462,6 +1468,47 @@ def _extract_origin_from_message(msg_lower, mentioned_stations, destination):
     return None
 
 
+def _geocode_place(place_name, api_key):
+    """Geocode a place name to lat/lng using Google Geocoding API."""
+    import requests
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {
+        "address": place_name + ", Los Angeles, CA",
+        "key": api_key,
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("results", [])
+        if results:
+            loc = results[0]["geometry"]["location"]
+            return loc["lat"], loc["lng"]
+    except Exception:
+        pass
+    return None, None
+
+
+def _find_nearest_station_to_place(place_name, api_key):
+    """Find the Metro station closest to a place destination.
+
+    Returns (station_name, distance_miles, (lat, lng)) or (None, None, None).
+    """
+    lat, lng = _geocode_place(place_name, api_key)
+    if lat is None:
+        return None, None, None
+
+    stations = Station.objects.all()
+    closest = None
+    closest_dist = float('inf')
+    for s in stations:
+        dist = _haversine_miles(lat, lng, s.latitude, s.longitude)
+        if dist < closest_dist:
+            closest_dist = dist
+            closest = s.name
+    return closest, closest_dist, (lat, lng)
+
+
 def _normalize_google_station_name(google_name):
     """Map a Google-returned station name to our system's station name."""
     if not google_name:
@@ -1551,6 +1598,142 @@ def _build_route_block_from_google(route_data):
     return _json.dumps({"steps": steps})
 
 
+def _get_raptor_directions_context(user_message, data, mentioned_stations):
+    """Get RAPTOR-computed transit directions if the message is a directions request.
+
+    Returns (context_string, route_block_json) or None.
+    Uses GTFS data to route Metro-to-Metro without any Google API calls.
+    """
+    from .gtfs_service import get_raptor_index, get_active_service_ids, _find_stop_ids_for_station, _get_cached_data
+    from .raptor import raptor_query, format_journey_for_context, build_route_block
+
+    msg_lower = user_message.lower()
+    if not _is_directions_request(msg_lower):
+        return None
+
+    # Determine origin and destination station names
+    destination = _extract_destination_from_message(msg_lower, mentioned_stations)
+
+    origin = _extract_origin_from_message(msg_lower, mentioned_stations, destination)
+
+    # If no explicit origin, use user's closest station
+    user_lat = data.get('lat')
+    user_lng = data.get('lng')
+    if not origin and user_lat and user_lng:
+        try:
+            user_lat_f = float(user_lat)
+            user_lng_f = float(user_lng)
+            stations = Station.objects.all()
+            closest = None
+            closest_dist = float('inf')
+            for s in stations:
+                dist = _haversine_miles(user_lat_f, user_lng_f, s.latitude, s.longitude)
+                if dist < closest_dist:
+                    closest_dist = dist
+                    closest = s.name
+            origin = closest
+        except (ValueError, TypeError):
+            pass
+
+    # If no destination but one station mentioned, use it
+    if not destination and len(mentioned_stations) == 1:
+        destination = mentioned_stations[0]
+
+    # Handle place destinations: geocode, find nearest station, route to it
+    is_place = False
+    place_name = None
+    place_coords = None
+    nearest_to_place = None
+    if not destination:
+        place_name = _extract_place_destination(msg_lower)
+        if place_name:
+            nearest_station, dist_miles, coords = _find_nearest_station_to_place(
+                place_name, settings.GOOGLE_MAPS_API_KEY
+            )
+            if nearest_station:
+                destination = nearest_station
+                is_place = True
+                place_coords = coords
+                nearest_to_place = (nearest_station, dist_miles)
+            else:
+                return None  # Can't geocode — let Google handle it
+        else:
+            return None
+
+    if not origin or not destination:
+        return None
+
+    # Get RAPTOR index
+    raptor_index = get_raptor_index()
+    if raptor_index is None:
+        return None
+
+    # Resolve station names to GTFS stop_ids
+    try:
+        gtfs_data = _get_cached_data()
+    except Exception:
+        return None
+
+    origin_stop_ids = _find_stop_ids_for_station(gtfs_data, origin)
+    dest_stop_ids = _find_stop_ids_for_station(gtfs_data, destination)
+
+    if not origin_stop_ids or not dest_stop_ids:
+        return None
+
+    # Filter to only platform stops that RAPTOR knows about
+    origin_stops = {sid for sid in origin_stop_ids if sid in raptor_index.stop_patterns}
+    target_stops = {sid for sid in dest_stop_ids if sid in raptor_index.stop_patterns}
+
+    if not origin_stops or not target_stops:
+        return None
+
+    # Get departure time and active services
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("America/Los_Angeles"))
+    departure_sec = now.hour * 3600 + now.minute * 60 + now.second
+
+    service_ids = get_active_service_ids()
+    if not service_ids:
+        return None
+
+    # Run RAPTOR
+    try:
+        journeys = raptor_query(
+            raptor_index, origin_stops, target_stops,
+            departure_sec, service_ids, max_rounds=4,
+        )
+    except Exception:
+        return None
+
+    if not journeys:
+        return None
+
+    # Pick best journey: fewest transfers first, then earliest arrival
+    best = min(journeys, key=lambda j: (j.num_transfers, j.arrival_sec))
+
+    # Format output
+    origin_label = origin
+    dest_label = place_name.title() if is_place else destination
+
+    context = format_journey_for_context(best, origin_label, destination)
+    route_block = build_route_block(best, raptor_index)
+
+    # Add place destination info if applicable
+    if is_place and nearest_to_place:
+        station_name, dist_miles = nearest_to_place
+        context += (
+            f"\n\nNearest Metro station to {dest_label}: {station_name}"
+            f" (~{dist_miles:.1f} mi walk from station to destination)."
+            f" The rider should exit at {station_name} and walk/rideshare to {dest_label}."
+        )
+
+    if route_block:
+        context += f"\n\nUse this exact route in your [ROUTE] block:\n{route_block}"
+
+    return context, route_block
+
+
 def _get_google_directions_context(user_message, data, mentioned_stations):
     """Get Google Routes transit directions if the message is a directions request."""
     from .google_routes import get_transit_route, format_route_for_context
@@ -1626,14 +1809,38 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
 
     api_key = settings.GOOGLE_MAPS_API_KEY
     route_data = get_transit_route(origin_loc, destination_loc, api_key)
+
+    origin_label = origin if origin else "your location"
+    google_route_block = None
+
+    if route_data:
+        context = format_route_for_context(route_data, origin_label, dest_label)
+        # Build the authoritative [ROUTE] block from Google's data
+        google_route_block = _build_route_block_from_google(route_data)
+
+    # If it's a place destination and Google returned buses (not Metro rail),
+    # find the nearest Metro station and re-route to that station instead.
+    if is_place and not google_route_block:
+        nearest_station, dist_miles, place_coords = _find_nearest_station_to_place(
+            place, api_key
+        )
+        if nearest_station:
+            # Re-query Google Routes: origin → nearest Metro station
+            nearest_loc = nearest_station + " Metro Station, Los Angeles, CA"
+            route_data_2 = get_transit_route(origin_loc, nearest_loc, api_key)
+            if route_data_2:
+                route_data = route_data_2
+                context = format_route_for_context(route_data, origin_label, nearest_station)
+                google_route_block = _build_route_block_from_google(route_data)
+            context += (
+                f"\n\nNearest Metro station to {dest_label}: {nearest_station}"
+                f" (~{dist_miles:.1f} mi walk from station to destination)."
+                f" The rider should exit at {nearest_station} and walk/rideshare to {dest_label}."
+            )
+
     if not route_data:
         return None
 
-    origin_label = origin if origin else "your location"
-    context = format_route_for_context(route_data, origin_label, dest_label)
-
-    # Build the authoritative [ROUTE] block from Google's data
-    google_route_block = _build_route_block_from_google(route_data)
     if google_route_block:
         context += f"\n\nUse this exact route in your [ROUTE] block:\n{google_route_block}"
 

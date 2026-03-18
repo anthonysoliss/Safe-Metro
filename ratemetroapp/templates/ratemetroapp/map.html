@@ -2001,6 +2001,11 @@
 <div class="profile-dropdown" id="profileDropdown">
   <!-- Authenticated user menu -->
   <div class="profile-dropdown-auth" id="profileDropdownAuth" style="display: none;">
+    <div class="profile-dropdown-item" data-action="home">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </div>
+    <div class="profile-dropdown-divider"></div>
     <div class="profile-dropdown-item" data-action="profile">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span>My Profile</span>
@@ -2022,6 +2027,11 @@
   
   <!-- Non-authenticated user menu -->
   <div class="profile-dropdown-guest" id="profileDropdownGuest">
+    <div class="profile-dropdown-item" data-action="home">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </div>
+    <div class="profile-dropdown-divider"></div>
     <div class="profile-dropdown-item" data-action="signin">
       <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
       <span>Sign In</span>
@@ -2194,6 +2204,11 @@
     <div class="nav-profile-menu" id="navProfileMenu">
       <!-- Authenticated -->
       <div id="navProfileMenuAuth" style="display:none;">
+        <div class="nav-profile-menu-item" data-nav-action="home">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Home</span>
+        </div>
+        <div class="nav-profile-menu-divider"></div>
         <div class="nav-profile-menu-item" data-nav-action="profile">
           <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span>My Profile</span>
@@ -2218,6 +2233,11 @@
       </div>
       <!-- Guest -->
       <div id="navProfileMenuGuest" style="display:none;">
+        <div class="nav-profile-menu-item" data-nav-action="home">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Home</span>
+        </div>
+        <div class="nav-profile-menu-divider"></div>
         <div class="nav-profile-menu-item" data-nav-action="signin">
           <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           <span>Sign In</span>
@@ -2283,6 +2303,7 @@
 <script>
 // Django URLs injected for JavaScript
 const DJANGO_URLS = {
+  home: '{% url "ratemetroapp:home" %}',
   map: '{% url "ratemetroapp:map" %}',
   profile: '{% url "ratemetroapp:profile" %}',
   myRatings: '{% url "ratemetroapp:my_ratings" %}',
@@ -4841,7 +4862,8 @@ navProfileMenu.addEventListener('click', (e) => {
   const item = e.target.closest('[data-nav-action]');
   if (!item) return;
   const action = item.dataset.navAction;
-  if (action === 'profile') window.location.href = DJANGO_URLS.profile;
+  if (action === 'home') window.location.href = DJANGO_URLS.home;
+  else if (action === 'profile') window.location.href = DJANGO_URLS.profile;
   else if (action === 'ratings') window.location.href = DJANGO_URLS.myRatings;
   else if (action === 'feedback') window.location.href = DJANGO_URLS.feedback;
   else if (action === 'settings') window.location.href = DJANGO_URLS.settings;
@@ -5050,7 +5072,10 @@ if (profileBtn && profileDropdown) {
     
     const action = item.dataset.action;
     
-    if (action === 'profile') {
+    if (action === 'home') {
+      window.location.href = DJANGO_URLS.home;
+      return;
+    } else if (action === 'profile') {
       window.location.href = DJANGO_URLS.profile;
       return;
     } else if (action === 'ratings') {

@@ -20,14 +20,16 @@ LA_TZ = ZoneInfo("America/Los_Angeles")
 GTFS_URL = "https://gitlab.com/LACMTA/gtfs_rail/-/raw/master/gtfs_rail.zip"
 CACHE_TTL = 4 * 3600  # 4 hours
 
-# Route ID → line letter mapping (built dynamically, but these are the known ones)
+# Route ID → line letter mapping
+# NOTE: These MUST match routes.txt in the GTFS feed.
+# 804 = E Line (not D), 805 = D Line (not G). Route 806 exists but has 0 trips.
 ROUTE_LINE_MAP = {
     "801": "A",
     "802": "B",
     "803": "C",
-    "804": "D",
+    "804": "E",
+    "805": "D",
     "806": "E",
-    "805": "G",
     "807": "K",
 }
 
@@ -79,12 +81,22 @@ def _build_cache_data(zf):
     routes = _read_csv(zf, "routes.txt")
 
     # Build route_id → line letter map from routes.txt
+    # Start with hardcoded map, then let routes.txt override via long_name
     route_line = dict(ROUTE_LINE_MAP)
     for route in routes:
         rid = route.get("route_id", "")
+        if not rid:
+            continue
         short = route.get("route_short_name", "")
-        if rid and short and rid not in route_line:
+        if short:
             route_line[rid] = short
+        elif rid not in route_line:
+            # Extract line letter from long name like "Metro E Line"
+            long_name = route.get("route_long_name", "")
+            import re as _re
+            m = _re.search(r'Metro\s+([A-Z])\s+Line', long_name)
+            if m:
+                route_line[rid] = m.group(1)
 
     # Build trip lookup: trip_id → trip dict (with line letter added)
     trip_lookup = {}
@@ -148,7 +160,7 @@ def _build_cache_data(zf):
         if parent:
             name_to_stop_ids[normalized].add(parent)
 
-    return {
+    cache_data = {
         "trip_lookup": trip_lookup,
         "stop_times_index": dict(stop_times_index),
         "trip_stop_times": dict(trip_stop_times),
@@ -159,6 +171,15 @@ def _build_cache_data(zf):
         "name_to_stop_ids": dict(name_to_stop_ids),
         "route_line": route_line,
     }
+
+    # Build RAPTOR index for internal transit routing
+    try:
+        from .raptor import build_raptor_index
+        cache_data["raptor_index"] = build_raptor_index(cache_data)
+    except Exception:
+        cache_data["raptor_index"] = None
+
+    return cache_data
 
 
 def _normalize_name(name):
@@ -340,6 +361,27 @@ def get_arrivals(station_name, limit=10):
         del a["_sort"]
 
     return arrivals[:limit]
+
+
+def get_raptor_index():
+    """Get the RAPTOR index for internal transit routing.
+
+    Returns a RaptorIndex object or None if unavailable.
+    """
+    try:
+        data = _get_cached_data()
+        return data.get("raptor_index")
+    except Exception:
+        return None
+
+
+def get_active_service_ids():
+    """Get currently active service_ids. Convenience wrapper for RAPTOR."""
+    try:
+        data = _get_cached_data()
+        return _get_service_ids_for_today(data["calendar"], data["calendar_dates"])
+    except Exception:
+        return set()
 
 
 def _parse_gtfs_time(time_str):
