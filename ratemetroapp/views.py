@@ -917,9 +917,9 @@ Wayfinding Rules — ALWAYS follow these when giving directions:
 1. ALWAYS check the "Nearby stations" list in the CURRENT USER CONTEXT first. Use the CLOSEST station to the user as the starting point — do NOT assume or guess which station is closest. Compare distances carefully.
 2. ONLY use EXACT station names from the COMPLETE STATION LISTS above. NEVER combine parts of different station names to create a new one. For example, "Vermont/Hollywood" does NOT exist — the actual stations are "Vermont/Sunset", "Vermont/Santa Monica", "Vermont/Beverly", "Hollywood/Western", "Hollywood/Vine", "Hollywood/Highland". If you are unsure about a station name, look it up in the lists above. If it's not there, it does NOT exist.
 3. Before recommending ANY route, VERIFY that each station you mention actually exists on the line you say it does. Cross-check against the station lists above. Never assume a station is on a line without checking.
-4. ALWAYS choose the SHORTEST route with the fewest stops. When the user asks to go to a place (not a specific station), find the station CLOSEST to that place — do NOT just pick a station because its name sounds related. For example, if someone asks to go to "Hollywood", compare ALL nearby B Line stations (Vermont/Sunset, Hollywood/Western, Hollywood/Vine, Hollywood/Highland) and pick the one closest to where they actually want to go, which means the fewest stops from their origin.
-5. Pick the route with the fewest transfers — direct lines beat transfers every time.
-6. If two routes have equal transfers, pick the one with FEWER total stops. Count the stops carefully.
+4. When the user asks to go to a PLACE (not a Metro station), your #1 priority is picking the EXIT station that is geographically CLOSEST to their actual destination — even if it means adding a transfer or 1-2 extra stops. A station sharing a name with a street in the destination address does NOT mean it's nearby (e.g. Expo/La Brea is 4 miles south of Pink's Hot Dogs on La Brea Ave). ALWAYS use the Google Transit Route data from the context when available — Google knows the real geography and picks the optimal exit station. If the final walk would be more than 1 mile or 20 minutes, your route is WRONG — find a closer exit station.
+5. Pick the route with the fewest transfers — direct lines beat transfers every time, UNLESS the direct route results in a much longer walk (over 1 mile). A transfer that gets the user closer to their destination is better than a direct ride that leaves them 4 miles away.
+6. If two routes have equal transfers AND similar walk distances, pick the one with FEWER total stops.
 7. Mention the specific LINE LETTER AND COLOR for every segment (e.g. "Take the E (Expo) Line").
 8. Name every transfer station explicitly (e.g. "Transfer to the B (Red) Line at 7th St/Metro Center").
 9. VERIFY transfer stations: only suggest transfers at stations that are actually served by BOTH lines. Check the station lists above to confirm.
@@ -940,7 +940,7 @@ Wayfinding Rules — ALWAYS follow these when giving directions:
 20. The C Line and K Line connect at Aviation/Century and LAX/Metro Transit Center. Aviation/Imperial is C Line only.
 21. The D Line currently ends at Wilshire/Western. Do NOT route anyone to Wilshire/La Brea, Wilshire/Fairfax, Wilshire/La Cienega, Wilshire/Rodeo, Century City/Constellation, or Westwood/VA Hospital — those stations are NOT yet open.
 22. DOUBLE-CHECK your entire route before responding. Count the stops for each segment. If there's a shorter route with fewer stops, use that one instead. Always minimize total stops and travel time.
-23. When Google Transit Route data is available in the context, compare it with your own routing. If Google suggests a shorter route, prefer Google's route. If your route has fewer stops, prefer yours. Always pick the shortest option. IMPORTANT: Google sometimes suggests E↔A transfers at 7th St/Metro Center — this is WRONG because it skips the Regional Connector direct connection at Little Tokyo/Arts District. If Google's route has an E↔A transfer at 7th St/Metro Center, IGNORE it and use the direct Little Tokyo/Arts District connection instead.
+23. When the context includes "Google Transit Route" data and a "Suggested [ROUTE] block", you MUST use that route. Copy the suggested [ROUTE] block into your response, adjusting station names to match the COMPLETE STATION LISTS if needed. Do NOT compute your own route — Google knows the real geography and picks the correct exit station. The ONLY exception: if Google routes an E↔A transfer through 7th St/Metro Center, change it to Little Tokyo/Arts District (Regional Connector). For all other lines and destinations, Google's route is correct — use it exactly.
 
 Response Format Rules — CRITICAL:
 - You are writing for a mobile chat bubble. Keep it SHORT.
@@ -1045,8 +1045,9 @@ The context format is: "E Line to Downtown Santa Monica at 2:30 PM (5 min away, 
 Only include the [ARRIVALS] block for train time/schedule/arrival questions, NOT for directions or general info.
 If no live train data is available in the context for the requested station, do NOT include an [ARRIVALS] block — just say you don't have current schedule data for that station.
 
-Google Transit Route Data — IMPORTANT:
-When the CURRENT USER CONTEXT includes a "Google Transit Route" section, use those exact times, line names, and stop counts in your response. This data comes from Google's live transit API and is more accurate than general knowledge. Prefer Google route data over your built-in knowledge for travel times and departure/arrival times. Format the route using your standard numbered-step direction format, incorporating the departure and arrival times from the Google data.
+Google Transit Route Data — MANDATORY:
+When the CURRENT USER CONTEXT includes a "Google Transit Route" section, you MUST use that exact route — same lines, same transfer stations, same exit station. Do NOT substitute your own routing. Do NOT choose a different exit station. Google's route is computed using real geographic data and real-time transit schedules — it is ALWAYS more accurate than your knowledge of LA geography. Your job is to FORMAT and PRESENT the Google route in a user-friendly way, not to compute your own route.
+If you find yourself wanting to use a different route than Google's, STOP — use Google's route. The only exception is E↔A transfers: if Google routes through 7th St/Metro Center, use Little Tokyo/Arts District instead (Regional Connector).
 
 Structured Walking Data — IMPORTANT:
 When the CURRENT USER CONTEXT includes "Walking to [station]" data, and the user asks about directions, nearest station, or how to get somewhere, append a machine-readable JSON block at the very end of your response (after any [ROUTE] block) in this exact format:
@@ -1393,6 +1394,33 @@ def _is_directions_request(msg_lower):
     return False
 
 
+def _extract_place_destination(msg_lower):
+    """Extract a non-station place destination from a directions request.
+
+    Handles messages like:
+      'how do i get to pink's hot dogs'  → "pink's hot dogs"
+      'directions to lax'                → 'lax'
+      'take me to crypto.com arena'      → 'crypto.com arena'
+    """
+    patterns = [
+        r'(?:get|go|going|travel|ride|head|take\s+me|directions?|way)\s+to\s+(?:the\s+)?(.+?)(?:\?|!|$)',
+        r'how\s+(?:do|can|would|could)\s+(?:i|we)\s+(?:get|go)\s+to\s+(?:the\s+)?(.+?)(?:\?|!|$)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, msg_lower)
+        if match:
+            place = match.group(1).strip().rstrip('?!., ')
+            # Skip generic words that are not real places
+            skip_phrases = {
+                'a station', 'the station', 'there', 'work', 'home', 'school',
+                'nearest station', 'closest station', 'my station',
+                'the nearest station', 'the closest station',
+            }
+            if place and len(place) > 2 and place not in skip_phrases:
+                return place
+    return None
+
+
 def _extract_destination_from_message(msg_lower, mentioned_stations):
     """Extract the destination station from a directions request."""
     # Look for "to <station>" pattern
@@ -1426,6 +1454,95 @@ def _extract_origin_from_message(msg_lower, mentioned_stations, destination):
         if station != destination:
             return station
     return None
+
+
+def _normalize_google_station_name(google_name):
+    """Map a Google-returned station name to our system's station name."""
+    if not google_name:
+        return google_name
+    # Try exact match first
+    try:
+        if Station.objects.filter(name=google_name).exists():
+            return google_name
+    except Exception:
+        pass
+    # Common Google name variations
+    name = google_name.strip()
+    # Remove common suffixes Google adds
+    for suffix in [' Station', ' station', ' Metro Station', ' Metrolink Station']:
+        if name.endswith(suffix):
+            name = name[:-len(suffix)].strip()
+    # Try match after cleaning
+    try:
+        s = Station.objects.filter(name=name).first()
+        if s:
+            return s.name
+        # Try case-insensitive / fuzzy match
+        s = Station.objects.filter(name__iexact=name).first()
+        if s:
+            return s.name
+        # Try contains match (e.g., "7th Street / Metro Center" → "7th St/Metro Center")
+        name_simple = name.replace(' / ', '/').replace('Street', 'St').replace('Avenue', 'Ave')
+        s = Station.objects.filter(name__iexact=name_simple).first()
+        if s:
+            return s.name
+        # Try partial match
+        for station in Station.objects.all():
+            sn = station.name.lower()
+            nn = name.lower().replace(' / ', '/').replace('street', 'st').replace('avenue', 'ave')
+            if sn == nn or sn.replace(' ', '') == nn.replace(' ', ''):
+                return station.name
+    except Exception:
+        pass
+    return google_name
+
+
+def _google_line_to_code(google_line_name):
+    """Map a Google transit line name to our line letter code."""
+    if not google_line_name:
+        return None
+    name = google_line_name.strip().upper()
+    # Direct letter match
+    if name in ('A', 'B', 'C', 'D', 'E', 'G', 'J', 'K', 'L'):
+        return name
+    # Common Google names
+    mappings = {
+        'A LINE': 'A', 'B LINE': 'B', 'C LINE': 'C', 'D LINE': 'D',
+        'E LINE': 'E', 'G LINE': 'G', 'J LINE': 'J', 'K LINE': 'K',
+        'BLUE': 'A', 'RED': 'B', 'GREEN': 'C', 'PURPLE': 'D',
+        'EXPO': 'E', 'GOLD': 'A', 'ORANGE': 'G', 'SILVER': 'J',
+        'CRENSHAW': 'K',
+        'METRO A LINE': 'A', 'METRO B LINE': 'B', 'METRO C LINE': 'C',
+        'METRO D LINE': 'D', 'METRO E LINE': 'E', 'METRO G LINE': 'G',
+        'METRO J LINE': 'J', 'METRO K LINE': 'K',
+        'A LINE (BLUE)': 'A', 'B LINE (RED)': 'B', 'C LINE (GREEN)': 'C',
+        'D LINE (PURPLE)': 'D', 'E LINE (EXPO)': 'E',
+    }
+    return mappings.get(name)
+
+
+def _build_route_block_from_google(route_data):
+    """Build a suggested [ROUTE] block from Google Routes API data."""
+    if not route_data or not route_data.get('steps'):
+        return None
+    import json as _json
+    steps = []
+    ride_steps = [s for s in route_data['steps'] if s.get('type') == 'ride']
+    prev_to = None
+    for i, step in enumerate(ride_steps):
+        line_code = _google_line_to_code(step.get('line', ''))
+        from_station = _normalize_google_station_name(step.get('from_station', ''))
+        to_station = _normalize_google_station_name(step.get('to_station', ''))
+        if not line_code:
+            continue
+        # Add transfer step if this ride starts at same station prev ride ended
+        if prev_to and from_station and prev_to == from_station and i > 0:
+            steps.append({"type": "transfer", "line": None, "from": prev_to, "to": from_station})
+        steps.append({"type": "ride", "line": line_code, "from": from_station, "to": to_station})
+        prev_to = to_station
+    if not steps:
+        return None
+    return _json.dumps({"steps": steps})
 
 
 def _get_google_directions_context(user_message, data, mentioned_stations):
@@ -1485,10 +1602,21 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
     else:
         return None
 
-    if not destination:
-        return None
-
-    destination_loc = destination + " Metro Station, Los Angeles, CA"
+    # Determine destination location for Google Routes API
+    is_place = False
+    if destination:
+        # Destination is a known Metro station
+        destination_loc = destination + " Metro Station, Los Angeles, CA"
+        dest_label = destination
+    else:
+        # No station matched — try to extract a place destination from the message
+        place = _extract_place_destination(msg_lower)
+        if place:
+            destination_loc = place + ", Los Angeles, CA"
+            dest_label = place.title()
+            is_place = True
+        else:
+            return None
 
     api_key = settings.GOOGLE_MAPS_API_KEY
     route_data = get_transit_route(origin_loc, destination_loc, api_key)
@@ -1496,7 +1624,14 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
         return None
 
     origin_label = origin if origin else "your location"
-    return format_route_for_context(route_data, origin_label, destination)
+    context = format_route_for_context(route_data, origin_label, dest_label)
+
+    # Build a suggested [ROUTE] block from Google's data so the AI can use it directly
+    suggested_route = _build_route_block_from_google(route_data)
+    if suggested_route:
+        context += f"\n\nSuggested [ROUTE] block (use this exact route — match station names to the COMPLETE STATION LISTS):\n{suggested_route}"
+
+    return context
 
 
 @csrf_exempt
