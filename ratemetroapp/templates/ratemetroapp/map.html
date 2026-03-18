@@ -1571,6 +1571,71 @@
     box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
   }
 
+  /* Inline Upgrade Card (in chat) */
+  .chat-upgrade-card {
+    margin: 24px 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid rgba(245, 197, 24, 0.25);
+    border-radius: 16px;
+    text-align: center;
+    animation: upgradeCardIn 0.35s ease;
+  }
+  @keyframes upgradeCardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .chat-upgrade-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .chat-upgrade-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 8px 0;
+  }
+  .chat-upgrade-desc {
+    font-size: 14px;
+    color: #cccccc;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+  }
+  .chat-upgrade-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .chat-upgrade-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    font-family: inherit;
+  }
+  .chat-upgrade-btn.secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  .chat-upgrade-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+  .chat-upgrade-btn.primary {
+    background: #f5c518;
+    color: #1a1a2e;
+    border-color: #f5c518;
+  }
+  .chat-upgrade-btn.primary:hover {
+    background: #f5d030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);
+  }
+
   .rating-modal {
     position: fixed; inset: 0; z-index: 2000;
     background: rgba(0,0,0,0.7);
@@ -2528,6 +2593,39 @@ function closeUpgradeModal() {
 function handleUpgrade() {
   closeUpgradeModal();
   showMapToast('Coming soon!', 'success');
+}
+
+// Show upgrade card inline in the chat conversation
+function showUpgradeInChat() {
+  // Remove welcome screen if present
+  const welcome = chatOverlay.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  const card = document.createElement('div');
+  card.className = 'chat-upgrade-card';
+  card.innerHTML = `
+    <div class="chat-upgrade-icon">🔒</div>
+    <h3 class="chat-upgrade-title">Upgrade to Pro</h3>
+    <p class="chat-upgrade-desc">You've used your 3 free questions. Upgrade to Pro for unlimited access to the ratemetro.com AI assistant.</p>
+    <div class="chat-upgrade-actions">
+      <button class="chat-upgrade-btn secondary" id="upgradeDismissBtn">Maybe Later</button>
+      <button class="chat-upgrade-btn primary" id="upgradeNowBtn">Upgrade — $4.99/mo</button>
+    </div>
+  `;
+  chatOverlay.appendChild(card);
+  chatOverlay.classList.add('visible');
+  chatBackdrop.classList.add('visible');
+  chatOverlay.scrollTop = chatOverlay.scrollHeight;
+
+  card.querySelector('#upgradeDismissBtn').addEventListener('click', () => {
+    card.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(-6px) scale(0.97)';
+    setTimeout(() => card.remove(), 300);
+  });
+  card.querySelector('#upgradeNowBtn').addEventListener('click', () => {
+    showMapToast('Coming soon!', 'success');
+  });
 }
 
 // Handle sign out
@@ -4171,9 +4269,9 @@ function stopAI() {
 async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
 
-  // Question limit check
+  // Question limit check — show upgrade card inline in chat
   if (questionCount >= FREE_QUESTION_LIMIT) {
-    showUpgradeModal();
+    showUpgradeInChat();
     return;
   }
 
