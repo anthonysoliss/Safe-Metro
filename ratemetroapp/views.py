@@ -878,6 +878,7 @@ METRO_SYSTEM_PROMPT = """You are Metro Safe LA, a friendly and knowledgeable AI 
    - All rail lines: A (Blue), B (Red), C (Green), D (Purple), E (Expo), K (Crenshaw), G (Orange — BRT)
    - NOTE: The L (Gold) Line no longer exists. After the Regional Connector opened in June 2023, it was absorbed into the A Line (Pasadena/Azusa segment) and E Line (East LA segment).
    - Station locations, connections, and transfer points
+   - LA Metro bus routes (e.g. Bus 720, Bus 2, Bus 210). When Google provides a bus route in the context data, present it to the user — buses are a valid part of the Metro system.
    - Safety information, hours of operation, and general ridership tips
    - Real-time safety advisories and community-reported conditions
    - Metro Security call: 1-818-950-7233 (non-emergency)
@@ -963,6 +964,7 @@ Response Format Rules — CRITICAL:
   Total: ~47 min, 1 transfer.
   Then at the END of your response, ALWAYS append ALL data blocks:
   [ROUTE]{"steps":[{"type":"ride","line":"E","from":"Maravilla","to":"7th St/Metro Center"},{"type":"transfer","line":null,"from":"7th St/Metro Center","to":"7th St/Metro Center"},{"type":"ride","line":"B","from":"7th St/Metro Center","to":"Hollywood/Highland"}]}[/ROUTE]
+  For bus routes, include vehicle_type and coordinates: {"type":"ride","line":"720","vehicle_type":"BUS","from":"Wilshire / Western","to":"Wilshire / Fairfax","from_lat":34.062,"from_lng":-118.309,"to_lat":34.062,"to_lng":-118.361,"num_stops":5}
   [WALKING]{"station":"Maravilla","duration_minutes":5,"distance":"0.4 mi","lines":["E"],"steps":[{"instruction":"Head south on S Mednik Ave","distance":"200 ft"},{"instruction":"Turn left on E Cesar E Chavez Ave","distance":"0.2 mi"}]}[/WALKING]
   [DEST]{"name":"Hollywood Sign","address":"Hollywood Sign, Los Angeles, CA"}[/DEST]
   NEVER forget the [ROUTE], [WALKING], and [DEST] blocks — they power the UI widgets that show the FULL door-to-door journey on the map.
@@ -1357,21 +1359,121 @@ def _build_user_context(request, data, user_message=''):
         except Exception:
             pass
 
-    # --- Directions: try RAPTOR first, fall back to Google Routes ---
+    # --- Directions: strategy depends on destination type ---
     google_route_block = None
     if user_message:
-        # Try RAPTOR first (internal routing, no API call)
-        directions_result = _get_raptor_directions_context(user_message, data, mentioned_stations)
+        msg_lower = user_message.lower()
+        directions_result = None
 
-        # Fallback to Google Routes if RAPTOR fails
-        if not directions_result:
-            directions_result = _get_google_directions_context(user_message, data, mentioned_stations)
+        if _is_directions_request(msg_lower):
+            # Detect destination type upfront
+            station_dest = _extract_destination_from_message(msg_lower, mentioned_stations)
+            place_dest = None
+            if not station_dest:
+                place_dest = _extract_place_destination(msg_lower)
+                if place_dest:
+                    matched = _match_place_to_station(place_dest)
+                    if matched:
+                        station_dest = matched
+                        place_dest = None
+
+            if place_dest:
+                # PLACE: Google first (full trip with LESS_WALKING, knows all buses)
+                directions_result = _get_google_directions_context(
+                    user_message, data, mentioned_stations,
+                    routing_preference="LESS_WALKING",
+                )
+                if not directions_result:
+                    directions_result = _get_raptor_directions_context(
+                        user_message, data, mentioned_stations,
+                    )
+            else:
+                # STATION: RAPTOR first (free, no API cost)
+                directions_result = _get_raptor_directions_context(
+                    user_message, data, mentioned_stations,
+                )
+                if not directions_result:
+                    directions_result = _get_google_directions_context(
+                        user_message, data, mentioned_stations,
+                    )
 
         if directions_result:
             directions_context, google_route_block = directions_result
             parts.append(directions_context)
 
-    return "\n".join(parts), google_route_block
+    # --- Pin location detection ---
+    pin_data = None
+    show_pins = False
+    if user_message:
+        msg_lower = user_message.lower()
+        if _is_show_pins_request(msg_lower):
+            show_pins = True
+            parts.append("User wants to see all their pinned locations on the map. The frontend will display them. Acknowledge this and list any pins they've made in this conversation.")
+        elif _is_pin_request(msg_lower):
+            pin_place = _extract_pin_place(msg_lower)
+            if pin_place:
+                # Try matching to a known Metro station first (no API call)
+                matched_station = _match_place_to_station(pin_place)
+                if matched_station:
+                    try:
+                        station_obj = Station.objects.get(name=matched_station)
+                        pin_data = {"name": matched_station, "lat": station_obj.latitude, "lng": station_obj.longitude}
+                    except Station.DoesNotExist:
+                        pass
+                # Otherwise geocode the place
+                if not pin_data:
+                    lat, lng = _geocode_place(pin_place, settings.GOOGLE_MAPS_API_KEY)
+                    if lat is not None:
+                        pin_data = {"name": pin_place.title(), "lat": lat, "lng": lng}
+                if pin_data:
+                    parts.append(f"User pinned '{pin_data['name']}' at ({pin_data['lat']}, {pin_data['lng']}). Acknowledge the pin and provide relevant info about this location.")
+
+    return "\n".join(parts), google_route_block, pin_data, show_pins
+
+
+def _is_show_pins_request(msg_lower):
+    """Check if user is asking to see their pinned locations."""
+    patterns = [
+        r'\bshow\b.*\bpins?\b', r'\bsee\b.*\bpins?\b', r'\bview\b.*\bpins?\b',
+        r'\bdisplay\b.*\bpins?\b', r'\bmy pins?\b', r'\ball pins?\b',
+        r'\bwhere.*\bi.*pinned\b', r'\bpinned locations?\b',
+    ]
+    return any(re.search(p, msg_lower) for p in patterns)
+
+
+def _is_pin_request(msg_lower):
+    """Check if a user message is asking to pin/locate a place on the map."""
+    # "show my pins" is a separate intent, not a new pin request
+    if _is_show_pins_request(msg_lower):
+        return False
+    pin_patterns = [
+        r'\bpin\b', r'\bdrop a pin\b', r'\bmark\b.+\bon the map\b',
+        r'\bshow me where\b', r'\bwhere is\b', r'\bwhere\'s\b', r'\blocate\b',
+    ]
+    # Exclude directions requests — "where is the nearest station" is not a pin request
+    if re.search(r'\b(nearest|closest)\s+station\b', msg_lower):
+        return False
+    if _is_directions_request(msg_lower):
+        return False
+    return any(re.search(p, msg_lower) for p in pin_patterns)
+
+
+def _extract_pin_place(msg_lower):
+    """Extract the place name from a pin request message."""
+    patterns = [
+        r'(?:drop a pin|pin)\s+(?:on\s+)?(?:the\s+)?(.+?)(?:\s+on the map)?$',
+        r'mark\s+(?:the\s+)?(.+?)\s+on the map',
+        r'show me where\s+(?:the\s+)?(.+?)(?:\s+is)?$',
+        r'where (?:is|\'s)\s+(?:the\s+)?(.+?)(?:\?|!|$)',
+        r'locate\s+(?:the\s+)?(.+?)(?:\?|!|$)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, msg_lower)
+        if match:
+            place = match.group(1).strip().rstrip('?!., ')
+            if place and len(place) > 1:
+                return place
+    return None
 
 
 def _is_directions_request(msg_lower):
@@ -1611,8 +1713,25 @@ def _google_line_to_code(google_line_name):
         'METRO J LINE': 'J', 'METRO K LINE': 'K',
         'A LINE (BLUE)': 'A', 'B LINE (RED)': 'B', 'C LINE (GREEN)': 'C',
         'D LINE (PURPLE)': 'D', 'E LINE (EXPO)': 'E',
+        'METRO A LINE (BLUE)': 'A', 'METRO B LINE (RED)': 'B',
+        'METRO C LINE (GREEN)': 'C', 'METRO D LINE (PURPLE)': 'D',
+        'METRO E LINE (EXPO)': 'E',
+        'BLUE LINE': 'A', 'RED LINE': 'B', 'GREEN LINE': 'C',
+        'PURPLE LINE': 'D', 'EXPO LINE': 'E', 'GOLD LINE': 'A',
+        'ORANGE LINE': 'G', 'SILVER LINE': 'J', 'CRENSHAW LINE': 'K',
+        # LACMTA internal route numbers
+        '801': 'A', '802': 'B', '803': 'C', '804': 'D', '806': 'E',
+        '901': 'G', '910': 'J',
     }
-    return mappings.get(name)
+    code = mappings.get(name)
+    if code:
+        return code
+    # Fuzzy match: check if any known line letter is in the name
+    import re as _re
+    for letter in ('A', 'B', 'C', 'D', 'E', 'G', 'J', 'K'):
+        if _re.search(rf'\b{letter}\s*(LINE|METRO)\b', name) or _re.search(rf'\b(LINE|METRO)\s*{letter}\b', name):
+            return letter
+    return None
 
 
 def _build_route_block_from_google(route_data):
@@ -1624,15 +1743,38 @@ def _build_route_block_from_google(route_data):
     ride_steps = [s for s in route_data['steps'] if s.get('type') == 'ride']
     prev_to = None
     for i, step in enumerate(ride_steps):
-        line_code = _google_line_to_code(step.get('line', ''))
+        vehicle_type = step.get('vehicle_type', '')
+        is_bus = vehicle_type == 'BUS'
+
+        raw_line = step.get('line', '')
+        if is_bus:
+            # Use bus route number as-is (e.g. "720")
+            line_code = raw_line
+        else:
+            line_code = _google_line_to_code(raw_line)
+            # Don't drop rail/subway steps — use raw name as fallback
+            if not line_code and raw_line:
+                line_code = raw_line
+
         from_station = _normalize_google_station_name(step.get('from_station', ''))
         to_station = _normalize_google_station_name(step.get('to_station', ''))
         if not line_code:
             continue
-        # Add transfer step if this ride starts at same station prev ride ended
-        if prev_to and from_station and prev_to == from_station and i > 0:
+        # Add transfer step between consecutive rides
+        if prev_to and from_station and i > 0:
             steps.append({"type": "transfer", "line": None, "from": prev_to, "to": from_station})
-        steps.append({"type": "ride", "line": line_code, "from": from_station, "to": to_station})
+
+        ride_step = {"type": "ride", "line": line_code, "from": from_station, "to": to_station}
+        if is_bus:
+            ride_step["vehicle_type"] = "BUS"
+            # Include coordinates for bus stops (not in our station DB)
+            for key in ("from_lat", "from_lng", "to_lat", "to_lng"):
+                if step.get(key) is not None:
+                    ride_step[key] = round(step[key], 6)
+            if step.get("num_stops"):
+                ride_step["num_stops"] = step["num_stops"]
+
+        steps.append(ride_step)
         prev_to = to_station
     if not steps:
         return None
@@ -1782,7 +1924,7 @@ def _get_raptor_directions_context(user_message, data, mentioned_stations):
     return context, route_block
 
 
-def _get_google_directions_context(user_message, data, mentioned_stations):
+def _get_google_directions_context(user_message, data, mentioned_stations, routing_preference="FEWER_TRANSFERS"):
     """Get Google Routes transit directions if the message is a directions request."""
     from .google_routes import get_transit_route, format_route_for_context
 
@@ -1856,7 +1998,7 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
             return None
 
     api_key = settings.GOOGLE_MAPS_API_KEY
-    route_data = get_transit_route(origin_loc, destination_loc, api_key)
+    route_data = get_transit_route(origin_loc, destination_loc, api_key, routing_preference=routing_preference)
 
     origin_label = origin if origin else "your location"
     context = ""
@@ -1866,7 +2008,7 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
         context = format_route_for_context(route_data, origin_label, dest_label)
         google_route_block = _build_route_block_from_google(route_data)
 
-    # If it's a place destination and Google returned buses (not Metro rail),
+    # If it's a place destination and Google returned no usable transit route,
     # geocode the place, find the nearest Metro station, and re-route there.
     if is_place and not google_route_block:
         nearest_station, dist_miles, place_coords = _find_nearest_station_to_place(
@@ -1874,7 +2016,7 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
         )
         if nearest_station:
             nearest_loc = nearest_station + " Metro Station, Los Angeles, CA"
-            route_data_2 = get_transit_route(origin_loc, nearest_loc, api_key)
+            route_data_2 = get_transit_route(origin_loc, nearest_loc, api_key, routing_preference=routing_preference)
             if route_data_2:
                 route_data = route_data_2
                 context = format_route_for_context(route_data, origin_label, nearest_station)
@@ -1942,7 +2084,7 @@ def api_chat(request):
             messages.append({'role': 'user', 'content': user_message})
 
         # Build user context
-        user_context, google_route_block = _build_user_context(request, data, user_message)
+        user_context, google_route_block, pin_data, show_pins = _build_user_context(request, data, user_message)
         system_prompt = METRO_SYSTEM_PROMPT + "\n\n--- CURRENT USER CONTEXT ---\n" + user_context
 
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -2025,13 +2167,24 @@ def api_chat(request):
                 if user_lat and user_lng:
                     ride_steps = [s for s in route_data.get('steps', []) if s.get('type') == 'ride']
                     if ride_steps:
-                        start_station_name = ride_steps[0].get('from', '')
+                        first_step = ride_steps[0]
+                        start_station_name = first_step.get('from', '')
                         start_station = Station.objects.filter(name=start_station_name).first()
+                        # Determine destination coords — DB station or bus stop coordinates
                         if start_station:
+                            dest_coords = {"lat": start_station.latitude, "lng": start_station.longitude}
+                            start_lines = list(start_station.lines.values_list("code", flat=True))
+                        elif first_step.get('from_lat') and first_step.get('from_lng'):
+                            dest_coords = {"lat": first_step['from_lat'], "lng": first_step['from_lng']}
+                            start_lines = []
+                        else:
+                            dest_coords = None
+                            start_lines = []
+                        if dest_coords:
                             from .google_routes import get_walking_route
                             walk = get_walking_route(
                                 {"lat": user_lat, "lng": user_lng},
-                                {"lat": start_station.latitude, "lng": start_station.longitude},
+                                dest_coords,
                                 settings.GOOGLE_MAPS_API_KEY,
                             )
                             if walk:
@@ -2039,7 +2192,7 @@ def api_chat(request):
                                     "station": start_station_name,
                                     "duration_minutes": walk["duration_minutes"],
                                     "distance": walk["distance_text"],
-                                    "lines": list(start_station.lines.values_list("code", flat=True)),
+                                    "lines": start_lines,
                                     "steps": walk.get("steps", []),
                                 }
             except Exception:
@@ -2052,12 +2205,20 @@ def api_chat(request):
                 from .google_routes import get_walking_route
                 ride_steps = [s for s in route_data.get('steps', []) if s.get('type') == 'ride']
                 if ride_steps:
-                    last_station_name = ride_steps[-1].get('to', '')
+                    last_step = ride_steps[-1]
+                    last_station_name = last_step.get('to', '')
                     last_station = Station.objects.filter(name=last_station_name).first()
+                    # Determine origin coords — DB station or bus stop coordinates
                     if last_station:
+                        origin_coords = {"lat": last_station.latitude, "lng": last_station.longitude}
+                    elif last_step.get('to_lat') and last_step.get('to_lng'):
+                        origin_coords = {"lat": last_step['to_lat'], "lng": last_step['to_lng']}
+                    else:
+                        origin_coords = None
+                    if origin_coords:
                         dest_address = dest_data.get('address', dest_data.get('name', ''))
                         walk = get_walking_route(
-                            {"lat": last_station.latitude, "lng": last_station.longitude},
+                            origin_coords,
                             dest_address,
                             settings.GOOGLE_MAPS_API_KEY,
                         )
@@ -2086,6 +2247,10 @@ def api_chat(request):
             resp['walking_data'] = walking_data
         if dest_walking:
             resp['dest_walking'] = dest_walking
+        if pin_data:
+            resp['pin_data'] = pin_data
+        if show_pins:
+            resp['show_pins'] = True
 
         return JsonResponse(resp)
 

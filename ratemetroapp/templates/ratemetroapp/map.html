@@ -824,6 +824,12 @@
     padding: 1px 7px; border-radius: 8px;
     font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
   }
+  .bus-dot {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 1px 8px; border-radius: 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+    background: #0077cc; color: #fff;
+  }
   .route-step-transfer {
     font-size: 12px; color: var(--text-secondary);
     font-weight: 500; display: flex; align-items: center; gap: 6px;
@@ -1027,6 +1033,72 @@
   .walking-show-map-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .walking-show-map-btn:active { transform: translateY(0); }
 
+  .pin-widget {
+    align-self: stretch;
+    max-width: 100%;
+    flex-shrink: 0;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: visible;
+    animation: msgIn 0.3s ease both;
+    margin-bottom: 8px;
+  }
+  .pin-widget-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pin-widget-header h3 {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-primary);
+    margin: 0; display: flex; align-items: center; gap: 8px;
+  }
+  .pin-widget-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px; line-height: 1;
+    padding: 0 2px; transition: color 0.2s;
+  }
+  .pin-widget-close:hover { color: var(--text-primary); }
+  .pin-widget-body {
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .pin-widget-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: rgba(255, 59, 48, 0.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .pin-widget-icon svg { width: 22px; height: 22px; }
+  .pin-widget-details {
+    flex: 1; display: flex; flex-direction: column; gap: 2px;
+  }
+  .pin-widget-name {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+  }
+  .pin-widget-coords {
+    font-size: 11px; color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pin-widget-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .pin-show-map-btn {
+    width: 100%; padding: 10px;
+    background: #ff3b30; color: #fff;
+    border: none; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .pin-show-map-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .pin-show-map-btn:active { transform: translateY(0); }
+
   .arrivals-widget-footer {
     padding: 10px 16px 14px;
     border-top: 1px solid var(--border);
@@ -1108,6 +1180,12 @@
   .metro-marker.coming-soon .metro-marker-inner { border-width: 2px; }
 
   .destination-flag-icon {
+    background: none !important;
+    border: none !important;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+
+  .pin-marker {
     background: none !important;
     border: none !important;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
@@ -3683,8 +3761,8 @@ async function getAIResponse(msg) {
       payload.lng = loc.lng;
     }
   } catch(e) { /* location fetch failed or aborted, continue without it */ }
-  if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, dest_walking: null, aborted: true };
-  const _emptyResult = { reply: null, route_data: null, arrivals_data: null, walking_data: null, dest_walking: null };
+  if (_aiStopped) return { reply: null, route_data: null, arrivals_data: null, walking_data: null, dest_walking: null, pin_data: null, show_pins: false, aborted: true };
+  const _emptyResult = { reply: null, route_data: null, arrivals_data: null, walking_data: null, dest_walking: null, pin_data: null, show_pins: false };
   try {
     for (let _attempt = 0; _attempt < 2; _attempt++) {
       try {
@@ -3708,7 +3786,7 @@ async function getAIResponse(msg) {
             session.conversation_id = data.conversation_id;
             saveSessions(chatSessions);
           }
-          return { reply: data.reply, route_data: data.route_data || null, arrivals_data: data.arrivals_data || null, walking_data: data.walking_data || null, dest_walking: data.dest_walking || null };
+          return { reply: data.reply, route_data: data.route_data || null, arrivals_data: data.arrivals_data || null, walking_data: data.walking_data || null, dest_walking: data.dest_walking || null, pin_data: data.pin_data || null, show_pins: data.show_pins || false };
         }
         return { reply: data.message || 'Sorry, I\'m having trouble right now. Please try again in a moment.', route_data: null, arrivals_data: null, walking_data: null, dest_walking: null };
       } catch (e) {
@@ -3863,20 +3941,31 @@ async function openSession(id, {show = true} = {}) {
     } catch(e) { /* show whatever we have */ }
   }
 
-  // Remove any previous route/arrivals/walking widgets
+  // Remove any previous route/arrivals/walking/pin widgets and map markers
   document.querySelectorAll('.route-widget').forEach(el => el.remove());
   document.querySelectorAll('.arrivals-widget').forEach(el => el.remove());
   document.querySelectorAll('.walking-widget').forEach(el => el.remove());
+  document.querySelectorAll('.pin-widget').forEach(el => el.remove());
+  clearAllPins();
   let lastRouteData = null;
   let lastArrivalsData = null;
   let lastWalkingData = null;
   let lastDestWalking = null;
+  const sessionPins = [];
   session.messages.forEach(msg => {
     appendMsgEl(msg.text, msg.type);
     if (msg.route_data && msg.route_data.steps) lastRouteData = msg.route_data;
     if (msg.arrivals_data && msg.arrivals_data.arrivals) lastArrivalsData = msg.arrivals_data;
     if (msg.walking_data && msg.walking_data.station) lastWalkingData = msg.walking_data;
     if (msg.dest_walking) lastDestWalking = msg.dest_walking;
+    if (msg.pin_data) sessionPins.push(msg.pin_data);
+  });
+  // Restore all pins from this session onto the map
+  sessionPins.forEach(p => {
+    const marker = L.marker([p.lat, p.lng], { icon: _createPinIcon() }).addTo(map);
+    marker.bindPopup(`<strong>${p.name}</strong>`);
+    marker.pinData = p;
+    userPinMarkers.push(marker);
   });
   // Show the most recent route widget (with walking integrated if both exist)
   if (lastRouteData) {
@@ -3925,12 +4014,13 @@ function startNewSession() {
   chatOverlay.innerHTML = '';
   clearRouteFromMap();
   clearWalkingFromMap();
+  clearAllPins();
   showChatWelcome();
   chatOverlay.classList.add('visible');
   chatBackdrop.classList.add('visible');
 }
 
-function addMsg(text, type, routeData, arrivalsData, walkingData, destWalking) {
+function addMsg(text, type, routeData, arrivalsData, walkingData, destWalking, pinData) {
   if (!activeSessionId) {
     const id = 'session-' + Date.now();
     chatSessions.unshift({ id, title: type === 'user' ? text : 'New Chat', date: formatDate(new Date()), messages: [] });
@@ -3944,6 +4034,7 @@ function addMsg(text, type, routeData, arrivalsData, walkingData, destWalking) {
     if (arrivalsData) msg.arrivals_data = arrivalsData;
     if (walkingData) msg.walking_data = walkingData;
     if (destWalking) msg.dest_walking = destWalking;
+    if (pinData) msg.pin_data = pinData;
     session.messages.push(msg);
     saveSessions(chatSessions);
   }
@@ -4027,14 +4118,16 @@ async function sendMessage() {
   const hasArrivals = result.arrivals_data && result.arrivals_data.arrivals;
   const hasWalking = result.walking_data && result.walking_data.station;
 
+  const pinData = result.pin_data || null;
+
   if (hasRoute) {
-    addMsg(result.reply, 'ai', result.route_data, null, hasWalking ? result.walking_data : null, result.dest_walking || null);
+    addMsg(result.reply, 'ai', result.route_data, null, hasWalking ? result.walking_data : null, result.dest_walking || null, pinData);
     document.querySelectorAll('.route-widget').forEach(el => el.remove());
     document.querySelectorAll('.walking-widget').forEach(el => el.remove());
     // All directions in one combined widget: walk to station + metro + walk to destination
     showRouteWidget(result.route_data, hasWalking ? result.walking_data : null, result.dest_walking || null);
   } else if (hasArrivals) {
-    addMsg(result.reply, 'ai', null, result.arrivals_data, hasWalking ? result.walking_data : null);
+    addMsg(result.reply, 'ai', null, result.arrivals_data, hasWalking ? result.walking_data : null, null, pinData);
     document.querySelectorAll('.arrivals-widget').forEach(el => el.remove());
     showArrivalsWidget(result.arrivals_data);
     // Show standalone walking widget only when no route
@@ -4043,12 +4136,26 @@ async function sendMessage() {
       showWalkingWidget(result.walking_data);
     }
   } else {
-    addMsg(result.reply, 'ai', null, null, hasWalking ? result.walking_data : null);
+    addMsg(result.reply, 'ai', null, null, hasWalking ? result.walking_data : null, null, pinData);
     // Show standalone walking widget only when no route (e.g. "nearest station?")
     if (hasWalking) {
       document.querySelectorAll('.walking-widget').forEach(el => el.remove());
       showWalkingWidget(result.walking_data);
     }
+  }
+
+  // Pin location on map
+  if (pinData) {
+    showPinOnMap(pinData);
+    showPinWidget(pinData);
+  }
+
+  // "Show my pins" — display all session pins on map
+  if (result.show_pins) {
+    showAllPinsOnMap();
+    dismissChat();
+    const pinCount = userPinMarkers.length;
+    showMapToast(pinCount > 0 ? 'Showing ' + pinCount + ' pin' + (pinCount !== 1 ? 's' : '') : 'No pins yet', 'success');
   }
 }
 sendBtn.addEventListener('click', () => {
@@ -4080,6 +4187,88 @@ chatInput.addEventListener('focus', () => {
     }
   }
 });
+
+// ── Pin Location ──
+let userPinMarkers = [];
+
+function _createPinIcon() {
+  return L.divIcon({
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#ff3b30" stroke="#fff" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    className: 'pin-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+}
+
+function clearAllPins() {
+  userPinMarkers.forEach(m => map.removeLayer(m));
+  userPinMarkers = [];
+}
+
+function showPinOnMap(pinData) {
+  const marker = L.marker([pinData.lat, pinData.lng], { icon: _createPinIcon() }).addTo(map);
+  marker.bindPopup(`<strong>${pinData.name}</strong>`).openPopup();
+  marker.pinData = pinData;
+  userPinMarkers.push(marker);
+  map.setView([pinData.lat, pinData.lng], 15);
+}
+
+function showAllPinsOnMap() {
+  // Collect pin_data from current session messages
+  const session = getActiveSession();
+  if (!session) return;
+  const pins = [];
+  session.messages.forEach(msg => { if (msg.pin_data) pins.push(msg.pin_data); });
+  if (pins.length === 0) return;
+  // Clear existing pin markers and re-add all
+  clearAllPins();
+  pins.forEach(p => {
+    const marker = L.marker([p.lat, p.lng], { icon: _createPinIcon() }).addTo(map);
+    marker.bindPopup(`<strong>${p.name}</strong>`);
+    marker.pinData = p;
+    userPinMarkers.push(marker);
+  });
+  // Fit map to show all pins
+  if (pins.length === 1) {
+    map.setView([pins[0].lat, pins[0].lng], 15);
+  } else {
+    const bounds = L.latLngBounds(pins.map(p => [p.lat, p.lng]));
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }
+  // Open popup on the last pin
+  if (userPinMarkers.length > 0) userPinMarkers[userPinMarkers.length - 1].openPopup();
+}
+
+function showPinWidget(pinData) {
+  const widget = document.createElement('div');
+  widget.className = 'pin-widget';
+
+  const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ff3b30" stroke="#fff" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+  const btnId = 'pinShowMapBtn-' + Date.now();
+  let html = `<div class="pin-widget-header"><h3>Pinned Location</h3><button class="pin-widget-close" onclick="this.closest('.pin-widget').remove()">&times;</button></div>`;
+  html += `<div class="pin-widget-body">`;
+  html += `<div class="pin-widget-icon">${pinSvg}</div>`;
+  html += `<div class="pin-widget-details">`;
+  html += `<div class="pin-widget-name">${pinData.name}</div>`;
+  html += `<div class="pin-widget-coords">${pinData.lat.toFixed(4)}, ${pinData.lng.toFixed(4)}</div>`;
+  html += `</div></div>`;
+  html += `<div class="pin-widget-footer"><button class="pin-show-map-btn" id="${btnId}">View on Map</button></div>`;
+
+  widget.innerHTML = html;
+  chatOverlay.appendChild(widget);
+  requestAnimationFrame(() => { chatOverlay.scrollTop = chatOverlay.scrollHeight; });
+
+  widget.querySelector('#' + btnId).addEventListener('click', () => {
+    map.setView([pinData.lat, pinData.lng], 15);
+    // Open this pin's popup
+    const m = userPinMarkers.find(mk => mk.pinData && mk.pinData.name === pinData.name);
+    if (m) m.openPopup();
+    dismissChat();
+    showMapToast('Viewing ' + pinData.name, 'success');
+  });
+}
 
 // ── Route Widget & Map Drawing ──
 let routePolylines = [];
@@ -4123,11 +4312,18 @@ function showRouteWidget(routeData, walkingData, destWalking) {
   // Header
   let html = `<div class="route-widget-header"><h3>Your Route</h3></div>`;
 
+  // Collect bus lines
+  const busLines = [...new Set(steps.filter(s => s.type === 'ride' && s.vehicle_type === 'BUS').map(s => s.line))];
+
   // Summary bar
   html += `<div class="route-widget-summary">`;
   usedLines.forEach(l => {
     const info = metroLines[l];
-    if (info) html += `<span class="line-dot" style="background:${info.color};color:${info.text}">${l}</span>`;
+    if (info) {
+      html += `<span class="line-dot" style="background:${info.color};color:${info.text}">${l}</span>`;
+    } else if (busLines.includes(l)) {
+      html += `<span class="bus-dot">Bus ${l}</span>`;
+    }
   });
   html += `<span class="summary-label">${transferCount > 0 ? transferCount + ' transfer' + (transferCount > 1 ? 's' : '') : 'Direct'}</span></div>`;
 
@@ -4155,12 +4351,15 @@ function showRouteWidget(routeData, walkingData, destWalking) {
   steps.forEach((step, i) => {
     const isLast = i === steps.length - 1;
     if (step.type === 'ride') {
-      const lineInfo = metroLines[step.line] || { color: '#888', text: '#fff', name: step.line };
-      const stopCount = getStopCount(step.line, step.from, step.to);
+      const isBus = step.vehicle_type === 'BUS';
+      const lineInfo = metroLines[step.line] || (isBus ? { color: '#0077cc', text: '#fff', name: 'Bus ' + step.line } : { color: '#888', text: '#fff', name: step.line });
+      const stopCount = isBus ? (step.num_stops || null) : getStopCount(step.line, step.from, step.to);
+      const trackStyle = isBus ? `background:${lineInfo.color};background-image:repeating-linear-gradient(180deg,${lineInfo.color} 0,${lineInfo.color} 6px,transparent 6px,transparent 12px)` : `background:${lineInfo.color}`;
+      const badgeLabel = isBus ? `Bus ${step.line}` : `${step.line} Line`;
       html += `<div class="route-step">`;
-      html += `<div class="route-step-track"><span class="route-step-dot" style="border-color:${lineInfo.color}"></span><span class="route-step-line" style="background:${lineInfo.color}"></span></div>`;
+      html += `<div class="route-step-track"><span class="route-step-dot" style="border-color:${lineInfo.color}"></span><span class="route-step-line" style="${trackStyle}"></span></div>`;
       html += `<div class="route-step-content"><div class="route-step-station">${step.from}</div>`;
-      html += `<div class="route-step-detail"><span class="route-step-badge" style="background:${lineInfo.color};color:${lineInfo.text}">${step.line} Line</span>`;
+      html += `<div class="route-step-detail"><span class="${isBus ? 'bus-dot' : 'route-step-badge'}" style="background:${lineInfo.color};color:${lineInfo.text}">${badgeLabel}</span>`;
       if (stopCount !== null) html += `<span>${stopCount} stop${stopCount !== 1 ? 's' : ''}</span>`;
       html += `</div></div></div>`;
       if (isLast) {
@@ -4310,64 +4509,97 @@ function drawRouteOnMap(routeData, skipFitBounds) {
 
   steps.forEach((step, i) => {
     if (step.type === 'ride' && step.line) {
+      const isBus = step.vehicle_type === 'BUS';
       const route = lineRoutes[step.line];
-      if (!route) return;
-      const fi = route.indexOf(step.from);
-      const ti = route.indexOf(step.to);
-      if (fi === -1 || ti === -1) return;
-      const start = Math.min(fi, ti);
-      const end = Math.max(fi, ti);
-      const segment = route.slice(start, end + 1);
-      const coords = segment.map(n => stationByName[n]).filter(Boolean).map(s => [s.lat, s.lng]);
-      if (coords.length < 2) return;
 
-      const lineInfo = metroLines[step.line] || { color: '#888' };
-      const poly = L.polyline(coords, {
-        color: lineInfo.color,
-        weight: 6,
-        opacity: 0.9,
-        ...(step.line === 'G' ? { dashArray: '10 6' } : {}),
-      }).addTo(map);
-      routePolylines.push(poly);
-      coords.forEach(c => allBounds.push(c));
+      if (isBus || !route) {
+        // Bus route or unknown line — draw dashed polyline between stop coordinates
+        const fromLat = step.from_lat || (stationByName[step.from] && stationByName[step.from].lat);
+        const fromLng = step.from_lng || (stationByName[step.from] && stationByName[step.from].lng);
+        const toLat = step.to_lat || (stationByName[step.to] && stationByName[step.to].lat);
+        const toLng = step.to_lng || (stationByName[step.to] && stationByName[step.to].lng);
+        if (fromLat && fromLng && toLat && toLng) {
+          const busColor = '#0077cc';
+          const poly = L.polyline([[fromLat, fromLng], [toLat, toLng]], {
+            color: busColor, weight: 5, opacity: 0.85, dashArray: '10 8',
+          }).addTo(map);
+          routePolylines.push(poly);
+          // Small circle markers at bus stops
+          const fromM = L.circleMarker([fromLat, fromLng], {
+            radius: 5, fillColor: busColor, color: '#fff', weight: 1.5, fillOpacity: 1,
+          }).addTo(map).bindTooltip(step.from, { direction: 'top', offset: [0, -6] });
+          const toM = L.circleMarker([toLat, toLng], {
+            radius: 5, fillColor: busColor, color: '#fff', weight: 1.5, fillOpacity: 1,
+          }).addTo(map).bindTooltip(step.to, { direction: 'top', offset: [0, -6] });
+          routeMarkers.push(fromM, toM);
+          allBounds.push([fromLat, fromLng], [toLat, toLng]);
+        }
+      } else {
+        const fi = route.indexOf(step.from);
+        const ti = route.indexOf(step.to);
+        if (fi === -1 || ti === -1) return;
+        const start = Math.min(fi, ti);
+        const end = Math.max(fi, ti);
+        const segment = route.slice(start, end + 1);
+        const coords = segment.map(n => stationByName[n]).filter(Boolean).map(s => [s.lat, s.lng]);
+        if (coords.length < 2) return;
+
+        const lineInfo = metroLines[step.line] || { color: '#888' };
+        const poly = L.polyline(coords, {
+          color: lineInfo.color,
+          weight: 6,
+          opacity: 0.9,
+          ...(step.line === 'G' ? { dashArray: '10 6' } : {}),
+        }).addTo(map);
+        routePolylines.push(poly);
+        coords.forEach(c => allBounds.push(c));
+      }
     }
 
     // Place transfer markers
     if (step.type === 'transfer') {
       const st = stationByName[step.from];
-      if (st) {
-        const m = L.circleMarker([st.lat, st.lng], {
+      const tLat = st ? st.lat : (step.from_lat || null);
+      const tLng = st ? st.lng : (step.from_lng || null);
+      if (tLat && tLng) {
+        const m = L.circleMarker([tLat, tLng], {
           radius: 8, fillColor: '#f5c518', color: '#fff', weight: 2, fillOpacity: 1,
         }).addTo(map).bindTooltip('Transfer: ' + step.from, { direction: 'top', offset: [0, -10] });
         routeMarkers.push(m);
-        allBounds.push([st.lat, st.lng]);
+        allBounds.push([tLat, tLng]);
       }
     }
   });
 
-  // Place start and end markers
+  // Place start and end markers (with coordinate fallback for bus stops)
   const rideSteps = steps.filter(s => s.type === 'ride');
   if (rideSteps.length > 0) {
-    const startStation = stationByName[rideSteps[0].from];
-    const endStation = stationByName[rideSteps[rideSteps.length - 1].to];
-    if (startStation) {
-      const sm = L.circleMarker([startStation.lat, startStation.lng], {
+    const firstStep = rideSteps[0];
+    const lastStep = rideSteps[rideSteps.length - 1];
+    const startStation = stationByName[firstStep.from];
+    const startLat = startStation ? startStation.lat : firstStep.from_lat;
+    const startLng = startStation ? startStation.lng : firstStep.from_lng;
+    const endStation = stationByName[lastStep.to];
+    const endLat = endStation ? endStation.lat : lastStep.to_lat;
+    const endLng = endStation ? endStation.lng : lastStep.to_lng;
+    if (startLat && startLng) {
+      const sm = L.circleMarker([startLat, startLng], {
         radius: 9, fillColor: '#34c759', color: '#fff', weight: 2.5, fillOpacity: 1,
-      }).addTo(map).bindTooltip('Start: ' + rideSteps[0].from, { direction: 'top', offset: [0, -10] });
+      }).addTo(map).bindTooltip('Start: ' + firstStep.from, { direction: 'top', offset: [0, -10] });
       routeMarkers.push(sm);
-      allBounds.push([startStation.lat, startStation.lng]);
+      allBounds.push([startLat, startLng]);
     }
-    if (endStation) {
-      const em = L.marker([endStation.lat, endStation.lng], {
+    if (endLat && endLng) {
+      const em = L.marker([endLat, endLng], {
         icon: L.divIcon({
           className: 'destination-flag-icon',
           html: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#ff3b30" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
           iconSize: [28, 28],
           iconAnchor: [4, 28],
         }),
-      }).addTo(map).bindTooltip('End: ' + rideSteps[rideSteps.length - 1].to, { direction: 'top', offset: [0, -10] });
+      }).addTo(map).bindTooltip('End: ' + lastStep.to, { direction: 'top', offset: [0, -10] });
       routeMarkers.push(em);
-      allBounds.push([endStation.lat, endStation.lng]);
+      allBounds.push([endLat, endLng]);
     }
   }
 
@@ -4432,6 +4664,9 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
   routePolylines.forEach(p => p.getLatLngs().forEach(ll => allBounds.push([ll.lat, ll.lng])));
   routeMarkers.forEach(m => { const ll = m.getLatLng(); allBounds.push([ll.lat, ll.lng]); });
 
+  // Extract ride steps for coordinate fallback (bus stops)
+  const rideSteps = (routeData.steps || []).filter(s => s.type === 'ride');
+
   // If dest walking exists, replace the red end-flag with a transfer circle
   // so the red flag can go at the actual final destination instead
   if (destWalking && destWalking.from_station && routeMarkers.length > 0) {
@@ -4449,16 +4684,20 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
   // ── Walking from user to start station (green dashed line) ──
   if (walkingData && walkingData.station && userLocationKnown) {
     const si = stationByName[walkingData.station];
-    if (si) {
+    // Fall back to first ride step coordinates for bus stops
+    const firstRide = rideSteps.length > 0 ? rideSteps[0] : null;
+    const destLat = si ? si.lat : (firstRide && firstRide.from_lat);
+    const destLng = si ? si.lng : (firstRide && firstRide.from_lng);
+    if (destLat && destLng) {
       const uLL = [userLat, userLng];
-      const sLL = [si.lat, si.lng];
+      const sLL = [destLat, destLng];
       allBounds.push(uLL);
 
       if (window.google && google.maps && google.maps.DirectionsService) {
         const svc = new google.maps.DirectionsService();
         svc.route({
           origin: new google.maps.LatLng(userLat, userLng),
-          destination: new google.maps.LatLng(si.lat, si.lng),
+          destination: new google.maps.LatLng(destLat, destLng),
           travelMode: google.maps.TravelMode.WALKING,
         }, (res, st) => {
           if (st === 'OK' && res.routes.length > 0) {
@@ -4479,7 +4718,7 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
           .addTo(map).bindTooltip('You are here', { direction: 'top', offset: [0, -10] })
       );
       // Walk duration label at midpoint
-      walkingMarkers.push(L.marker([(userLat + si.lat) / 2, (userLng + si.lng) / 2], {
+      walkingMarkers.push(L.marker([(userLat + destLat) / 2, (userLng + destLng) / 2], {
         icon: L.divIcon({
           className: '',
           html: `<div style="background:rgba(13,13,24,0.85);color:#34c759;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;border:1px solid rgba(52,199,89,0.3);backdrop-filter:blur(8px)">${walkingData.duration_minutes} min walk</div>`,
@@ -4493,14 +4732,18 @@ function startRouteNavigation(routeData, walkingData, destWalking, isRestore) {
   // ── Walking from end station to destination (orange dashed line) ──
   if (destWalking && destWalking.from_station) {
     const fs = stationByName[destWalking.from_station];
-    if (fs) {
-      const fsLL = [fs.lat, fs.lng];
+    // Fall back to last ride step coordinates for bus stops
+    const lastRide = rideSteps.length > 0 ? rideSteps[rideSteps.length - 1] : null;
+    const fsLat = fs ? fs.lat : (lastRide && lastRide.to_lat);
+    const fsLng = fs ? fs.lng : (lastRide && lastRide.to_lng);
+    if (fsLat && fsLng) {
+      const fsLL = [fsLat, fsLng];
       const addr = destWalking.address || destWalking.destination || '';
 
       if (addr && window.google && google.maps && google.maps.DirectionsService) {
         const svc = new google.maps.DirectionsService();
         svc.route({
-          origin: new google.maps.LatLng(fs.lat, fs.lng),
+          origin: new google.maps.LatLng(fsLat, fsLng),
           destination: addr,
           travelMode: google.maps.TravelMode.WALKING,
         }, (res, st) => {

@@ -6,7 +6,7 @@ Queries the Routes API v2 for transit routing between stations/addresses.
 import requests
 
 
-def get_transit_route(origin, destination, api_key):
+def get_transit_route(origin, destination, api_key, routing_preference="FEWER_TRANSFERS"):
     """
     Get transit directions from origin to destination using Google Routes API.
 
@@ -14,6 +14,7 @@ def get_transit_route(origin, destination, api_key):
         origin: Station name (str) or dict with lat/lng keys
         destination: Station name (str) or dict with lat/lng keys
         api_key: Google Maps API key
+        routing_preference: "FEWER_TRANSFERS" or "LESS_WALKING"
 
     Returns:
         Dict with total_duration and steps list, or None on error.
@@ -25,6 +26,8 @@ def get_transit_route(origin, destination, api_key):
         "X-Goog-Api-Key": api_key,
         "X-Goog-FieldMask": (
             "routes.legs.steps.transitDetails,"
+            "routes.legs.steps.transitDetails.stopDetails.departureStop.location,"
+            "routes.legs.steps.transitDetails.stopDetails.arrivalStop.location,"
             "routes.legs.steps.travelMode,"
             "routes.legs.steps.staticDuration,"
             "routes.legs.steps.localizedValues,"
@@ -38,7 +41,7 @@ def get_transit_route(origin, destination, api_key):
         "destination": _build_waypoint(destination),
         "travelMode": "TRANSIT",
         "transitPreferences": {
-            "routingPreference": "FEWER_TRANSFERS",
+            "routingPreference": routing_preference,
         },
     }
 
@@ -123,7 +126,11 @@ def _parse_step(step):
 
         num_stops = transit.get("stopCount", 0)
 
-        return {
+        # Extract stop coordinates (needed for bus stops not in our DB)
+        dep_loc = departure_stop.get("location", {}).get("latLng", {})
+        arr_loc = arrival_stop.get("location", {}).get("latLng", {})
+
+        result = {
             "type": "ride",
             "line": line_name,
             "vehicle_type": vehicle_type,
@@ -134,6 +141,15 @@ def _parse_step(step):
             "duration_minutes": duration_minutes,
             "num_stops": num_stops,
         }
+
+        if dep_loc:
+            result["from_lat"] = dep_loc.get("latitude")
+            result["from_lng"] = dep_loc.get("longitude")
+        if arr_loc:
+            result["to_lat"] = arr_loc.get("latitude")
+            result["to_lng"] = arr_loc.get("longitude")
+
+        return result
 
     elif travel_mode == "WALK":
         return {
