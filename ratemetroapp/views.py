@@ -921,7 +921,7 @@ Wayfinding Rules — ALWAYS follow these when giving directions:
 1. ALWAYS check the "Nearby stations" list in the CURRENT USER CONTEXT first. Use the CLOSEST station to the user as the starting point — do NOT assume or guess which station is closest. Compare distances carefully.
 2. ONLY use EXACT station names from the COMPLETE STATION LISTS above. NEVER combine parts of different station names to create a new one. For example, "Vermont/Hollywood" does NOT exist — the actual stations are "Vermont/Sunset", "Vermont/Santa Monica", "Vermont/Beverly", "Hollywood/Western", "Hollywood/Vine", "Hollywood/Highland". If you are unsure about a station name, look it up in the lists above. If it's not there, it does NOT exist.
 3. Before recommending ANY route, VERIFY that each station you mention actually exists on the line you say it does. Cross-check against the station lists above. Never assume a station is on a line without checking.
-4. When the user asks to go to a PLACE (not a Metro station), your #1 priority is picking the EXIT station that is geographically CLOSEST to their actual destination — even if it means adding a transfer or 1-2 extra stops. A station sharing a name with a street in the destination address does NOT mean it's nearby (e.g. Expo/La Brea is 4 miles south of Pink's Hot Dogs on La Brea Ave). ALWAYS use the Google Transit Route data from the context when available — Google knows the real geography and picks the optimal exit station. If the final walk would be more than 1 mile or 20 minutes, your route is WRONG — find a closer exit station.
+4. When the user asks to go to a PLACE (not a Metro station), your #1 priority is picking the EXIT station that is geographically CLOSEST to their actual destination — even if it means adding a transfer or 1-2 extra stops. A station sharing a name with a street in the destination address does NOT mean it's nearby (e.g. Expo/La Brea is 4 miles south of Pink's Hot Dogs on La Brea Ave). ALWAYS check the context for "Nearest Metro station to [destination]" — that tells you EXACTLY which station to exit at. ALWAYS use the Google Transit Route data and suggested [ROUTE] block from the context when available. If the final walk would be more than 1 mile or 20 minutes, your route is WRONG — find a closer exit station.
 5. Pick the route with the fewest transfers — direct lines beat transfers every time, UNLESS the direct route results in a much longer walk (over 1 mile). A transfer that gets the user closer to their destination is better than a direct ride that leaves them 4 miles away.
 6. If two routes have equal transfers AND similar walk distances, pick the one with FEWER total stops.
 7. Mention the specific LINE LETTER AND COLOR for every segment (e.g. "Take the E (Expo) Line").
@@ -1489,9 +1489,17 @@ def _geocode_place(place_name, api_key):
     return None, None
 
 
-def _find_nearest_station_to_place(place_name, api_key):
-    """Find the Metro station closest to a place destination.
+# Stations that exist in the DB but are NOT yet open for service
+_NOT_YET_OPEN_STATIONS = {
+    'Wilshire/La Brea', 'Wilshire/Fairfax', 'Wilshire/La Cienega',
+    'Wilshire/Rodeo', 'Century City/Constellation', 'Westwood/VA Hospital',
+}
 
+
+def _find_nearest_station_to_place(place_name, api_key):
+    """Find the nearest OPEN Metro station to a place destination.
+
+    Excludes stations that are not yet open (D Line extension).
     Returns (station_name, distance_miles, (lat, lng)) or (None, None, None).
     """
     lat, lng = _geocode_place(place_name, api_key)
@@ -1502,6 +1510,8 @@ def _find_nearest_station_to_place(place_name, api_key):
     closest = None
     closest_dist = float('inf')
     for s in stations:
+        if s.name in _NOT_YET_OPEN_STATIONS:
+            continue
         dist = _haversine_miles(lat, lng, s.latitude, s.longitude)
         if dist < closest_dist:
             closest_dist = dist
@@ -1811,21 +1821,20 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
     route_data = get_transit_route(origin_loc, destination_loc, api_key)
 
     origin_label = origin if origin else "your location"
+    context = ""
     google_route_block = None
 
     if route_data:
         context = format_route_for_context(route_data, origin_label, dest_label)
-        # Build the authoritative [ROUTE] block from Google's data
         google_route_block = _build_route_block_from_google(route_data)
 
     # If it's a place destination and Google returned buses (not Metro rail),
-    # find the nearest Metro station and re-route to that station instead.
+    # geocode the place, find the nearest Metro station, and re-route there.
     if is_place and not google_route_block:
         nearest_station, dist_miles, place_coords = _find_nearest_station_to_place(
             place, api_key
         )
         if nearest_station:
-            # Re-query Google Routes: origin → nearest Metro station
             nearest_loc = nearest_station + " Metro Station, Los Angeles, CA"
             route_data_2 = get_transit_route(origin_loc, nearest_loc, api_key)
             if route_data_2:
