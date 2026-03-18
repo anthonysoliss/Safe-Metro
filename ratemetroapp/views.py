@@ -1406,6 +1406,37 @@ def _is_directions_request(msg_lower):
     return False
 
 
+def _match_place_to_station(place_text):
+    """Try to match a place/destination text to a known Metro station.
+
+    Handles cases like "lax" → "LAX/Metro Transit Center",
+    "usc" → "Expo Park/USC", "union station" → "Union Station", etc.
+    Returns the station name or None.
+    """
+    text = place_text.lower().strip()
+    try:
+        all_stations = Station.objects.all()
+    except Exception:
+        return None
+
+    best = None
+    best_score = (0, 0)  # (matched_words, total_matched_chars)
+    for s in all_stations:
+        name_lower = s.name.lower()
+        name_parts = re.split(r'[/\s\-]+', name_lower)
+        text_parts = [tp for tp in re.split(r'[/\s\-]+', text) if tp and len(tp) >= 3]
+
+        # Count how many text parts match station name parts
+        matched = [tp for tp in text_parts if tp in name_parts]
+        if matched:
+            score = (len(matched), sum(len(w) for w in matched))
+            if score > best_score:
+                best_score = score
+                best = s.name
+
+    return best
+
+
 def _extract_place_destination(msg_lower):
     """Extract a non-station place destination from a directions request.
 
@@ -1649,7 +1680,7 @@ def _get_raptor_directions_context(user_message, data, mentioned_stations):
     if not destination and len(mentioned_stations) == 1:
         destination = mentioned_stations[0]
 
-    # Handle place destinations: geocode, find nearest station, route to it
+    # Handle place destinations
     is_place = False
     place_name = None
     place_coords = None
@@ -1657,16 +1688,23 @@ def _get_raptor_directions_context(user_message, data, mentioned_stations):
     if not destination:
         place_name = _extract_place_destination(msg_lower)
         if place_name:
-            nearest_station, dist_miles, coords = _find_nearest_station_to_place(
-                place_name, settings.GOOGLE_MAPS_API_KEY
-            )
-            if nearest_station:
-                destination = nearest_station
-                is_place = True
-                place_coords = coords
-                nearest_to_place = (nearest_station, dist_miles)
+            # First: try matching the place text to a known Metro station
+            # (handles "lax" → "LAX/Metro Transit Center", "usc" → "Expo Park/USC", etc.)
+            matched_station = _match_place_to_station(place_name)
+            if matched_station:
+                destination = matched_station
             else:
-                return None  # Can't geocode — let Google handle it
+                # Geocode and find nearest station
+                nearest_station, dist_miles, coords = _find_nearest_station_to_place(
+                    place_name, settings.GOOGLE_MAPS_API_KEY
+                )
+                if nearest_station:
+                    destination = nearest_station
+                    is_place = True
+                    place_coords = coords
+                    nearest_to_place = (nearest_station, dist_miles)
+                else:
+                    return None  # Can't geocode — let Google handle it
         else:
             return None
 

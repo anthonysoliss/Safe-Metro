@@ -227,10 +227,38 @@ def build_raptor_index(gtfs_data):
                 transfers[a].append((b, SAME_STATION_TRANSFER_SEC))
                 transfers[b].append((a, SAME_STATION_TRANSFER_SEC))
 
-    # NOTE: Cross-station proximity transfers removed — they create confusing
-    # routes where the rider exits at one station and walks to a nearby but
-    # different station. Same-parent transfers cover all real interchange
-    # stations (7th St/Metro Center, Union Station, etc.).
+    # Same-location transfers: some interchange stations have separate GTFS
+    # parent stations per line (e.g. Expo/Crenshaw E-Line vs K-Line).
+    # Detect these by matching parent station base names (strip line suffix).
+    import re as _re
+    def _base_name(name):
+        n = _re.sub(r'\s*-?\s*[A-Z]-?Line.*', '', name, flags=_re.IGNORECASE)
+        n = _re.sub(r'\s*Station\s*$', '', n)
+        return n.strip().lower()
+
+    parent_base_groups = defaultdict(list)  # base_name -> [parent_id, ...]
+    for parent_id in parent_groups:
+        parent_stop = stop_lookup.get(parent_id, {})
+        pname = parent_stop.get("stop_name", "")
+        if pname:
+            parent_base_groups[_base_name(pname)].append(parent_id)
+
+    for base, parent_ids in parent_base_groups.items():
+        if len(parent_ids) < 2:
+            continue
+        # Collect all platform stops across these co-located parents
+        all_platforms = []
+        for pid in parent_ids:
+            all_platforms.extend(parent_groups.get(pid, []))
+        # Create transfers between platforms of different parents
+        for i, a in enumerate(all_platforms):
+            for b in all_platforms[i + 1:]:
+                if platform_stops[a]["parent"] != platform_stops[b]["parent"]:
+                    # Avoid duplicates
+                    existing = {t for t, _ in transfers.get(a, [])}
+                    if b not in existing:
+                        transfers[a].append((b, SAME_STATION_TRANSFER_SEC))
+                        transfers[b].append((a, SAME_STATION_TRANSFER_SEC))
 
     # --- 5. Build stop_info ---
     stop_info = {}
