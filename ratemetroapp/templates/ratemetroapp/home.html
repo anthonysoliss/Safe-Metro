@@ -152,23 +152,56 @@
     overflow: hidden;
   }
 
-  /* ── Hero circuit lines ── */
+  /* ── Hero gradient lines ── */
   .hero-lines {
     position: absolute !important; inset: 0;
     z-index: 0 !important; pointer-events: none;
+    overflow: hidden;
+    clip-path: inset(0 0 35% 0);
   }
-  .hero-lines svg {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    opacity: 0.85;
+  .hero-line {
+    position: absolute;
+    height: 6px;
+    border-radius: 4px;
+    opacity: 0.7;
+    filter: blur(1px);
   }
-  [data-theme="light"] .hero-lines svg { opacity: 0.55; }
-  .circuit-node {
-    animation: nodePulse 3s ease-in-out infinite;
+  [data-theme="light"] .hero-line { opacity: 0.45; }
+
+  .hero-line--a {
+    top: 12%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #0072BC 20%, #0072BC 80%, transparent);
+    transform: rotate(-3deg);
   }
-  @keyframes nodePulse {
-    0%, 100% { opacity: 0.4; r: 4; }
-    50% { opacity: 0.9; r: 5; }
+  .hero-line--b {
+    top: 24%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #E3242B 15%, #E3242B 70%, transparent);
+    transform: rotate(2.5deg);
+  }
+  .hero-line--c {
+    top: 36%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #00A85A 25%, #00A85A 75%, transparent);
+    transform: rotate(-1.5deg);
+  }
+  .hero-line--d {
+    top: 50%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #A05EB5 20%, #A05EB5 80%, transparent);
+    transform: rotate(3.5deg);
+  }
+  .hero-line--e {
+    top: 63%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #F5A623 15%, #F5A623 75%, transparent);
+    transform: rotate(-2deg);
+  }
+  .hero-line--g {
+    top: 76%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #F7931E 25%, #F7931E 70%, transparent);
+    transform: rotate(1.8deg);
+  }
+  .hero-line--k {
+    top: 88%; left: -5%; width: 110%;
+    background: linear-gradient(90deg, transparent, #E96BB0 20%, #E96BB0 80%, transparent);
+    transform: rotate(-3.5deg);
   }
 
   .hero > * { position: relative; z-index: 1; }
@@ -343,12 +376,8 @@
     border: 1px solid var(--border);
     border-radius: 20px; padding: 32px;
     transition: transform 0.3s, border-color 0.3s;
-    opacity: 0; transform: translateY(30px);
+    opacity: 1; transform: translateY(0);
   }
-  .feature-card.visible {
-    animation: fadeSlideUp 0.5s ease forwards;
-  }
-  @keyframes fadeSlideUp { to { opacity: 1; transform: translateY(0); } }
 
   .feature-card:hover { transform: translateY(-4px); border-color: var(--accent); }
 
@@ -513,110 +542,20 @@
     ratemetro.com
   </a>
   <div class="nav-links">
-    <a class="nav-link" href="{% url 'ratemetroapp:sign_in' %}">Sign In</a>
-    <a class="nav-cta" href="{% url 'ratemetroapp:sign_in' %}">Sign Up</a>
+    <a class="nav-cta" href="{% url 'ratemetroapp:map' %}">Get Started</a>
   </div>
 </nav>
 
 <!-- ── Hero ── -->
 <div class="hero">
   <div class="hero-lines">
-    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <!-- A Line (Blue) — fades from left to right -->
-      <path d="M -10 120 H 200" stroke="#0072BC" stroke-width="2.5" opacity="0.1"/>
-      <path d="M 200 120 V 280" stroke="#0072BC" stroke-width="2.5" opacity="0.25"/>
-      <path d="M 200 280 H 450" stroke="#0072BC" stroke-width="2.5" opacity="0.45"/>
-      <path d="M 450 280 V 180" stroke="#0072BC" stroke-width="2.5" opacity="0.65"/>
-      <path d="M 450 180 H 700" stroke="#0072BC" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="200" cy="120" r="4" fill="#0072BC" opacity="0.15"/>
-      <circle class="circuit-node" cx="200" cy="280" r="4" fill="#0072BC" opacity="0.35"/>
-      <circle class="circuit-node" cx="450" cy="280" r="4" fill="#0072BC" opacity="0.55"/>
-      <circle class="circuit-node" cx="450" cy="180" r="4" fill="#0072BC" opacity="0.75"/>
-      <circle class="circuit-node" cx="700" cy="180" r="5" fill="#0072BC" opacity="0.95"/>
-
-      <!-- B Line (Red) — fades from top down -->
-      <path d="M 350 -10 V 100" stroke="#E3242B" stroke-width="2.5" opacity="0.1"/>
-      <path d="M 350 100 H 600" stroke="#E3242B" stroke-width="2.5" opacity="0.25"/>
-      <path d="M 600 100 V 320" stroke="#E3242B" stroke-width="2.5" opacity="0.45"/>
-      <path d="M 600 320 H 850" stroke="#E3242B" stroke-width="2.5" opacity="0.65"/>
-      <path d="M 850 320 V 500" stroke="#E3242B" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="350" cy="100" r="4" fill="#E3242B" opacity="0.15"/>
-      <circle class="circuit-node" cx="600" cy="100" r="4" fill="#E3242B" opacity="0.35"/>
-      <circle class="circuit-node" cx="600" cy="320" r="4" fill="#E3242B" opacity="0.55"/>
-      <circle class="circuit-node" cx="850" cy="320" r="4" fill="#E3242B" opacity="0.75"/>
-      <circle class="circuit-node" cx="850" cy="500" r="5" fill="#E3242B" opacity="0.95"/>
-
-      <!-- C Line (Green) — fades from right to left -->
-      <path d="M 1010 200 H 750" stroke="#00A85A" stroke-width="2.5" opacity="0.1"/>
-      <path d="M 750 200 V 400" stroke="#00A85A" stroke-width="2.5" opacity="0.25"/>
-      <path d="M 750 400 H 500" stroke="#00A85A" stroke-width="2.5" opacity="0.45"/>
-      <path d="M 500 400 V 550" stroke="#00A85A" stroke-width="2.5" opacity="0.65"/>
-      <path d="M 500 550 H 250" stroke="#00A85A" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="750" cy="200" r="4" fill="#00A85A" opacity="0.15"/>
-      <circle class="circuit-node" cx="750" cy="400" r="4" fill="#00A85A" opacity="0.35"/>
-      <circle class="circuit-node" cx="500" cy="400" r="4" fill="#00A85A" opacity="0.55"/>
-      <circle class="circuit-node" cx="500" cy="550" r="4" fill="#00A85A" opacity="0.75"/>
-      <circle class="circuit-node" cx="250" cy="550" r="5" fill="#00A85A" opacity="0.95"/>
-
-      <!-- D Line (Purple) — fades from top-right down -->
-      <path d="M 700 -10 V 150" stroke="#A05EB5" stroke-width="2.5" opacity="0.1"/>
-      <path d="M 700 150 H 480" stroke="#A05EB5" stroke-width="2.5" opacity="0.25"/>
-      <path d="M 480 150 V 350" stroke="#A05EB5" stroke-width="2.5" opacity="0.45"/>
-      <path d="M 480 350 H 300" stroke="#A05EB5" stroke-width="2.5" opacity="0.65"/>
-      <path d="M 300 350 V 550" stroke="#A05EB5" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="700" cy="150" r="4" fill="#A05EB5" opacity="0.15"/>
-      <circle class="circuit-node" cx="480" cy="150" r="4" fill="#A05EB5" opacity="0.35"/>
-      <circle class="circuit-node" cx="480" cy="350" r="4" fill="#A05EB5" opacity="0.55"/>
-      <circle class="circuit-node" cx="300" cy="350" r="4" fill="#A05EB5" opacity="0.75"/>
-      <circle class="circuit-node" cx="300" cy="550" r="5" fill="#A05EB5" opacity="0.95"/>
-
-      <!-- E Line (Expo) — fades from bottom-left up -->
-      <path d="M -10 500 H 150" stroke="#F5A623" stroke-width="2.5" opacity="0.1"/>
-      <path d="M 150 500 V 350" stroke="#F5A623" stroke-width="2.5" opacity="0.25"/>
-      <path d="M 150 350 H 350" stroke="#F5A623" stroke-width="2.5" opacity="0.45"/>
-      <path d="M 350 350 V 200" stroke="#F5A623" stroke-width="2.5" opacity="0.65"/>
-      <path d="M 350 200 H 550" stroke="#F5A623" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="150" cy="500" r="4" fill="#F5A623" opacity="0.15"/>
-      <circle class="circuit-node" cx="150" cy="350" r="4" fill="#F5A623" opacity="0.35"/>
-      <circle class="circuit-node" cx="350" cy="350" r="4" fill="#F5A623" opacity="0.55"/>
-      <circle class="circuit-node" cx="350" cy="200" r="4" fill="#F5A623" opacity="0.75"/>
-      <circle class="circuit-node" cx="550" cy="200" r="5" fill="#F5A623" opacity="0.95"/>
-
-      <!-- G Line (Orange) — fades from bottom up -->
-      <path d="M 100 710 V 480" stroke="#F7931E" stroke-width="2.5" opacity="0.08"/>
-      <path d="M 100 480 H 300" stroke="#F7931E" stroke-width="2.5" opacity="0.2"/>
-      <path d="M 300 480 V 250" stroke="#F7931E" stroke-width="2.5" opacity="0.35"/>
-      <path d="M 300 250 H 550" stroke="#F7931E" stroke-width="2.5" opacity="0.55"/>
-      <path d="M 550 250 V 80" stroke="#F7931E" stroke-width="2.5" opacity="0.75"/>
-      <path d="M 550 80 H 850" stroke="#F7931E" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="100" cy="480" r="4" fill="#F7931E" opacity="0.12"/>
-      <circle class="circuit-node" cx="300" cy="480" r="4" fill="#F7931E" opacity="0.25"/>
-      <circle class="circuit-node" cx="300" cy="250" r="4" fill="#F7931E" opacity="0.45"/>
-      <circle class="circuit-node" cx="550" cy="250" r="4" fill="#F7931E" opacity="0.65"/>
-      <circle class="circuit-node" cx="550" cy="80" r="4" fill="#F7931E" opacity="0.8"/>
-      <circle class="circuit-node" cx="850" cy="80" r="5" fill="#F7931E" opacity="0.95"/>
-
-      <!-- K Line (Pink) — fades from bottom-right up -->
-      <path d="M 1010 600 H 800" stroke="#E96BB0" stroke-width="2.5" opacity="0.08"/>
-      <path d="M 800 600 V 450" stroke="#E96BB0" stroke-width="2.5" opacity="0.2"/>
-      <path d="M 800 450 H 620" stroke="#E96BB0" stroke-width="2.5" opacity="0.35"/>
-      <path d="M 620 450 V 280" stroke="#E96BB0" stroke-width="2.5" opacity="0.55"/>
-      <path d="M 620 280 H 900" stroke="#E96BB0" stroke-width="2.5" opacity="0.75"/>
-      <path d="M 900 280 V 50" stroke="#E96BB0" stroke-width="2.5" opacity="0.9"/>
-      <circle class="circuit-node" cx="800" cy="600" r="4" fill="#E96BB0" opacity="0.12"/>
-      <circle class="circuit-node" cx="800" cy="450" r="4" fill="#E96BB0" opacity="0.25"/>
-      <circle class="circuit-node" cx="620" cy="450" r="4" fill="#E96BB0" opacity="0.45"/>
-      <circle class="circuit-node" cx="620" cy="280" r="4" fill="#E96BB0" opacity="0.65"/>
-      <circle class="circuit-node" cx="900" cy="280" r="4" fill="#E96BB0" opacity="0.8"/>
-      <circle class="circuit-node" cx="900" cy="50" r="5" fill="#E96BB0" opacity="0.95"/>
-
-      <!-- Intersection highlights -->
-      <circle cx="350" cy="200" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
-      <circle cx="550" cy="250" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
-      <circle cx="300" cy="350" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
-      <circle cx="500" cy="400" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
-      <circle cx="600" cy="320" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
-    </svg>
+    <div class="hero-line hero-line--a"></div>
+    <div class="hero-line hero-line--b"></div>
+    <div class="hero-line hero-line--c"></div>
+    <div class="hero-line hero-line--d"></div>
+    <div class="hero-line hero-line--e"></div>
+    <div class="hero-line hero-line--g"></div>
+    <div class="hero-line hero-line--k"></div>
   </div>
   <img class="hero-logo" src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="Ratemetro">
   <h1>Navigate <span class="accent">LA Metro</span> with confidence</h1>
