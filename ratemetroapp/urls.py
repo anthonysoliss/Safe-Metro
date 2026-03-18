@@ -4,7 +4,8 @@ from . import views
 app_name = 'ratemetroapp'
 
 urlpatterns = [
-    path('', views.map_view, name='map'),
+    path('', views.home_view, name='home'),
+    path('map/', views.map_view, name='map'),
     path('sign-in/', views.sign_in_view, name='sign_in'),
     path('station-reviews/', views.station_reviews_view, name='station_reviews'),
     path('profile/', views.profile_view, name='profile'),

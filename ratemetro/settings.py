@@ -134,7 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication settings
 LOGIN_URL = '/sign-in/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/map/'
 
 # Allow up to 150 MB uploads (covers ~5 min of mobile video)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 150 * 1024 * 1024

@@ -1,0 +1,877 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ratemetro.com — Navigate LA Metro with Confidence</title>
+<meta name="description" content="AI-powered safety ratings, real-time arrivals, and walking directions for every LA Metro station.">
+<script>
+  (function(){var t=localStorage.getItem('ratemetro-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Variables ── */
+  :root {
+    --bg-dark: #0d0d18;
+    --surface: rgba(20, 20, 35, 0.88);
+    --surface-light: rgba(28, 28, 48, 0.82);
+    --accent: #f5c518;
+    --accent-glow: rgba(245, 197, 24, 0.3);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #f0f0f5;
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-muted: rgba(255, 255, 255, 0.3);
+    --border: rgba(255, 255, 255, 0.07);
+    --border-focus: rgba(245, 197, 24, 0.4);
+  }
+
+  [data-theme="light"] {
+    --bg-dark: #f2f2f7;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-light: rgba(240, 240, 245, 0.9);
+    --accent: #d4a017;
+    --accent-glow: rgba(212, 160, 23, 0.2);
+    --danger: #ff3b30;
+    --success: #30d158;
+    --text-primary: #1c1c1e;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --text-muted: rgba(0, 0, 0, 0.35);
+    --border: rgba(0, 0, 0, 0.1);
+    --border-focus: rgba(212, 160, 23, 0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── Background effects ── */
+  .bg-grid {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(245,197,24,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,197,24,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+  .bg-glow {
+    position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 500px;
+    background: radial-gradient(ellipse, rgba(245,197,24,0.06) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    position: fixed; top: 16px; left: 16px; right: 16px; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px;
+    max-width: 1100px; margin: 0 auto;
+    background: var(--surface);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    animation: slideDown 0.5s ease;
+  }
+  @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 18px;
+  }
+  .nav-brand img { width: 32px; height: 32px; border-radius: 8px; }
+
+  .nav-links {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-link {
+    padding: 8px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    background: var(--surface-light);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+  }
+  .nav-link:hover { border-color: var(--accent); box-shadow: 0 2px 12px var(--accent-glow); }
+
+  .nav-cta {
+    padding: 8px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    background: var(--accent); color: #000;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+
+  .theme-toggle {
+    position: relative;
+    width: 52px; height: 28px; border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-light);
+    cursor: pointer; padding: 0;
+    transition: background 0.3s, border-color 0.3s;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+  .theme-toggle .toggle-thumb {
+    position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--text-primary);
+    transition: transform 0.3s ease;
+    display: flex; align-items: center; justify-content: center;
+  }
+  [data-theme="light"] .theme-toggle .toggle-thumb { transform: translateX(24px); }
+  .theme-toggle .toggle-thumb svg {
+    width: 12px; height: 12px; fill: none;
+    stroke: var(--bg); stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .theme-toggle .icon-sun { display: none; }
+  .theme-toggle .icon-moon { display: block; }
+  [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+  [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 100px 24px 60px;
+    position: relative; z-index: 1;
+    overflow: hidden;
+  }
+
+  /* ── Hero circuit lines ── */
+  .hero-lines {
+    position: absolute !important; inset: 0;
+    z-index: 0 !important; pointer-events: none;
+  }
+  .hero-lines svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0.85;
+  }
+  [data-theme="light"] .hero-lines svg { opacity: 0.55; }
+  .circuit-node {
+    animation: nodePulse 3s ease-in-out infinite;
+  }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.4; r: 4; }
+    50% { opacity: 0.9; r: 5; }
+  }
+
+  .hero > * { position: relative; z-index: 1; }
+  .hero-logo {
+    width: 80px; height: 80px; border-radius: 20px;
+    margin-bottom: 32px;
+    animation: cardIn 0.7s ease;
+  }
+  @keyframes cardIn { from { transform: scale(0.8) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+  .hero h1 {
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 700; line-height: 1.15;
+    max-width: 700px; margin-bottom: 16px;
+    animation: cardIn 0.7s ease 0.1s both;
+  }
+  .hero h1 .accent { color: var(--accent); }
+
+  .hero-sub {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--text-secondary);
+    max-width: 520px; line-height: 1.5;
+    margin-bottom: 40px;
+    animation: cardIn 0.7s ease 0.2s both;
+  }
+
+  .hero-ctas {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    animation: cardIn 0.7s ease 0.3s both;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 14px;
+    font-size: 16px; font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer; border: none;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { box-shadow: 0 8px 30px var(--accent-glow); }
+  .btn-secondary {
+    background: var(--surface); color: var(--text-primary);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* ── Stats ── */
+  .stats {
+    display: flex; gap: 48px; margin-top: 56px;
+    animation: cardIn 0.7s ease 0.4s both;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px; font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 13px; color: var(--text-muted);
+    margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* ── Sections ── */
+  section {
+    position: relative; z-index: 1;
+    padding: 80px 24px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .section-title {
+    text-align: center; font-size: clamp(24px, 4vw, 36px);
+    font-weight: 700; margin-bottom: 12px;
+  }
+  .section-sub {
+    text-align: center; color: var(--text-secondary);
+    font-size: 16px; max-width: 480px; margin: 0 auto 48px;
+  }
+
+  /* ── Map Preview Container ── */
+  .map-preview-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    padding: 48px 32px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  }
+  [data-theme="dark"] .map-preview-container,
+  :root:not([data-theme]) .map-preview-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+  .map-preview-container .section-title { color: #1c1c1e; }
+  .map-preview-container .section-sub { color: rgba(0, 0, 0, 0.55); }
+  [data-theme="dark"] .map-preview-container .section-title,
+  :root:not([data-theme]) .map-preview-container .section-title { color: var(--text-primary); }
+  [data-theme="dark"] .map-preview-container .section-sub,
+  :root:not([data-theme]) .map-preview-container .section-sub { color: var(--text-secondary); }
+
+  /* ── iPhone Mockup ── */
+  .iphone-wrapper {
+    display: flex; justify-content: center;
+    margin: 0 auto 32px; padding: 0 24px;
+  }
+  .iphone-frame {
+    position: relative;
+    width: 280px; height: 572px;
+    background: #1a1a1a;
+    border-radius: 44px;
+    border: 4px solid #2a2a2a;
+    box-shadow:
+      0 0 0 2px #111,
+      0 20px 60px rgba(0,0,0,0.5),
+      inset 0 0 4px rgba(255,255,255,0.05);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  [data-theme="light"] .iphone-frame {
+    background: #e8e8e8;
+    border-color: #d0d0d0;
+    box-shadow:
+      0 0 0 2px #ccc,
+      0 20px 60px rgba(0,0,0,0.15),
+      inset 0 0 4px rgba(255,255,255,0.3);
+  }
+  /* Notch / Dynamic Island */
+  .iphone-notch {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 90px; height: 24px;
+    background: #000; border-radius: 20px;
+    z-index: 3;
+  }
+  [data-theme="light"] .iphone-notch { background: #1a1a1a; }
+  /* Screen area */
+  .iphone-screen {
+    position: absolute;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border-radius: 40px;
+    background: #000;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .iphone-screen video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .iphone-screen .video-placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: rgba(255,255,255,0.4); text-align: center; padding: 24px;
+    font-size: 13px;
+  }
+  .iphone-screen .video-placeholder svg {
+    width: 40px; height: 40px; opacity: 0.4;
+  }
+  /* Home indicator */
+  .iphone-home {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 4px;
+    background: rgba(255,255,255,0.3); border-radius: 4px;
+    z-index: 3;
+  }
+
+
+  /* ── Features Grid ── */
+  .features-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--surface);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+    transition: transform 0.3s, border-color 0.3s;
+    opacity: 0; transform: translateY(30px);
+  }
+  .feature-card.visible {
+    animation: fadeSlideUp 0.5s ease forwards;
+  }
+  @keyframes fadeSlideUp { to { opacity: 1; transform: translateY(0); } }
+
+  .feature-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+
+  .feature-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--accent-glow);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .feature-icon svg { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .feature-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ── Metro Lines ── */
+  .lines-strip {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 24px; margin-top: 40px;
+  }
+  .line-badge {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-radius: 14px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    font-size: 14px; font-weight: 600;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .line-badge:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .line-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Metro Image ── */
+  .metro-image-container {
+    position: relative; z-index: 1;
+    max-width: 900px; margin: 0 auto;
+    padding: 0 24px 80px;
+    text-align: center;
+  }
+  .metro-image-container img {
+    width: 100%;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    object-fit: cover;
+  }
+  .metro-image-placeholder {
+    width: 100%;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .metro-image-placeholder svg {
+    width: 100%; height: auto; display: block;
+  }
+
+  /* ── FAQ ── */
+  .faq-list {
+    max-width: 700px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .faq-item {
+    background: var(--surface);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .faq-item:hover { border-color: var(--accent); }
+  .faq-question {
+    width: 100%; padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; cursor: pointer;
+    font-family: inherit; font-size: 16px; font-weight: 600;
+    color: var(--text-primary); text-align: left;
+  }
+  .faq-question svg {
+    width: 20px; height: 20px; flex-shrink: 0;
+    stroke: var(--text-secondary); fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    transition: transform 0.3s;
+  }
+  .faq-item.open .faq-question svg { transform: rotate(45deg); }
+  .faq-answer {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .faq-answer p {
+    padding: 0 24px 20px;
+    font-size: 14px; line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  /* ── Final CTA ── */
+  .final-cta {
+    text-align: center; padding: 80px 24px 100px;
+    position: relative; z-index: 1;
+  }
+  .final-cta h2 {
+    font-size: clamp(24px, 4vw, 36px); font-weight: 700; margin-bottom: 12px;
+  }
+  .final-cta p {
+    color: var(--text-secondary); font-size: 16px; margin-bottom: 32px;
+  }
+  .final-cta .hero-ctas { justify-content: center; }
+
+  /* ── Footer ── */
+  .footer {
+    position: relative; z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 20px;
+  }
+  .footer-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 15px;
+  }
+  .footer-brand img { width: 24px; height: 24px; border-radius: 6px; }
+  .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+  .footer-links a {
+    font-size: 13px; color: var(--text-secondary);
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--text-primary); }
+  .footer-copy { font-size: 12px; color: var(--text-muted); width: 100%; text-align: center; margin-top: 8px; }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .stats { gap: 24px; }
+    .stat-num { font-size: 22px; }
+    .nav-links .nav-link { display: none; }
+    .iphone-frame { width: 240px; height: 490px; border-radius: 38px; }
+    .iphone-screen { border-radius: 34px; }
+    .lines-strip { gap: 12px; }
+    .line-badge { padding: 10px 14px; font-size: 13px; }
+  }
+  @media (max-width: 480px) {
+    .hero-ctas { flex-direction: column; width: 100%; }
+    .btn { width: 100%; justify-content: center; }
+    .stats { flex-direction: column; gap: 16px; }
+    .footer { flex-direction: column; text-align: center; }
+    .footer-links { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <a class="nav-brand" href="/">
+    <img src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="ratemetro.com">
+    ratemetro.com
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="{% url 'ratemetroapp:sign_in' %}">Sign In</a>
+    <a class="nav-cta" href="{% url 'ratemetroapp:sign_in' %}">Sign Up</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-lines">
+    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- A Line (Blue) — fades from left to right -->
+      <path d="M -10 120 H 200" stroke="#0072BC" stroke-width="2.5" opacity="0.1"/>
+      <path d="M 200 120 V 280" stroke="#0072BC" stroke-width="2.5" opacity="0.25"/>
+      <path d="M 200 280 H 450" stroke="#0072BC" stroke-width="2.5" opacity="0.45"/>
+      <path d="M 450 280 V 180" stroke="#0072BC" stroke-width="2.5" opacity="0.65"/>
+      <path d="M 450 180 H 700" stroke="#0072BC" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="200" cy="120" r="4" fill="#0072BC" opacity="0.15"/>
+      <circle class="circuit-node" cx="200" cy="280" r="4" fill="#0072BC" opacity="0.35"/>
+      <circle class="circuit-node" cx="450" cy="280" r="4" fill="#0072BC" opacity="0.55"/>
+      <circle class="circuit-node" cx="450" cy="180" r="4" fill="#0072BC" opacity="0.75"/>
+      <circle class="circuit-node" cx="700" cy="180" r="5" fill="#0072BC" opacity="0.95"/>
+
+      <!-- B Line (Red) — fades from top down -->
+      <path d="M 350 -10 V 100" stroke="#E3242B" stroke-width="2.5" opacity="0.1"/>
+      <path d="M 350 100 H 600" stroke="#E3242B" stroke-width="2.5" opacity="0.25"/>
+      <path d="M 600 100 V 320" stroke="#E3242B" stroke-width="2.5" opacity="0.45"/>
+      <path d="M 600 320 H 850" stroke="#E3242B" stroke-width="2.5" opacity="0.65"/>
+      <path d="M 850 320 V 500" stroke="#E3242B" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="350" cy="100" r="4" fill="#E3242B" opacity="0.15"/>
+      <circle class="circuit-node" cx="600" cy="100" r="4" fill="#E3242B" opacity="0.35"/>
+      <circle class="circuit-node" cx="600" cy="320" r="4" fill="#E3242B" opacity="0.55"/>
+      <circle class="circuit-node" cx="850" cy="320" r="4" fill="#E3242B" opacity="0.75"/>
+      <circle class="circuit-node" cx="850" cy="500" r="5" fill="#E3242B" opacity="0.95"/>
+
+      <!-- C Line (Green) — fades from right to left -->
+      <path d="M 1010 200 H 750" stroke="#00A85A" stroke-width="2.5" opacity="0.1"/>
+      <path d="M 750 200 V 400" stroke="#00A85A" stroke-width="2.5" opacity="0.25"/>
+      <path d="M 750 400 H 500" stroke="#00A85A" stroke-width="2.5" opacity="0.45"/>
+      <path d="M 500 400 V 550" stroke="#00A85A" stroke-width="2.5" opacity="0.65"/>
+      <path d="M 500 550 H 250" stroke="#00A85A" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="750" cy="200" r="4" fill="#00A85A" opacity="0.15"/>
+      <circle class="circuit-node" cx="750" cy="400" r="4" fill="#00A85A" opacity="0.35"/>
+      <circle class="circuit-node" cx="500" cy="400" r="4" fill="#00A85A" opacity="0.55"/>
+      <circle class="circuit-node" cx="500" cy="550" r="4" fill="#00A85A" opacity="0.75"/>
+      <circle class="circuit-node" cx="250" cy="550" r="5" fill="#00A85A" opacity="0.95"/>
+
+      <!-- D Line (Purple) — fades from top-right down -->
+      <path d="M 700 -10 V 150" stroke="#A05EB5" stroke-width="2.5" opacity="0.1"/>
+      <path d="M 700 150 H 480" stroke="#A05EB5" stroke-width="2.5" opacity="0.25"/>
+      <path d="M 480 150 V 350" stroke="#A05EB5" stroke-width="2.5" opacity="0.45"/>
+      <path d="M 480 350 H 300" stroke="#A05EB5" stroke-width="2.5" opacity="0.65"/>
+      <path d="M 300 350 V 550" stroke="#A05EB5" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="700" cy="150" r="4" fill="#A05EB5" opacity="0.15"/>
+      <circle class="circuit-node" cx="480" cy="150" r="4" fill="#A05EB5" opacity="0.35"/>
+      <circle class="circuit-node" cx="480" cy="350" r="4" fill="#A05EB5" opacity="0.55"/>
+      <circle class="circuit-node" cx="300" cy="350" r="4" fill="#A05EB5" opacity="0.75"/>
+      <circle class="circuit-node" cx="300" cy="550" r="5" fill="#A05EB5" opacity="0.95"/>
+
+      <!-- E Line (Expo) — fades from bottom-left up -->
+      <path d="M -10 500 H 150" stroke="#F5A623" stroke-width="2.5" opacity="0.1"/>
+      <path d="M 150 500 V 350" stroke="#F5A623" stroke-width="2.5" opacity="0.25"/>
+      <path d="M 150 350 H 350" stroke="#F5A623" stroke-width="2.5" opacity="0.45"/>
+      <path d="M 350 350 V 200" stroke="#F5A623" stroke-width="2.5" opacity="0.65"/>
+      <path d="M 350 200 H 550" stroke="#F5A623" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="150" cy="500" r="4" fill="#F5A623" opacity="0.15"/>
+      <circle class="circuit-node" cx="150" cy="350" r="4" fill="#F5A623" opacity="0.35"/>
+      <circle class="circuit-node" cx="350" cy="350" r="4" fill="#F5A623" opacity="0.55"/>
+      <circle class="circuit-node" cx="350" cy="200" r="4" fill="#F5A623" opacity="0.75"/>
+      <circle class="circuit-node" cx="550" cy="200" r="5" fill="#F5A623" opacity="0.95"/>
+
+      <!-- G Line (Orange) — fades from bottom up -->
+      <path d="M 100 710 V 480" stroke="#F7931E" stroke-width="2.5" opacity="0.08"/>
+      <path d="M 100 480 H 300" stroke="#F7931E" stroke-width="2.5" opacity="0.2"/>
+      <path d="M 300 480 V 250" stroke="#F7931E" stroke-width="2.5" opacity="0.35"/>
+      <path d="M 300 250 H 550" stroke="#F7931E" stroke-width="2.5" opacity="0.55"/>
+      <path d="M 550 250 V 80" stroke="#F7931E" stroke-width="2.5" opacity="0.75"/>
+      <path d="M 550 80 H 850" stroke="#F7931E" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="100" cy="480" r="4" fill="#F7931E" opacity="0.12"/>
+      <circle class="circuit-node" cx="300" cy="480" r="4" fill="#F7931E" opacity="0.25"/>
+      <circle class="circuit-node" cx="300" cy="250" r="4" fill="#F7931E" opacity="0.45"/>
+      <circle class="circuit-node" cx="550" cy="250" r="4" fill="#F7931E" opacity="0.65"/>
+      <circle class="circuit-node" cx="550" cy="80" r="4" fill="#F7931E" opacity="0.8"/>
+      <circle class="circuit-node" cx="850" cy="80" r="5" fill="#F7931E" opacity="0.95"/>
+
+      <!-- K Line (Pink) — fades from bottom-right up -->
+      <path d="M 1010 600 H 800" stroke="#E96BB0" stroke-width="2.5" opacity="0.08"/>
+      <path d="M 800 600 V 450" stroke="#E96BB0" stroke-width="2.5" opacity="0.2"/>
+      <path d="M 800 450 H 620" stroke="#E96BB0" stroke-width="2.5" opacity="0.35"/>
+      <path d="M 620 450 V 280" stroke="#E96BB0" stroke-width="2.5" opacity="0.55"/>
+      <path d="M 620 280 H 900" stroke="#E96BB0" stroke-width="2.5" opacity="0.75"/>
+      <path d="M 900 280 V 50" stroke="#E96BB0" stroke-width="2.5" opacity="0.9"/>
+      <circle class="circuit-node" cx="800" cy="600" r="4" fill="#E96BB0" opacity="0.12"/>
+      <circle class="circuit-node" cx="800" cy="450" r="4" fill="#E96BB0" opacity="0.25"/>
+      <circle class="circuit-node" cx="620" cy="450" r="4" fill="#E96BB0" opacity="0.45"/>
+      <circle class="circuit-node" cx="620" cy="280" r="4" fill="#E96BB0" opacity="0.65"/>
+      <circle class="circuit-node" cx="900" cy="280" r="4" fill="#E96BB0" opacity="0.8"/>
+      <circle class="circuit-node" cx="900" cy="50" r="5" fill="#E96BB0" opacity="0.95"/>
+
+      <!-- Intersection highlights -->
+      <circle cx="350" cy="200" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
+      <circle cx="550" cy="250" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
+      <circle cx="300" cy="350" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
+      <circle cx="500" cy="400" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
+      <circle cx="600" cy="320" r="7" stroke="#f5c518" stroke-width="1.5" fill="none" opacity="0.5"/>
+    </svg>
+  </div>
+  <img class="hero-logo" src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="Ratemetro">
+  <h1>Navigate <span class="accent">LA Metro</span> with confidence</h1>
+  <p class="hero-sub">AI-powered safety ratings, real-time arrivals, and smart directions for every station on the Los Angeles Metro.</p>
+  <div class="hero-ctas">
+    <a class="btn btn-primary" href="{% url 'ratemetroapp:map' %}">
+      <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      Get Started
+    </a>
+    <a class="btn btn-secondary" href="{% url 'ratemetroapp:sign_in' %}">
+      <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Sign In
+    </a>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">100+</div>
+      <div class="stat-label">Stations</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">7</div>
+      <div class="stat-label">Lines</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">24/7</div>
+      <div class="stat-label">AI Assistant</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Map Preview ── -->
+<section>
+  <div class="map-preview-container">
+    <h2 class="section-title">Interactive Metro Map</h2>
+    <p class="section-sub">Explore every station with live safety data and real-time arrivals.</p>
+    <div class="iphone-wrapper">
+      <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-screen">
+          <!-- Replace this placeholder with: <video src="your-video.mp4" autoplay muted loop playsinline></video> -->
+          <div class="video-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            <span>Video coming soon</span>
+          </div>
+        </div>
+        <div class="iphone-home"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section>
+  <h2 class="section-title">Everything you need to ride</h2>
+  <p class="section-sub">Smart tools to make every trip safer and easier.</p>
+  <div class="features-grid">
+    <div class="feature-card" data-reveal>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 6H10c0-3-2-4-2-6a4 4 0 014-4z"/><line x1="10" y1="16" x2="14" y2="16"/><line x1="10" y1="19" x2="14" y2="19"/><line x1="11" y1="22" x2="13" y2="22"/></svg>
+      </div>
+      <h3>AI Directions</h3>
+      <p>Get intelligent, context-aware directions between any two metro stations with our AI-powered assistant.</p>
+    </div>
+    <div class="feature-card" data-reveal>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <h3>Safety Ratings</h3>
+      <p>Community-driven safety ratings for every station so you know what to expect before you arrive.</p>
+    </div>
+    <div class="feature-card" data-reveal>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <h3>Real-Time Arrivals</h3>
+      <p>Live departure times for every station pulled directly from LA Metro so you never miss a train.</p>
+    </div>
+    <div class="feature-card" data-reveal>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      </div>
+      <h3>Walking Directions</h3>
+      <p>Turn-by-turn walking directions from your current location to the nearest metro station entrance.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Metro Lines ── -->
+<section>
+  <h2 class="section-title">All LA Metro Lines</h2>
+  <p class="section-sub">Full coverage across the entire Los Angeles Metro system.</p>
+  <div class="lines-strip">
+    <div class="line-badge"><span class="line-dot" style="background:#0072BC"></span> A (Blue)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#E3242B"></span> B (Red)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#00A85A"></span> C (Green)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#A05EB5"></span> D (Purple)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#F5A623"></span> E (Expo)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#F7931E"></span> G (Orange)</div>
+    <div class="line-badge"><span class="line-dot" style="background:#E96BB0"></span> K (Crenshaw)</div>
+  </div>
+</section>
+
+<!-- ── Metro Image ── -->
+<div class="metro-image-container">
+  <div class="metro-image-placeholder">
+    <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="900" height="400" rx="20" fill="var(--surface-light)"/>
+      <path d="M 80 200 L 820 200" stroke="#0072BC" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <path d="M 80 140 L 820 140" stroke="#E3242B" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <path d="M 80 260 L 820 260" stroke="#00A85A" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <path d="M 300 60 L 300 340" stroke="#A05EB5" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <path d="M 500 60 L 500 340" stroke="#F5A623" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <path d="M 650 60 L 650 340" stroke="#E96BB0" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="300" cy="140" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="300" cy="200" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="300" cy="260" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="500" cy="140" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="500" cy="200" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="500" cy="260" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="650" cy="140" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="650" cy="200" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <circle cx="650" cy="260" r="8" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.3"/>
+      <text x="450" y="205" text-anchor="middle" fill="var(--text-muted)" font-family="DM Sans, sans-serif" font-size="18" font-weight="600">LA Metro System Map</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ── FAQ ── -->
+<section id="faq">
+  <h2 class="section-title">Frequently Asked Questions</h2>
+  <p class="section-sub">Everything you need to know about ratemetro.com.</p>
+  <div class="faq-list">
+    <div class="faq-item" data-reveal>
+      <button class="faq-question">
+        What is ratemetro.com?
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-answer">
+        <p>ratemetro.com is a community-powered platform for Los Angeles Metro riders. It provides AI-powered safety ratings, real-time train arrivals, and walking directions for every station on the LA Metro system.</p>
+      </div>
+    </div>
+    <div class="faq-item" data-reveal>
+      <button class="faq-question">
+        How are safety ratings calculated?
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-answer">
+        <p>Safety ratings are based on reviews submitted by real riders in the community. Each station's rating reflects the average of all user-submitted scores, giving you an honest picture of what to expect.</p>
+      </div>
+    </div>
+    <div class="faq-item" data-reveal>
+      <button class="faq-question">
+        Is ratemetro.com free to use?
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-answer">
+        <p>Yes, ratemetro.com is completely free. You can browse the map, view safety ratings, and check real-time arrivals without an account. Creating an account lets you submit your own reviews and save your preferences.</p>
+      </div>
+    </div>
+    <div class="faq-item" data-reveal>
+      <button class="faq-question">
+        Which metro lines are covered?
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-answer">
+        <p>ratemetro.com covers all seven LA Metro rail lines: A (Blue), B (Red), C (Green), D (Purple), E (Expo), G (Orange), and K (Crenshaw) — including every station on each line.</p>
+      </div>
+    </div>
+    <div class="faq-item" data-reveal>
+      <button class="faq-question">
+        How do real-time arrivals work?
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-answer">
+        <p>We pull live departure data directly from the LA Metro API, so you see up-to-the-minute arrival times for every station. Just tap on any station on the map to view upcoming trains.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Final CTA ── -->
+<div class="final-cta">
+  <h2>Start riding safer today</h2>
+  <p>Join the community making LA Metro better for everyone.</p>
+  <div class="hero-ctas">
+    <a class="btn btn-primary" href="{% url 'ratemetroapp:map' %}">
+      <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      Get Started
+    </a>
+    <a class="btn btn-secondary" href="{% url 'ratemetroapp:sign_in' %}">
+      <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Sign In
+    </a>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <a class="footer-brand" href="/">
+    <img src="{% static 'ratemetroapp/images/ratemetro.png' %}" alt="ratemetro.com">
+    ratemetro.com
+  </a>
+  <div class="footer-links">
+    <a href="{% url 'ratemetroapp:map' %}">Map</a>
+    <a href="{% url 'ratemetroapp:feedback' %}">Feedback</a>
+    <a href="{% url 'ratemetroapp:privacy_policy' %}">Privacy</a>
+    <a href="{% url 'ratemetroapp:terms' %}">Terms</a>
+    <a href="{% url 'ratemetroapp:help_center' %}">Help</a>
+  </div>
+  <div class="footer-copy">&copy; 2025 ratemetro.com. All rights reserved.</div>
+</footer>
+
+<script>
+  // Theme toggle
+  const toggle = document.getElementById('themeToggle');
+  toggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('ratemetro-theme', next);
+  });
+
+  // Scroll reveal for feature cards
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 100);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.parentElement;
+      const answer = item.querySelector('.faq-answer');
+      const isOpen = item.classList.contains('open');
+      // Close all
+      document.querySelectorAll('.faq-item.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.faq-answer').style.maxHeight = null;
+      });
+      // Open clicked (if it wasn't already open)
+      if (!isOpen) {
+        item.classList.add('open');
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

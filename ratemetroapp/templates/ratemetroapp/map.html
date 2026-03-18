@@ -5009,20 +5009,18 @@ try {
 
 // Avatar is now loaded from server; no localStorage listener needed.
 
-// Show sign-in prompt modal if user is not authenticated
+// On page load: open AI chat welcome instead of sign-in modal
 window.addEventListener('DOMContentLoaded', function() {
   // Update profile button visibility based on initial auth state
   updateProfileButtonVisibility();
-  
-  // Check if user dismissed the prompt in this session
-  const promptDismissed = sessionStorage.getItem('signinPromptDismissed');
-  
-  // Show prompt if user is not authenticated and hasn't dismissed it
-  if (!isAuthenticated && !promptDismissed) {
-    // Small delay to let page load first
+
+  // Auto-open the AI chat welcome on first visit (no active session yet)
+  if (!activeSessionId) {
     setTimeout(() => {
-      showSignInPrompt();
-    }, 500);
+      showChatWelcome();
+      chatOverlay.classList.add('visible');
+      chatBackdrop.classList.add('visible');
+    }, 600);
   }
 });
 

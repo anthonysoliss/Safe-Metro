@@ -17,6 +17,10 @@ from django.conf import settings
 from django.db.models import Avg, Count
 from .models import UserLocation, Rating, Station, StationImage, RatingPhoto, UserProfile, Feedback, ChatConversation, ChatMessage
 
+def home_view(request):
+    """Landing page"""
+    return render(request, 'ratemetroapp/home.html')
+
 def map_view(request):
     """Main map page view"""
     avatar_url = ''
@@ -1354,12 +1358,14 @@ def _build_user_context(request, data, user_message=''):
             pass
 
     # --- Google Routes API for directions requests ---
+    google_route_block = None
     if user_message:
-        directions_context = _get_google_directions_context(user_message, data, mentioned_stations)
-        if directions_context:
+        directions_result = _get_google_directions_context(user_message, data, mentioned_stations)
+        if directions_result:
+            directions_context, google_route_block = directions_result
             parts.append(directions_context)
 
-    return "\n".join(parts)
+    return "\n".join(parts), google_route_block
 
 
 def _is_directions_request(msg_lower):
@@ -1626,12 +1632,12 @@ def _get_google_directions_context(user_message, data, mentioned_stations):
     origin_label = origin if origin else "your location"
     context = format_route_for_context(route_data, origin_label, dest_label)
 
-    # Build a suggested [ROUTE] block from Google's data so the AI can use it directly
-    suggested_route = _build_route_block_from_google(route_data)
-    if suggested_route:
-        context += f"\n\nSuggested [ROUTE] block (use this exact route — match station names to the COMPLETE STATION LISTS):\n{suggested_route}"
+    # Build the authoritative [ROUTE] block from Google's data
+    google_route_block = _build_route_block_from_google(route_data)
+    if google_route_block:
+        context += f"\n\nUse this exact route in your [ROUTE] block:\n{google_route_block}"
 
-    return context
+    return context, google_route_block
 
 
 @csrf_exempt
@@ -1682,7 +1688,7 @@ def api_chat(request):
             messages.append({'role': 'user', 'content': user_message})
 
         # Build user context
-        user_context = _build_user_context(request, data, user_message)
+        user_context, google_route_block = _build_user_context(request, data, user_message)
         system_prompt = METRO_SYSTEM_PROMPT + "\n\n--- CURRENT USER CONTEXT ---\n" + user_context
 
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -1705,12 +1711,22 @@ def api_chat(request):
         arrivals_data = None
         walking_data = None
 
-        route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
-        if route_match:
+        # If Google Routes computed a route, USE IT as the authoritative route data
+        # instead of relying on whatever the AI generated in its [ROUTE] block
+        if google_route_block:
             try:
-                route_data = json.loads(route_match.group(1))
+                route_data = json.loads(google_route_block)
             except (json.JSONDecodeError, ValueError):
                 route_data = None
+
+        # Fall back to AI's [ROUTE] block only if Google didn't provide one
+        if not route_data:
+            route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
+            if route_match:
+                try:
+                    route_data = json.loads(route_match.group(1))
+                except (json.JSONDecodeError, ValueError):
+                    route_data = None
 
         arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', ai_text, re.DOTALL)
         if arrivals_match:

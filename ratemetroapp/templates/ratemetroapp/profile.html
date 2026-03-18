@@ -1592,7 +1592,7 @@ window.addEventListener('popstate', async function(e) {
     );
     if (confirmed) {
       hasUnsavedChanges = false;
-      window.location.href = '/';
+      window.location.href = '/map/';
     } else {
       // Push state again to prevent navigation
       window.history.pushState(null, null, window.location.href);
