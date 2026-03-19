@@ -689,6 +689,8 @@
   }
   .chat-welcome-chip:hover { background: #f5c518; transform: translateY(-1px); }
   .chat-auth-gate { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; width: 100%; max-width: 280px; }
+  .chat-auth-row { display: flex; gap: 10px; }
+  .chat-auth-row .chat-auth-btn { flex: 1; }
   .chat-auth-btn {
     padding: 12px 24px; border-radius: 22px; font-size: 15px; font-weight: 700;
     border: none; cursor: pointer; transition: background 0.15s, transform 0.15s;
@@ -4134,7 +4136,10 @@ function showChatWelcome() {
   const bottomSection = showAuthGate
     ? `<div class="chat-welcome-sub">Sign in to save your chats and get the most out of ratemetro.com</div>
        <div class="chat-auth-gate">
-         <button class="chat-auth-btn primary" id="chatAuthSignIn">Sign In</button>
+         <div class="chat-auth-row">
+           <button class="chat-auth-btn primary" id="chatAuthSignUp">Sign Up</button>
+           <button class="chat-auth-btn secondary" id="chatAuthSignIn">Sign In</button>
+         </div>
          <button class="chat-auth-btn secondary" id="chatAuthGuest">Continue as Guest</button>
        </div>`
     : `<div class="chat-welcome-sub">Your LA Metro guide. Ask about directions, train times, safety info, or places to visit.</div>
@@ -4151,6 +4156,9 @@ function showChatWelcome() {
   </div>`;
 
   if (showAuthGate) {
+    document.getElementById('chatAuthSignUp')?.addEventListener('click', () => {
+      window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname) + '&tab=signup';
+    });
     document.getElementById('chatAuthSignIn')?.addEventListener('click', () => {
       window.location.href = DJANGO_URLS.signIn + '?next=' + encodeURIComponent(window.location.pathname);
     });
