@@ -2127,21 +2127,59 @@ def api_chat(request):
         if route_match:
             try:
                 route_data = json.loads(route_match.group(1))
-                # Enrich AI route with Google bus metadata
-                if google_route_data and route_data and route_data.get('steps'):
-                    google_bus_steps = {
-                        s.get('line', ''): s
-                        for s in google_route_data.get('steps', [])
-                        if s.get('vehicle_type') == 'BUS'
-                    }
+                # Build lookup of Google bus steps by line number
+                google_bus_steps = {}
+                if google_route_data:
+                    for s in google_route_data.get('steps', []):
+                        if s.get('vehicle_type') == 'BUS':
+                            google_bus_steps[s.get('line', '')] = s
+
+                # Enrich AI route steps with coordinates and bus metadata
+                if route_data and route_data.get('steps'):
+                    api_key = settings.GOOGLE_MAPS_API_KEY
                     for step in route_data['steps']:
-                        if step.get('type') == 'ride' and step.get('line') in google_bus_steps:
-                            gbus = google_bus_steps[step['line']]
+                        if step.get('type') != 'ride':
+                            continue
+
+                        # Enrich from Google bus data if same line exists
+                        line = step.get('line', '')
+                        if line in google_bus_steps:
+                            gbus = google_bus_steps[line]
                             if 'vehicle_type' not in step:
                                 step['vehicle_type'] = 'BUS'
                             for key in ('from_lat', 'from_lng', 'to_lat', 'to_lng', 'num_stops'):
                                 if key not in step and key in gbus:
                                     step[key] = gbus[key]
+
+                        # For bus steps still missing coordinates, geocode stop names
+                        if step.get('vehicle_type') == 'BUS':
+                            if not step.get('from_lat') or not step.get('from_lng'):
+                                from_name = step.get('from', '')
+                                if from_name:
+                                    # Check station DB first
+                                    from_station = Station.objects.filter(name=from_name).first()
+                                    if from_station:
+                                        step['from_lat'] = float(from_station.latitude)
+                                        step['from_lng'] = float(from_station.longitude)
+                                    else:
+                                        lat, lng = _geocode_place(from_name + " bus stop", api_key)
+                                        if lat and lng:
+                                            step['from_lat'] = lat
+                                            step['from_lng'] = lng
+
+                            if not step.get('to_lat') or not step.get('to_lng'):
+                                to_name = step.get('to', '')
+                                if to_name:
+                                    to_station = Station.objects.filter(name=to_name).first()
+                                    if to_station:
+                                        step['to_lat'] = float(to_station.latitude)
+                                        step['to_lng'] = float(to_station.longitude)
+                                    else:
+                                        lat, lng = _geocode_place(to_name + " bus stop", api_key)
+                                        if lat and lng:
+                                            step['to_lat'] = lat
+                                            step['to_lng'] = lng
+
             except (json.JSONDecodeError, ValueError):
                 route_data = None
 

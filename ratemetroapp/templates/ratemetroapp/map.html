@@ -4891,8 +4891,9 @@ function drawRouteOnMap(routeData, skipFitBounds) {
   stationMarkers.forEach(m => {
     const sd = m.stationData;
     if (!sd) return;
-    const onRouteLine = sd.lines.some(l => routeLines.has(l));
-    if (!onRouteLine) {
+    // Only show stations that are actually on the route segment (between from and to),
+    // not all stations on the line — so the line visually ends at the drop-off station
+    if (!routeStationNames.has(sd.name)) {
       map.removeLayer(m);
     }
   });
