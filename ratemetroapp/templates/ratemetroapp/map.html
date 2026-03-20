@@ -2495,12 +2495,14 @@ const DJANGO_URLS = {
 // Authentication state
 let isAuthenticated = {{ is_authenticated|yesno:"true,false" }};
 let currentUsername = '{{ username|default:"" }}';
+let currentUserEmail = '{{ user_email|default:"" }}';
 let currentAvatarUrl = '{{ avatar_url|default:"" }}';
 
 // Free tier question tracking
 let questionCount = parseInt(sessionStorage.getItem('metroQuestionCount') || '0');
 let guestPromptShown = sessionStorage.getItem('metroGuestDismissed') === 'true';
 const FREE_QUESTION_LIMIT = 3;
+const UNLIMITED_USERS = ['asolis0105mymail@gmail.com'];
 
 // Check authentication status
 async function checkAuthentication() {
@@ -4277,8 +4279,8 @@ function stopAI() {
 async function sendMessage() {
   const text = chatInput.value.trim(); if (!text) return;
 
-  // Question limit check — show upgrade card inline in chat
-  if (questionCount >= FREE_QUESTION_LIMIT) {
+  // Question limit check — show upgrade card inline in chat (skip for unlimited users)
+  if (questionCount >= FREE_QUESTION_LIMIT && !UNLIMITED_USERS.includes(currentUserEmail)) {
     showUpgradeInChat();
     return;
   }
@@ -4747,17 +4749,13 @@ function drawRouteOnMap(routeData, skipFitBounds) {
       const route = lineRoutes[step.line];
 
       if (isBus || !route) {
-        // Bus route or unknown line — draw dashed polyline between stop coordinates
+        // Bus route or unknown line — use Google Directions to get road-following path
         const fromLat = step.from_lat || (stationByName[step.from] && stationByName[step.from].lat);
         const fromLng = step.from_lng || (stationByName[step.from] && stationByName[step.from].lng);
         const toLat = step.to_lat || (stationByName[step.to] && stationByName[step.to].lat);
         const toLng = step.to_lng || (stationByName[step.to] && stationByName[step.to].lng);
         if (fromLat && fromLng && toLat && toLng) {
           const busColor = '#0077cc';
-          const poly = L.polyline([[fromLat, fromLng], [toLat, toLng]], {
-            color: busColor, weight: 5, opacity: 0.85, dashArray: '10 8',
-          }).addTo(map);
-          routePolylines.push(poly);
           // Small circle markers at bus stops
           const fromM = L.circleMarker([fromLat, fromLng], {
             radius: 5, fillColor: busColor, color: '#fff', weight: 1.5, fillOpacity: 1,
@@ -4767,6 +4765,36 @@ function drawRouteOnMap(routeData, skipFitBounds) {
           }).addTo(map).bindTooltip(step.to, { direction: 'top', offset: [0, -6] });
           routeMarkers.push(fromM, toM);
           allBounds.push([fromLat, fromLng], [toLat, toLng]);
+
+          // Get actual bus route path from Google Directions (buses follow roads)
+          if (window.google && google.maps && google.maps.DirectionsService) {
+            const busSvc = new google.maps.DirectionsService();
+            busSvc.route({
+              origin: new google.maps.LatLng(fromLat, fromLng),
+              destination: new google.maps.LatLng(toLat, toLng),
+              travelMode: google.maps.TravelMode.DRIVING,
+            }, (res, st) => {
+              if (st === 'OK' && res.routes.length > 0) {
+                const path = res.routes[0].overview_path.map(p => [p.lat(), p.lng()]);
+                const poly = L.polyline(path, {
+                  color: busColor, weight: 5, opacity: 0.85, dashArray: '10 8',
+                }).addTo(map);
+                routePolylines.push(poly);
+              } else {
+                // Fallback: straight line if Google fails
+                const poly = L.polyline([[fromLat, fromLng], [toLat, toLng]], {
+                  color: busColor, weight: 5, opacity: 0.85, dashArray: '10 8',
+                }).addTo(map);
+                routePolylines.push(poly);
+              }
+            });
+          } else {
+            // No Google service — straight line fallback
+            const poly = L.polyline([[fromLat, fromLng], [toLat, toLng]], {
+              color: busColor, weight: 5, opacity: 0.85, dashArray: '10 8',
+            }).addTo(map);
+            routePolylines.push(poly);
+          }
         }
       } else {
         const fi = route.indexOf(step.from);

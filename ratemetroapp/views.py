@@ -35,6 +35,7 @@ def map_view(request):
     context = {
         'is_authenticated': request.user.is_authenticated,
         'username': request.user.username if request.user.is_authenticated else None,
+        'user_email': request.user.email if request.user.is_authenticated else '',
         'avatar_url': avatar_url,
         'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY,
     }
@@ -1027,15 +1028,20 @@ Whenever you give step-by-step Metro directions (riding from one station to anot
 
 Each step object has these fields:
 - "type": "ride" or "transfer"
-- "line": line letter code (e.g. "A", "B", "E") — required for "ride", null for "transfer"
-- "from": exact station name (starting station of this segment)
-- "to": exact station name (ending station of this segment)
+- "line": line letter code (e.g. "A", "B", "E") for Metro rail, or bus route number (e.g. "4", "720") for buses — required for "ride", null for "transfer"
+- "from": exact station/stop name (starting point of this segment)
+- "to": exact station/stop name (ending point of this segment)
+- "vehicle_type": "BUS" — include this field ONLY for bus steps (omit for Metro rail)
+- "num_stops": number of stops — include this field for bus steps (e.g. 18)
 For "transfer" steps, "from" and "to" are the same station (the transfer point), and "line" is null.
 
 Station names MUST exactly match official names: e.g. "7th St/Metro Center", "Union Station", "Hollywood/Highland", "Willowbrook/Rosa Parks".
 
 Example for a trip from Atlantic to Hollywood/Highland:
 [ROUTE]{"steps":[{"type":"ride","line":"E","from":"Atlantic","to":"7th St/Metro Center"},{"type":"transfer","line":null,"from":"7th St/Metro Center","to":"7th St/Metro Center"},{"type":"ride","line":"B","from":"7th St/Metro Center","to":"Hollywood/Highland"}]}[/ROUTE]
+
+Example with a bus connection:
+[ROUTE]{"steps":[{"type":"ride","line":"B","from":"7th St/Metro Center","to":"Hollywood/Highland"},{"type":"transfer","line":null,"from":"Hollywood/Highland","to":"Hollywood/Highland"},{"type":"ride","line":"4","from":"Hollywood/Highland","to":"Sunset/Vin Scully","vehicle_type":"BUS","num_stops":18}]}[/ROUTE]
 
 Only include the [ROUTE] block for actual routing directions, NOT for general info questions about lines or stations.
 CRITICAL: When giving directions that involve BOTH walking to a station AND riding Metro, you MUST include BOTH [ROUTE] and [WALKING] blocks at the end of your response. Never include one without the other when both apply. The [WALKING] block shows the user how to get to the station, and the [ROUTE] block shows the transit route — both are needed for the full directions widget.
@@ -2107,22 +2113,41 @@ def api_chat(request):
         arrivals_data = None
         walking_data = None
 
-        # If Google Routes computed a route, USE IT as the authoritative route data
-        # instead of relying on whatever the AI generated in its [ROUTE] block
+        # Parse Google's route data (rich metadata: bus coords, stop counts, vehicle_type)
+        google_route_data = None
         if google_route_block:
             try:
-                route_data = json.loads(google_route_block)
+                google_route_data = json.loads(google_route_block)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Prefer the AI's [ROUTE] block — it matches the text the user reads.
+        # Then enrich bus steps with Google's metadata (coords, vehicle_type, num_stops).
+        route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
+        if route_match:
+            try:
+                route_data = json.loads(route_match.group(1))
+                # Enrich AI route with Google bus metadata
+                if google_route_data and route_data and route_data.get('steps'):
+                    google_bus_steps = {
+                        s.get('line', ''): s
+                        for s in google_route_data.get('steps', [])
+                        if s.get('vehicle_type') == 'BUS'
+                    }
+                    for step in route_data['steps']:
+                        if step.get('type') == 'ride' and step.get('line') in google_bus_steps:
+                            gbus = google_bus_steps[step['line']]
+                            if 'vehicle_type' not in step:
+                                step['vehicle_type'] = 'BUS'
+                            for key in ('from_lat', 'from_lng', 'to_lat', 'to_lng', 'num_stops'):
+                                if key not in step and key in gbus:
+                                    step[key] = gbus[key]
             except (json.JSONDecodeError, ValueError):
                 route_data = None
 
-        # Fall back to AI's [ROUTE] block only if Google didn't provide one
-        if not route_data:
-            route_match = re.search(r'\[ROUTE\](.*?)\[/ROUTE\]', ai_text, re.DOTALL)
-            if route_match:
-                try:
-                    route_data = json.loads(route_match.group(1))
-                except (json.JSONDecodeError, ValueError):
-                    route_data = None
+        # Fall back to Google's route block if AI didn't produce a valid one
+        if not route_data and google_route_data:
+            route_data = google_route_data
 
         arrivals_match = re.search(r'\[ARRIVALS\](.*?)\[/ARRIVALS\]', ai_text, re.DOTALL)
         if arrivals_match:
